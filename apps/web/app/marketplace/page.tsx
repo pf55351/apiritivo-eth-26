@@ -2,6 +2,7 @@
 
 import { categoryLabel, SERVICE_CATEGORIES } from "@apiritivo/shared";
 import { useMemo, useState } from "react";
+import { AuthGate } from "@/components/auth-gate";
 import { RefreshButton } from "@/components/refresh-button";
 import { ServiceCard } from "@/components/service-card";
 import { Button, EmptyState, EmptyStateIcon, ErrorNotice, SectionTitle, ServiceCardSkeleton } from "@/components/ui";
@@ -9,7 +10,7 @@ import { useMarketplace } from "@/lib/use-services";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5", "s6"];
 
-export default function MarketplacePage() {
+function Marketplace() {
   const { data, initialLoading, refreshing, error, reload } = useMarketplace();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("all");
@@ -68,7 +69,7 @@ export default function MarketplacePage() {
       {error ? <ErrorNotice message={data !== null ? "Refresh failed. Showing the last loaded APIs." : error.message} detail={error.detail} onRetry={reload} /> : null}
 
       {initialLoading ? (
-        <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {SKELETON_KEYS.map((k) => (
             <ServiceCardSkeleton key={k} />
           ))}
@@ -93,12 +94,21 @@ export default function MarketplacePage() {
           }
         />
       ) : (
-        <div aria-busy={refreshing} className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div aria-busy={refreshing} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((s) => (
             <ServiceCard key={s.serviceId} service={s} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+/** Listings are on Arkiv for everyone, but the app shows them only to a signed-in Swarm ID. */
+export default function MarketplacePage() {
+  return (
+    <AuthGate title="Sign in to explore APIs">
+      <Marketplace />
+    </AuthGate>
   );
 }

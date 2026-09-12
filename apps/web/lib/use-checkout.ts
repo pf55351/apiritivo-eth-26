@@ -31,10 +31,10 @@ export function checkoutStepState(current: CheckoutStep, step: CheckoutStep): "t
 /**
  * The purchase flow for the active account: pay (approve + buy, or a direct
  * transfer), wait for the receipt, generate the pass secret, seal it with the
- * account's key, sign the claim and ask the server to mint the pass.
- * `swarmSignedIn` attaches the Swarm sharing key so private files can be granted.
+ * Swarm ID's key, sign the claim and ask the server to mint the pass. The
+ * Swarm ID's sharing key goes with it, so the provider can grant private files.
  */
-export function useCheckout(service: ArkivService, account: ActiveAccount, swarmSignedIn: boolean, onIssued: (result: IssueAccessPassResult) => void): Checkout {
+export function useCheckout(service: ArkivService, account: ActiveAccount, onIssued: (result: IssueAccessPassResult) => void): Checkout {
   const [step, setStep] = useState<CheckoutStep>("idle");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<FriendlyError | null>(null);
@@ -55,6 +55,9 @@ export function useCheckout(service: ArkivService, account: ActiveAccount, swarm
     try {
       const signer = account.signer;
       if (!signer) throw new Error(account.kind === "wallet" ? "Connect a wallet first." : "Your Swarm wallet is not ready yet.");
+      // The only key the provider may grant the private file to: the buying Swarm ID's.
+      const buyerPublicKey = getGranteeKey();
+      if (!buyerPublicKey) throw new Error("Sign in with Swarm ID first.");
       await account.ensureReady();
 
       setStep("paying");
@@ -71,13 +74,11 @@ export function useCheckout(service: ArkivService, account: ActiveAccount, swarm
       const mined = await waitForPayment(sent.txHash);
       if (!mined.success) throw new Error("Payment transaction reverted.");
       setStep("issuing");
-      // Proof of ownership: a fresh secret, hashed for Arkiv and encrypted for this account.
+      // Proof of ownership: a fresh secret, hashed for Arkiv and encrypted for the Swarm ID.
       // The server stores both and never sees the secret.
       const secret = generatePassSecret();
       const secretHash = hashPassSecret(secret);
       const encryptedSecret = await account.sealPassSecret(secret);
-      // Swarm ID key, when signed in: the only key the provider may grant the private file to.
-      const buyerPublicKey = swarmSignedIn ? getGranteeKey() : undefined;
       // Claim: the paying wallet signs (tx hash, secret hash, file key) so only it can mint the pass
       // for this payment, and the file can only be granted to the key it named.
       const buyerSignature = await signPassClaim(signer, sent.txHash, secretHash, buyerPublicKey);
@@ -109,7 +110,7 @@ export function useCheckout(service: ArkivService, account: ActiveAccount, swarm
       const friendly = toFriendlyError(err, "Purchase failed.");
       setError(err instanceof Error && friendly.message === "Purchase failed." && err.message ? { ...friendly, message: err.message } : friendly);
     }
-  }, [account, service, swarmSignedIn, onIssued, reset]);
+  }, [account, service, onIssued, reset]);
 
   return { step, busy: step !== "idle" && step !== "done", txHash, result, resultBearer, error, buy, reset };
 }

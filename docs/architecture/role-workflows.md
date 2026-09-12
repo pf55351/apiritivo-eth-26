@@ -6,7 +6,7 @@ The client buys and consumes a service. The provider publishes and earns from it
 
 | Responsibility | Client | Provider |
 | --- | --- | --- |
-| Identity | Connect a browser wallet (MetaMask, Rabby, Core); its address is `buyer_id`. Swarm ID is optional, only for private files | Connect Swarm ID; derive the payout wallet |
+| Identity | Sign in with Swarm ID (`buyer_id`, pass key, sharing key for private files); connect a browser wallet (MetaMask, Rabby, Core) to pay | Sign in with Swarm ID; derive the payout wallet |
 | Discovery / publication | Read listings from Arkiv and technical manifests from Swarm | Define operations and commercial terms; upload the manifest before publishing a listing |
 | USDC transaction | Sign `approve` when needed, then `APIritivoPayments.buy` | Sign `APIritivoPayments.claim(wallet, 0)` from the credited payout account |
 | Arkiv request | Send `POST /api/access-passes` with payment hash, buyer fields and sealed secret | Send `POST /api/services`; optionally `POST /api/grants` |

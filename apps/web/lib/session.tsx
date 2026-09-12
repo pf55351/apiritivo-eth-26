@@ -1,6 +1,6 @@
 "use client";
 
-import { isRole, type Role, roleStorageKey } from "@apiritivo/shared";
+import { isRole, type Role } from "@apiritivo/shared";
 import { DISCONNECTED, initSwarm, type SwarmConnectionInfo, type SwarmIdentity, disconnect as swarmDisconnect } from "@apiritivo/swarm";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { publicEnv } from "./env";
@@ -23,14 +23,19 @@ export type Session = {
   cancelConnect: () => void;
   disconnect: () => Promise<void>;
   retry: () => void;
-  /** Workspace preference, saved per identity; guests have a separate preference. */
+  /** Workspace preference (one per browser), chosen before signing in. */
   role: Role | null;
   roleLoaded: boolean;
   setRole: (role: Role | null) => void;
+  /**
+   * Change workspace the only way the app allows: remember the choice, sign
+   * out of Swarm ID when signed in, and open the sign-in dialog again.
+   */
+  switchWorkspace: (role: Role) => Promise<void>;
 };
 
 const SessionContext = createContext<Session | null>(null);
-const GUEST_ROLE_KEY = "apiritivo:guest-role";
+const WORKSPACE_KEY = "apiritivo:workspace";
 
 /** Persistent host for the Swarm ID iframe; shown in the sign-in dialog. */
 export const SWARM_ID_FRAME_CONTAINER_ID = "swarm-id-frame";
@@ -43,16 +48,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
-  // Bind the loaded preference to its identity so account changes cannot expose
-  // the previous account's workspace while localStorage is being read.
-  const identityId = info.identity?.id ?? null;
-  const [rolePreference, setRolePreference] = useState<{
-    identityId: string | null;
-    role: Role | null;
-    loaded: boolean;
-  }>({ identityId: null, role: null, loaded: false });
-  const roleLoaded = rolePreference.loaded && rolePreference.identityId === identityId;
-  const role = roleLoaded ? rolePreference.role : null;
+  const [rolePreference, setRolePreference] = useState<{ role: Role | null; loaded: boolean }>({ role: null, loaded: false });
+  const { role, loaded: roleLoaded } = rolePreference;
 
   useEffect(() => {
     let cancelled = false;
@@ -93,35 +90,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let stored: string | null = null;
     try {
-      stored = window.localStorage.getItem(identityId ? roleStorageKey(identityId) : GUEST_ROLE_KEY);
+      stored = window.localStorage.getItem(WORKSPACE_KEY);
     } catch {
-      /* localStorage unavailable: retain the guest's selection on first login */
+      /* localStorage unavailable: the workspace stays in memory only */
     }
-    const savedRole = isRole(stored) ? stored : null;
-    setRolePreference((previous) => ({
-      identityId,
-      role: savedRole ?? (identityId && previous.identityId === null ? previous.role : null),
-      loaded: true,
-    }));
-  }, [identityId]);
+    setRolePreference({ role: isRole(stored) ? stored : null, loaded: true });
+  }, []);
 
   useEffect(() => {
     if (!roleLoaded) return;
-    const key = identityId ? roleStorageKey(identityId) : GUEST_ROLE_KEY;
     try {
-      if (role) window.localStorage.setItem(key, role);
-      else window.localStorage.removeItem(key);
+      if (role) window.localStorage.setItem(WORKSPACE_KEY, role);
+      else window.localStorage.removeItem(WORKSPACE_KEY);
     } catch {
       /* localStorage unavailable: role stays in memory only */
     }
-  }, [identityId, role, roleLoaded]);
+  }, [role, roleLoaded]);
 
-  const setRole = useCallback(
-    (next: Role | null) => {
-      setRolePreference({ identityId, role: next, loaded: true });
-    },
-    [identityId],
-  );
+  const setRole = useCallback((next: Role | null) => {
+    setRolePreference({ role: next, loaded: true });
+  }, []);
 
   const connect = useCallback(() => {
     setError(undefined);
@@ -145,6 +133,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
+  const signedIn = Boolean(info.identity);
+  const switchWorkspace = useCallback(
+    async (next: Role) => {
+      setRole(next);
+      if (!signedIn) return;
+      await disconnect();
+      connect();
+    },
+    [setRole, signedIn, disconnect, connect],
+  );
+
   const value = useMemo<Session>(
     () => ({
       status,
@@ -162,8 +161,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       role,
       roleLoaded,
       setRole,
+      switchWorkspace,
     }),
-    [status, error, errorDetail, info, connecting, connect, cancelConnect, disconnect, retry, role, roleLoaded, setRole],
+    [status, error, errorDetail, info, connecting, connect, cancelConnect, disconnect, retry, role, roleLoaded, setRole, switchWorkspace],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

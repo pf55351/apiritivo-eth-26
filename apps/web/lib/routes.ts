@@ -8,6 +8,7 @@ export const VIEW_LINKS: Record<Role, { href: string; label: string }[]> = {
   ],
   provider: [
     { href: "/provider", label: "My APIs" },
+    { href: "/provider/sales", label: "Sales" },
     { href: "/provider/new", label: "Publish" },
   ],
 };

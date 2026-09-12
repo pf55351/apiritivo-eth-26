@@ -1,7 +1,6 @@
 "use client";
 
-import { decryptPassSecret, encryptPassSecret } from "@apiritivo/arkiv";
-import { type Address, type Hex, PAYMENT_CHAIN_ID } from "@apiritivo/payments";
+import { type Address, PAYMENT_CHAIN_ID } from "@apiritivo/payments";
 import {
   type Balances,
   ensurePaymentChain,
@@ -11,11 +10,11 @@ import {
   onWalletChange,
   reconnectInjectedWallet,
   type Signer,
-  signPassKeyMessage,
   walletChainId,
 } from "@apiritivo/payments/browser";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { type FriendlyError, toFriendlyError } from "./errors";
+import { useSession } from "./session";
 
 const REMEMBER_KEY = "apiritivo:wallet";
 
@@ -34,10 +33,6 @@ export type InjectedWallet = {
   /** Switch (or add) Avalanche Fuji in the wallet. Resolves to whether the wallet is on Fuji afterwards. */
   switchChain: () => Promise<boolean>;
   refreshBalances: () => Promise<void>;
-  /** Encrypt a pass secret under a key derived from one wallet signature (asked once per account and session). */
-  sealPassSecret: (secret: Hex) => Promise<string>;
-  /** Decrypt a pass secret; throws when the pass was sealed by another account. */
-  openPassSecret: (blob: string) => Promise<Hex>;
 };
 
 const Ctx = createContext<InjectedWallet | null>(null);
@@ -60,9 +55,9 @@ function remembered(): boolean {
 }
 
 /**
- * MetaMask / Rabby / Core account used as the client identity. The wallet
- * signs payments; a single `personal_sign` derives the key that protects the
- * API keys, so the same account recovers them on any device.
+ * MetaMask / Rabby / Core account that pays in the Client workspace. It only
+ * signs payments and the pass claim; the identity, and the key that protects
+ * the API keys, stay with the Swarm ID.
  */
 export function InjectedWalletProvider({ children }: { children: ReactNode }) {
   const [available, setAvailable] = useState<boolean | null>(null);
@@ -71,8 +66,6 @@ export function InjectedWalletProvider({ children }: { children: ReactNode }) {
   const [chainId, setChainId] = useState<number | null>(null);
   const [balances, setBalances] = useState<Balances | null>(null);
   const [error, setError] = useState<FriendlyError | null>(null);
-  // One derived key per account, and one in-flight signature so parallel callers share the prompt.
-  const keysRef = useRef(new Map<string, Promise<Uint8Array>>());
 
   const adopt = useCallback(async (next: Signer | null) => {
     setSigner(next);
@@ -94,18 +87,14 @@ export function InjectedWalletProvider({ children }: { children: ReactNode }) {
     };
   }, [adopt]);
 
-  // Account or chain changed in the wallet UI. Only an account change invalidates the
-  // derived keys; a network switch keeps them, so it never costs a new signature.
+  // Account or chain changed in the wallet UI: read the exposed account back.
   useEffect(() => {
     if (!available) return;
     const readopt = () => {
       if (!remembered()) return;
       void reconnectInjectedWallet().then((s) => adopt(s));
     };
-    return onWalletChange(() => {
-      keysRef.current.clear();
-      readopt();
-    }, readopt);
+    return onWalletChange(readopt, readopt);
   }, [available, adopt]);
 
   const connect = useCallback(async () => {
@@ -123,7 +112,6 @@ export function InjectedWalletProvider({ children }: { children: ReactNode }) {
 
   const disconnect = useCallback(() => {
     remember(false);
-    keysRef.current.clear();
     setSigner(null);
     setBalances(null);
     setError(null);
@@ -143,6 +131,15 @@ export function InjectedWalletProvider({ children }: { children: ReactNode }) {
     return chain === PAYMENT_CHAIN_ID;
   }, []);
 
+  // Swarm ID is the only login: signing out also forgets the wallet, so the
+  // next purchase connects it again instead of finding it already attached.
+  const identityId = useSession().identity?.id ?? null;
+  const previousIdentity = useRef<string | null>(null);
+  useEffect(() => {
+    if (previousIdentity.current && !identityId) disconnect();
+    previousIdentity.current = identityId;
+  }, [identityId, disconnect]);
+
   const refreshBalances = useCallback(async () => {
     if (!signer) return;
     try {
@@ -156,23 +153,6 @@ export function InjectedWalletProvider({ children }: { children: ReactNode }) {
     setBalances(null);
     void refreshBalances();
   }, [refreshBalances]);
-
-  const passKey = useCallback(async (): Promise<Uint8Array> => {
-    if (!signer) throw new Error("Connect a wallet first.");
-    const id = signer.address.toLowerCase();
-    let pending = keysRef.current.get(id);
-    if (!pending) {
-      pending = signPassKeyMessage(signer).catch((err) => {
-        keysRef.current.delete(id);
-        throw err;
-      });
-      keysRef.current.set(id, pending);
-    }
-    return pending;
-  }, [signer]);
-
-  const sealPassSecret = useCallback(async (secret: Hex) => encryptPassSecret(secret, await passKey()), [passKey]);
-  const openPassSecret = useCallback(async (blob: string) => decryptPassSecret(blob, await passKey()), [passKey]);
 
   const value = useMemo<InjectedWallet>(
     () => ({
@@ -188,10 +168,8 @@ export function InjectedWalletProvider({ children }: { children: ReactNode }) {
       disconnect,
       switchChain,
       refreshBalances,
-      sealPassSecret,
-      openPassSecret,
     }),
-    [available, status, signer, chainId, balances, error, connect, disconnect, switchChain, refreshBalances, sealPassSecret, openPassSecret],
+    [available, status, signer, chainId, balances, error, connect, disconnect, switchChain, refreshBalances],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

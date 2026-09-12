@@ -6,6 +6,7 @@ import type { AccessPass, ArkivService, IssueAccessPassResult } from "@apiritivo
 import { formatAccessDuration, formatPriceUsdc, formatRemaining } from "@apiritivo/shared";
 import { useState } from "react";
 import { useActiveAccount } from "@/lib/identity";
+import { useInjectedWallet } from "@/lib/injected-wallet";
 import { useSession } from "@/lib/session";
 import { type CheckoutStep, checkoutStepState, useCheckout } from "@/lib/use-checkout";
 import { ApiKeyBox } from "./api-key-box";
@@ -58,10 +59,10 @@ const BUTTON_LABEL: Record<CheckoutStep, string> = {
 };
 
 /**
- * Checkout for the active account: the connected wallet in the Client view
- * (MetaMask, Rabby, Core) or the Swarm-derived wallet in the Provider view.
- * The pass secret is sealed with that account's key, so only it can reveal
- * the API key later. Swarm ID, if signed in, is attached for private files.
+ * Checkout for the signed-in Swarm ID. The connected browser wallet (MetaMask,
+ * Rabby, Core) pays; the pass secret is sealed with the Swarm ID's key, so the
+ * API key opens wherever that identity is signed in, and its sharing key goes
+ * on the sale so the provider can grant private files.
  */
 export function BuyAccess({
   service,
@@ -76,8 +77,9 @@ export function BuyAccess({
 }) {
   const session = useSession();
   const account = useActiveAccount();
+  const wallet = useInjectedWallet();
   const [repurchase, setRepurchase] = useState(false);
-  const checkout = useCheckout(service, account, Boolean(session.identity), (issued) => {
+  const checkout = useCheckout(service, account, (issued) => {
     setRepurchase(false);
     onIssued(issued);
   });
@@ -89,7 +91,8 @@ export function BuyAccess({
   const contract = paymentsContractAddress();
   const walletKind = account.kind === "wallet";
   const checkoutVisible = !activePass || repurchase || busy;
-  const connectDisabled = walletKind ? account.status === "deriving" : session.status !== "ready" || session.connecting;
+  const signInDisabled = session.status !== "ready" || session.connecting;
+  const walletMissing = walletKind && !account.address;
   const contractSteps = isContractMode();
 
   return (
@@ -105,7 +108,7 @@ export function BuyAccess({
           <p className="text-sm text-success">{timing ? `Unlocked · ${formatRemaining(secondsUntilBlock(activePass.expiresAtBlock, timing))} left` : "Checking expiry…"}</p>
           {!checkoutVisible ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <Button href="#try-api">Use API</Button>
+              <Button href="/passes">Open My passes</Button>
               <Button variant="subtle" size="sm" onClick={() => setRepurchase(true)}>
                 Buy again
               </Button>
@@ -121,9 +124,32 @@ export function BuyAccess({
         <p className="mt-4 text-sm text-subtle">Purchasing is unavailable for this API.</p>
       ) : !account.identity ? (
         <div className="mt-5">
-          <Button onClick={account.connect} disabled={connectDisabled}>
-            {walletKind ? "Connect wallet to buy" : "Sign in to buy"}
+          <Button onClick={session.connect} disabled={signInDisabled}>
+            {session.connecting ? "Complete sign in" : "Sign in to buy"}
           </Button>
+          <p className="mt-3 text-xs leading-relaxed text-subtle">Your Swarm ID owns the pass and the API key.</p>
+        </div>
+      ) : walletMissing ? (
+        <div className="mt-5">
+          <Button onClick={account.connect} disabled={wallet.available === false || account.status === "deriving"}>
+            {wallet.status === "connecting" ? "Confirm in wallet" : "Connect wallet to pay"}
+          </Button>
+          <p className="mt-3 text-xs leading-relaxed text-subtle">
+            {wallet.available === false ? (
+              <>
+                No wallet found.{" "}
+                <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className="underline hover:text-content">
+                  MetaMask
+                </a>{" "}
+                ·{" "}
+                <a href="https://rabby.io/" target="_blank" rel="noreferrer" className="underline hover:text-content">
+                  Rabby
+                </a>
+              </>
+            ) : (
+              `MetaMask, Rabby or Core on ${PAYMENT_CHAIN_NAME} pays the USDC. The pass stays with ${account.identity.name}.`
+            )}
+          </p>
           {account.error ? (
             <div className="mt-3">
               <ErrorNotice message={account.error.message} detail={account.error.detail} />
@@ -133,7 +159,7 @@ export function BuyAccess({
       ) : checkoutVisible ? (
         <div className="mt-5 space-y-4">
           {account.address ? (
-            <WalletFunding label={walletKind ? "Connected wallet" : "Swarm wallet"} address={account.address} balances={account.balances} onRefresh={account.refreshBalances} />
+            <WalletFunding label={walletKind ? "Payment wallet" : "Swarm wallet"} address={account.address} balances={account.balances} onRefresh={account.refreshBalances} />
           ) : (
             <p className="text-xs text-subtle">{account.status === "deriving" ? "Preparing wallet…" : (account.error?.message ?? "Wallet unavailable.")}</p>
           )}
@@ -165,7 +191,7 @@ export function BuyAccess({
             <span className="mt-1 block">AVAX pays the network fees separately.</span>
           </p>
           {walletKind ? (
-            <p className="text-xs leading-relaxed text-subtle">Confirm each payment step in your wallet, then sign twice: once to secure your API key, once to claim the pass.</p>
+            <p className="text-xs leading-relaxed text-subtle">Confirm each payment step in your wallet, then sign once to claim the pass for {account.identity.name}.</p>
           ) : null}
         </div>
       ) : null}

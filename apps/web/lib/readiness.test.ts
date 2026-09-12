@@ -69,6 +69,18 @@ describe("client checks", () => {
     expect(summarize(checks)).toMatchObject({ tone: "loading", label: "Checking" });
   });
 
+  test("client without a connected wallet is missing USDC and AVAX", () => {
+    const checks = buildChecks(input({ wallet: { status: "idle", balances: null } }));
+    expect(checks.find((c) => c.id === "usdc")).toMatchObject({ state: "missing", value: "no wallet" });
+    expect(checks.find((c) => c.id === "avax")).toMatchObject({ state: "missing", value: "no wallet" });
+    expect(summarize(checks).tone).toBe("block");
+  });
+
+  test("provider wallet still idle reports checking", () => {
+    const checks = buildChecks(input({ view: "provider", wallet: { status: "idle", balances: null } }));
+    expect(checks.find((c) => c.id === "usdc")?.state).toBe("loading");
+  });
+
   test("wallet error reports unknown", () => {
     const checks = buildChecks(input({ wallet: { status: "error", balances: null } }));
     expect(checks.find((c) => c.id === "usdc")?.state).toBe("unknown");

@@ -28,6 +28,7 @@ export type ReadinessCheck = {
 
 export type ReadinessInput = {
   view: Role;
+  /** Client: `idle` means no browser wallet is connected yet. Provider: the Swarm wallet is always derived. */
   wallet: { status: "idle" | "deriving" | "ready" | "error"; balances: { avax: string; usdc: string } | null };
   writer: { funded?: boolean; balance?: string; faucetUrl?: string; ownerMismatch?: boolean } | null | undefined;
   drive: { mode?: "user-stamp" | "subsidised" | "unavailable"; ttlSeconds?: number; label?: string; usable?: boolean; manageUrl: string };
@@ -45,7 +46,8 @@ function amount(value: string, digits: number): string {
 }
 
 function walletState(input: ReadinessInput): ReadinessState | null {
-  if (input.wallet.status === "deriving" || input.wallet.status === "idle") return "loading";
+  if (input.wallet.status === "idle") return input.view === "client" ? "missing" : "loading";
+  if (input.wallet.status === "deriving") return "loading";
   if (input.wallet.status === "error") return "unknown";
   if (!input.wallet.balances) return "loading";
   return null;
@@ -56,6 +58,8 @@ export function usdcCheck(input: ReadinessInput): ReadinessCheck {
   const base = { id: "usdc" as const, label: "USDC", href: input.faucets.usdc, hrefLabel: "USDC faucet" };
   const client = input.view === "client";
   const hint = client ? "Pays for access passes." : "Sales land here.";
+  if (pending === "missing")
+    return { ...base, state: "missing", value: "no wallet", hint: "Connected at checkout: MetaMask, Rabby or Core pays.", href: undefined, hrefLabel: undefined };
   if (pending) return { ...base, state: pending, hint };
   const usdc = Number(input.wallet.balances!.usdc);
   const value = amount(input.wallet.balances!.usdc, 2);
@@ -67,6 +71,8 @@ export function avaxCheck(input: ReadinessInput): ReadinessCheck {
   const pending = walletState(input);
   const base = { id: "avax" as const, label: "AVAX", href: input.faucets.avax, hrefLabel: "AVAX faucet" };
   const hint = input.view === "client" ? "Gas for approve and buy." : "Gas to claim earnings.";
+  if (pending === "missing")
+    return { ...base, state: "missing", value: "no wallet", hint: "The wallet connected at checkout pays the gas.", href: undefined, hrefLabel: undefined };
   if (pending) return { ...base, state: pending, hint };
   const avax = Number(input.wallet.balances!.avax);
   const value = amount(input.wallet.balances!.avax, 4);

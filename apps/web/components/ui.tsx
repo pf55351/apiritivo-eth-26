@@ -167,14 +167,16 @@ export function Skeleton({ className = "" }: { className?: string }) {
 
 export function ServiceCardSkeleton() {
   return (
-    <div className="flex min-w-0 flex-col gap-4 border-t border-line py-5">
+    <div className="flex min-w-0 flex-col gap-4 rounded-panel bg-surface p-5">
       <div className="flex min-h-11 items-center justify-between gap-3">
         <Skeleton className="h-6 w-2/3" />
         <Skeleton className="size-9 shrink-0 rounded-full" />
       </div>
       <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-5 w-28" />
-      <div className="flex min-h-11 items-center">
+      <div className="border-t border-line pt-4">
+        <Skeleton className="h-5 w-28" />
+      </div>
+      <div className="flex min-h-9 items-center">
         <Skeleton className="h-4 w-16" />
       </div>
     </div>

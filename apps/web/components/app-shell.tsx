@@ -8,11 +8,11 @@ import { isActiveLink, routeWorkspace, VIEW_LINKS } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import { useView } from "@/lib/view";
 import { PendingMenu } from "./guest-menu";
+import { SettingsMenu } from "./settings-menu";
 import { SwarmMenu } from "./swarm-menu";
 import { SwarmSignIn } from "./swarm-sign-in";
 import { ThemeSync } from "./theme-toggle";
 import { BrandLogo, BrandMark, Button } from "./ui";
-import { WalletMenu } from "./wallet-menu";
 import { WorkspaceSwitch } from "./workspace-switch";
 
 function NavLink({ href, children }: { href: string; children: ReactNode }) {
@@ -42,15 +42,15 @@ function ContractLink() {
   );
 }
 
-/** Client workspace: the connected wallet. Provider workspace: Swarm ID. Nothing until the saved view is known. */
+/** Swarm ID in both workspaces; the Client menu adds the payment wallet. Nothing until the saved view is known. */
 function IdentityMenu() {
   const { view, loaded } = useView();
   if (!loaded) return <PendingMenu />;
-  return view === "client" ? <WalletMenu /> : <SwarmMenu />;
+  return <SwarmMenu workspace={view} />;
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { setRole } = useSession();
+  const { switchWorkspace } = useSession();
   const { view, loaded } = useView();
   const pathname = usePathname();
   const requiredView = routeWorkspace(pathname);
@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="app-navbar sticky top-0 z-20 border-b border-line" data-workspace={view}>
-        <div className="mx-auto grid min-h-16 max-w-7xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:gap-x-4 sm:px-6 lg:grid-cols-[auto_1fr_auto_auto] lg:px-8">
+        <div className="mx-auto grid min-h-16 max-w-7xl grid-cols-[44px_minmax(0,1fr)_auto_auto_auto] items-center gap-x-1 gap-y-2 px-3 py-3 sm:grid-cols-[1fr_auto_auto_auto] sm:gap-x-3 sm:px-6 lg:grid-cols-[auto_1fr_auto_auto_auto] lg:px-8">
           <Link href="/" aria-label="APIritivo home" className="order-1 flex min-h-11 items-center justify-center gap-2.5 sm:justify-start">
             <span className="sm:hidden">
               <BrandMark />
@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <nav
             aria-label={`${view === "client" ? "Client" : "Provider"} navigation`}
-            className="order-4 col-span-3 col-start-1 row-start-2 flex min-w-0 items-center gap-1 overflow-x-auto p-1 lg:order-2 lg:col-span-1 lg:col-start-auto lg:row-start-auto lg:justify-center"
+            className="order-5 col-span-5 col-start-1 row-start-2 flex min-w-0 items-center gap-1 overflow-x-auto p-1 sm:col-span-4 lg:order-2 lg:col-span-1 lg:col-start-auto lg:row-start-auto lg:justify-center"
           >
             {loaded ? (
               VIEW_LINKS[view].map((link) => (
@@ -94,6 +94,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="order-3 justify-self-end lg:order-4">
             <WorkspaceSwitch />
           </div>
+          <div className="order-4 justify-self-end sm:ml-1 lg:order-5">
+            <SettingsMenu />
+          </div>
         </div>
       </header>
       <main id="main-content" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 pb-20 pt-8 sm:px-6 lg:px-8">
@@ -107,7 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <h1 className="mt-3 text-3xl font-medium">Switch your view</h1>
             <p className="mt-3 text-sm text-muted">{requiredView === "provider" ? "Manage APIs, publishing, and earnings here." : "Discover APIs and manage your passes here."}</p>
             <div className="mt-6">
-              <Button onClick={() => setRole(requiredView)}>Switch to {requiredView === "provider" ? "Provider" : "Client"}</Button>
+              <Button onClick={() => void switchWorkspace(requiredView)}>Switch to {requiredView === "provider" ? "Provider" : "Client"}</Button>
             </div>
           </section>
         ) : (

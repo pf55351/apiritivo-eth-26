@@ -1,6 +1,5 @@
 "use client";
 
-import { ensChainLabel } from "@apiritivo/ens";
 import { explorerAddressUrl, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
 import {
   ACCESS_DURATIONS,
@@ -31,7 +30,6 @@ import { useSession } from "@/lib/session";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
 import { usePublishService } from "@/lib/use-publish-service";
 
-const ENS_CHAIN_LABEL = ensChainLabel();
 const fieldCls = "field-control";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -72,7 +70,6 @@ function PublishForm() {
   const [customCategory, setCustomCategory] = useState("");
   const [priceUsdc, setPriceUsdc] = useState("0.50");
   const [accessSeconds, setAccessSeconds] = useState<number>(7 * 86400);
-  const [ensName, setEnsName] = useState("");
   const swarmWallet = useSwarmWallet();
   // Payout wallet is always the wallet derived from the Swarm ID: same identity, same address, no typing.
   const payoutAddress = swarmWallet.address ?? "";
@@ -87,8 +84,9 @@ function PublishForm() {
   const stats = manifestStats(manifest);
 
   const stepIssues = useMemo(
-    () => publishStepIssues({ name, description, category: effectiveCategory, priceUsdc, accessSeconds, payoutAddress, ensName, operations, privateFile }),
-    [name, description, effectiveCategory, priceUsdc, accessSeconds, payoutAddress, ensName, operations, privateFile],
+    // ENS names are not entered here: a service is linked to a name later, from the ENS app (read-only in the marketplace).
+    () => publishStepIssues({ name, description, category: effectiveCategory, priceUsdc, accessSeconds, payoutAddress, ensName: "", operations, privateFile }),
+    [name, description, effectiveCategory, priceUsdc, accessSeconds, payoutAddress, operations, privateFile],
   );
   const formIssues = Object.values(stepIssues).flat();
   const canPublish = formIssues.length === 0 && session.canUpload && progress.step === "idle";
@@ -108,7 +106,6 @@ function PublishForm() {
         priceUsdc: priceUsdc.trim(),
         accessSeconds,
         payoutAddress: payoutAddress.trim(),
-        ensName: ensName.trim() ? ensName.trim().toLowerCase() : undefined,
       },
       privateFile,
     );
@@ -232,23 +229,6 @@ function PublishForm() {
                     </div>
                     <p className="mt-1.5 text-[11px] text-subtle">Payments go to your Swarm wallet.</p>
                   </div>
-                  <Field label="ENS name" hint="optional">
-                    <input
-                      className={`${fieldCls} font-mono`}
-                      placeholder="myapi.eth"
-                      value={ensName}
-                      onChange={(e) => setEnsName(e.target.value)}
-                      spellCheck={false}
-                      autoCapitalize="none"
-                    />
-                  </Field>
-                  {ensName.trim() ? (
-                    <p className="-mt-3 text-[11px] text-subtle">
-                      Its ETH address record must already point to your Swarm wallet (
-                      {swarmWallet.address ? `${swarmWallet.address.slice(0, 6)}…${swarmWallet.address.slice(-4)}` : "…"}); the server checks it on {ENS_CHAIN_LABEL}. After
-                      publishing, the service page lists the two records that make the name resolve to this API.
-                    </p>
-                  ) : null}
                 </>
               ),
             },

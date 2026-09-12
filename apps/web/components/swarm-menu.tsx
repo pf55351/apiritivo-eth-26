@@ -5,11 +5,17 @@ import { useSession } from "@/lib/session";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
 import { AccountDropdown } from "./account-dropdown";
 import { AccountPanel } from "./account-panel";
+import { ProviderAccountTabs } from "./account-tabs";
 import { GuestMenu } from "./guest-menu";
-import { ProfileAvatar, StatusDot } from "./ui";
+import { ProfileAvatar } from "./ui";
+import { WalletSection } from "./wallet-section";
 
-/** Header account control for the Provider workspace: the Swarm ID identity. */
-export function SwarmMenu() {
+/**
+ * Header account control: the Swarm ID identity in both workspaces. The
+ * Client variant adds the payment wallet; the Provider variant a Wallet tab
+ * and a Connection tab (storage, Arkiv writer).
+ */
+export function SwarmMenu({ workspace }: { workspace: "client" | "provider" }) {
   const session = useSession();
   const wallet = useSwarmWallet();
   const router = useRouter();
@@ -32,11 +38,8 @@ export function SwarmMenu() {
       }
     >
       {(close) => (
-        <AccountPanel name={identity.name} address={wallet.address}>
-          <div className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
-            <span className="text-muted">Swarm upload</span>
-            <StatusDot tone={session.canUpload ? "success" : "warning"}>{session.canUpload ? "Available" : "Unavailable"}</StatusDot>
-          </div>
+        <AccountPanel name={identity.name} address={workspace === "provider" ? wallet.address : null}>
+          {workspace === "client" ? <WalletSection onClose={close} /> : <ProviderAccountTabs />}
           <button
             type="button"
             className="mt-2 min-h-11 w-full rounded-control px-3 py-2 text-left text-sm text-danger hover:bg-danger/10"

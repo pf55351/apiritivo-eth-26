@@ -1,21 +1,47 @@
 "use client";
 
-import { arkivEntityUrl, type BlockTiming } from "@apiritivo/arkiv";
-import { explorerTxUrl } from "@apiritivo/payments";
+import type { BlockTiming } from "@apiritivo/arkiv";
 import type { AccessPass } from "@apiritivo/shared";
 import { formatRemaining } from "@apiritivo/shared";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { ApiKeyBox } from "@/components/api-key-box";
 import { RefreshButton } from "@/components/refresh-button";
-import { Button, Disclosure, EmptyState, EmptyStateIcon, ErrorNotice, SectionTitle, Skeleton } from "@/components/ui";
+import { Button, EmptyState, EmptyStateIcon, ErrorNotice, SectionTitle, Skeleton, StatusDot } from "@/components/ui";
 import type { FriendlyError } from "@/lib/errors";
 import { remainingSeconds } from "@/lib/use-access";
-import { usePassBearer } from "@/lib/use-pass-bearer";
 
-function PassApiKey({ pass }: { pass: AccessPass }) {
-  const bearer = usePassBearer(pass);
-  return <ApiKeyBox serviceId={pass.serviceId} bearer={bearer} />;
+const SKELETON_KEYS = ["p1", "p2"];
+
+/** One bought pass: the API, how long is left, what it cost. Opens the pass page for the key, file and console. */
+export function PassCard({ pass, timing }: { pass: AccessPass; timing: BlockTiming | null }) {
+  const left = remainingSeconds(pass, timing);
+  const active = left === null || left > 0;
+  return (
+    <li className="min-w-0">
+      <Link
+        href={`/passes/${pass.passKey}`}
+        aria-label={`Open pass for ${pass.serviceName ?? pass.serviceId}`}
+        className={`flex h-full min-w-0 flex-col gap-4 rounded-panel bg-surface p-5 transition-colors hover:bg-surface-active ${active ? "" : "opacity-70"}`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="min-w-0 break-words text-lg font-medium">{pass.serviceName ?? pass.serviceId}</h3>
+          <StatusDot tone={left === null ? "subtle" : active ? "success" : "subtle"} className="shrink-0">
+            {left === null ? "Checking" : active ? `${formatRemaining(left)} left` : "Expired"}
+          </StatusDot>
+        </div>
+        <dl className="mt-auto grid grid-cols-2 gap-4 border-t border-line pt-4">
+          <div>
+            <dt className="text-xs text-subtle">Paid</dt>
+            <dd className="mt-1 text-sm font-medium tabular-nums">{pass.paidUsdc} USDC</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-subtle">Pass</dt>
+            <dd className="mt-1 truncate font-mono text-sm text-muted">{pass.passKey.slice(0, 10)}…</dd>
+          </div>
+        </dl>
+        <span className="text-xs text-accent-text">Open pass ↗</span>
+      </Link>
+    </li>
+  );
 }
 
 export function PassesView({
@@ -26,7 +52,6 @@ export function PassesView({
   timing,
   reload,
   title = "My passes",
-  renderApiKey,
 }: {
   data: AccessPass[] | null;
   initialLoading: boolean;
@@ -35,7 +60,6 @@ export function PassesView({
   timing: BlockTiming | null;
   reload: () => void;
   title?: string;
-  renderApiKey?: (pass: AccessPass) => ReactNode;
 }) {
   const passes = data ?? [];
   return (
@@ -48,9 +72,10 @@ export function PassesView({
         <ErrorNotice message={data !== null ? "Refresh failed. Showing your last loaded passes." : error.message} detail={error.detail ?? error.message} onRetry={reload} />
       ) : null}
       {initialLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {SKELETON_KEYS.map((k) => (
+            <Skeleton key={k} className="h-40 rounded-panel" />
+          ))}
         </div>
       ) : (!error || data !== null) && passes.length === 0 ? (
         <EmptyState
@@ -60,40 +85,10 @@ export function PassesView({
           action={<Button href="/marketplace">Explore APIs</Button>}
         />
       ) : data !== null ? (
-        <ul className="divide-y divide-line" aria-busy={refreshing}>
-          {passes.map((p) => {
-            const left = remainingSeconds(p, timing);
-            return (
-              <li key={p.passKey} className="min-w-0 py-6 first:pt-0">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Link href={`/services/${p.serviceId}`} className="break-words text-lg font-medium hover:text-accent-text">
-                    {p.serviceName ?? p.serviceId}
-                  </Link>
-                  <span className={`text-xs font-semibold ${left !== null && left > 0 ? "text-success" : "text-subtle"}`}>
-                    {left === null ? "Checking expiry…" : left <= 0 ? "Expired" : `${formatRemaining(left)} left`}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-subtle">Paid {p.paidUsdc} USDC · Avalanche Fuji</p>
-                <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">{renderApiKey ? renderApiKey(p) : <PassApiKey pass={p} />}</div>
-                  <Button href={`/services/${p.serviceId}`}>Use API</Button>
-                </div>
-                <div className="mt-3">
-                  <Disclosure title="Receipt">
-                    <p className="break-all font-mono text-xs text-subtle">{p.passKey}</p>
-                    <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted">
-                      <a href={arkivEntityUrl(p.passKey)} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
-                        Pass ↗
-                      </a>
-                      <a href={explorerTxUrl(p.txHash)} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
-                        Payment ↗
-                      </a>
-                    </div>
-                  </Disclosure>
-                </div>
-              </li>
-            );
-          })}
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy={refreshing}>
+          {passes.map((p) => (
+            <PassCard key={p.passKey} pass={p} timing={timing} />
+          ))}
         </ul>
       ) : null}
     </div>

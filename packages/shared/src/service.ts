@@ -42,6 +42,7 @@ export const DEMO_ACCESS_SECONDS = 30;
 
 export const ACCESS_DURATIONS = [
   { seconds: DEMO_ACCESS_SECONDS, label: "30 seconds" },
+  { seconds: 120, label: "2 minutes" },
   { seconds: 3600, label: "1 hour" },
   { seconds: 6 * 3600, label: "6 hours" },
   { seconds: 86400, label: "1 day" },

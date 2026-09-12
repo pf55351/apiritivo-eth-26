@@ -9,7 +9,7 @@ import { ProfileAvatar } from "./ui";
 export function ServiceCard({ service, showAvailability = false }: { service: ArkivService; showAvailability?: boolean }) {
   const provider = service.providerName?.trim() || service.providerId;
   return (
-    <article className="group relative flex min-w-0 flex-col gap-4 border-t border-line py-5 transition-colors hover:border-line-strong focus-within:border-line-strong">
+    <article className="group relative flex min-w-0 flex-col gap-4 rounded-panel border border-transparent bg-surface p-5 transition-colors hover:border-line-strong focus-within:border-line-strong">
       <div className="min-w-0">
         <div className="flex items-center justify-between gap-3">
           <h3 className="min-w-0 break-words text-lg font-semibold leading-snug text-content group-hover:text-accent-text sm:text-xl">
@@ -37,11 +37,11 @@ export function ServiceCard({ service, showAvailability = false }: { service: Ar
           ) : null}
         </div>
       ) : null}
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pt-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-line pt-4">
         <span className="text-lg font-medium text-content">{service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}</span>
         <span className="text-xs font-medium text-accent-heading">{service.accessSeconds ? `${formatAccessDuration(service.accessSeconds)} access` : "open access"}</span>
       </div>
-      <div className="mt-auto flex min-h-11 items-center justify-between gap-3">
+      <div className="mt-auto flex min-h-9 items-center justify-between gap-3">
         <span className="inline-flex items-center gap-1.5 text-xs text-muted transition-colors group-hover:text-accent-text">
           View API <span aria-hidden="true">↗</span>
         </span>

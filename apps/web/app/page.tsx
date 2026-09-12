@@ -11,7 +11,6 @@ import { ApiExample } from "@/components/api-example";
 import { ETHROME_SPONSORS_URL, SponsorLogos } from "@/components/sponsor-logos";
 import { Button, ErrorNotice, Eyebrow } from "@/components/ui";
 import { publicEnv } from "@/lib/env";
-import { useInjectedWallet } from "@/lib/injected-wallet";
 import { useSession } from "@/lib/session";
 import { useView } from "@/lib/view";
 
@@ -42,7 +41,6 @@ const JOURNEYS = {
 
 export default function HomePage() {
   const session = useSession();
-  const wallet = useInjectedWallet();
   const router = useRouter();
   const pendingLogin = useRef(false);
 
@@ -107,11 +105,7 @@ export default function HomePage() {
               {isProvider ? "Publish API" : "Explore APIs"}
               <span aria-hidden="true">↗</span>
             </Button>
-            {!isProvider && !wallet.address ? (
-              <Button size="lg" variant="ghost" onClick={() => void wallet.connect()} disabled={wallet.available === false || wallet.status === "connecting"}>
-                {wallet.status === "connecting" ? "Confirm in wallet" : "Connect wallet"}
-              </Button>
-            ) : isProvider && !loggedIn ? (
+            {!loggedIn ? (
               <Button size="lg" variant="ghost" onClick={session.connect} disabled={session.status !== "ready" || session.connecting}>
                 {session.status !== "ready" ? "Connecting…" : session.connecting ? "Complete sign in" : "Sign in"}
               </Button>

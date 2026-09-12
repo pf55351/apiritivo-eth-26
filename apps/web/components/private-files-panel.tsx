@@ -19,12 +19,15 @@ function formatBytes(n: number): string {
 
 /**
  * Buyer side of a service's private file (Swarm ACT). The file is decrypted
- * by the Swarm ID, never by the paying wallet: at purchase the wallet signed
- * which Swarm ID key may receive it and the provider granted that key. So the
- * lock follows the signed-in Swarm ID (is there a grant for its key?); the
- * wallet's pass only says whether a purchase is waiting for approval.
+ * by the Swarm ID that bought the pass: at purchase its sharing key went on
+ * the sale and the provider granted that key. So the lock follows the
+ * signed-in Swarm ID (is there a grant for its key?); the pass only says
+ * whether a purchase is waiting for approval. Before any purchase only the
+ * file's name and size are shown: nothing to request or unlock from here.
+ * `summary` (the service page) keeps that view for every buyer, bought or
+ * not: the download lives in My passes. The publisher always sees the full panel.
  */
-export function PrivateFilesPanel({ service, activePass }: { service: ArkivService; activePass: AccessPass | undefined }) {
+export function PrivateFilesPanel({ service, activePass, summary = false }: { service: ArkivService; activePass: AccessPass | undefined; summary?: boolean }) {
   const session = useSession();
   const file = service.privateAttachment;
   const swarmKey = session.identity ? (getGranteeKey() ?? null) : null;
@@ -39,6 +42,19 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
   const loadGrant = grantQuery.reload;
 
   if (!file) return null;
+
+  // A client who has not bought yet (or any buyer on the service page) sees what the pass includes, and no way to ask for access.
+  if (!isPublisher && (summary || (!activePass && !grant))) {
+    return (
+      <section className="min-w-0 border-t border-line pt-5">
+        <p className="text-xs font-normal text-success">Private file</p>
+        <h2 className="mt-2 break-words text-base font-medium">{file.name}</h2>
+        <p className="mt-1 text-sm text-muted">
+          {formatBytes(file.bytes)} · Encrypted · {activePass || grant ? "Download it from My passes" : "Included with an access pass"}
+        </p>
+      </section>
+    );
+  }
 
   async function download() {
     if (!file) return;
@@ -72,16 +88,14 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
   const state = isPublisher
     ? "You published this file."
     : !session.identity
-      ? activePass
-        ? "Opens with the Swarm ID that was signed in when you bought. Sign in to check."
-        : "Buy access to unlock it. It opens with the Swarm ID signed in at purchase."
+      ? "Sign in with Swarm ID to check your access, or buy access to unlock it."
       : grant === undefined
         ? "Checking access…"
         : grant
           ? `Access granted to ${swarmName}.`
           : activePass
             ? "Waiting for provider approval."
-            : `No access for ${swarmName} yet. Buy access while signed in with it.`;
+            : `No access for ${swarmName} yet. Buy access to request it.`;
 
   return (
     <section className="min-w-0 border-t border-line pt-5">
@@ -102,7 +116,7 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
       </div>
       {isPublisher && clientView ? (
         <p className="mt-3 text-xs text-warning" role="note">
-          You are signed in as the provider of this API, so the file opens for you whether or not this wallet bought it. To test the paywall, sign in with another Swarm ID.
+          You are signed in as the provider of this API, so the file opens for you whether or not you bought it. To test the paywall, sign in with another Swarm ID.
         </p>
       ) : null}
       {unlocked ? (
@@ -111,7 +125,7 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
             {busy ? "Decrypting…" : "Download file"}
           </Button>
         </div>
-      ) : !session.identity && activePass ? (
+      ) : !session.identity ? (
         <div className="mt-4">
           <Button onClick={session.connect} disabled={session.status !== "ready" || session.connecting}>
             Sign in with Swarm ID

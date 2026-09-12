@@ -2,12 +2,10 @@
 
 import { arkivEntityUrl } from "@apiritivo/arkiv";
 import { explorerAddressUrl, explorerTokenUrl, paymentsContractAddress, USDC_ADDRESS } from "@apiritivo/payments";
-import type { ServiceManifest } from "@apiritivo/shared";
 import { formatAccessDuration, formatPriceUsdc, manifestStats } from "@apiritivo/shared";
-import { downloadServiceManifest, swarmReferenceUrl } from "@apiritivo/swarm";
+import { swarmReferenceUrl } from "@apiritivo/swarm";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { BotConsole } from "@/components/bot-console";
+import { AuthGate } from "@/components/auth-gate";
 import { BuyAccess } from "@/components/buy-access";
 import { ContractPanel } from "@/components/contract-panel";
 import { EnsPanel } from "@/components/ens-panel";
@@ -15,45 +13,13 @@ import { ManifestOperations } from "@/components/manifest-view";
 import { PrivateFilesPanel } from "@/components/private-files-panel";
 import { type ProofLink, ProofPanel } from "@/components/proofs";
 import { Avatar, BackLink, CategoryPill, EmptyState, ErrorNotice, JsonInspector, Skeleton } from "@/components/ui";
-import { type FriendlyError, toFriendlyError } from "@/lib/errors";
 import { useActiveIdentity } from "@/lib/identity";
 import { useSession } from "@/lib/session";
 import { remainingSeconds, usePassesForService } from "@/lib/use-access";
-import { usePassBearer } from "@/lib/use-pass-bearer";
+import { useManifest } from "@/lib/use-manifest";
 import { useService } from "@/lib/use-services";
 
-function useManifest(reference: string | null, sessionReady: boolean) {
-  const [manifest, setManifest] = useState<ServiceManifest | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<FriendlyError | null>(null);
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    // A new reference means a new API: never show the previous one's operations meanwhile.
-    setManifest(null);
-    setError(null);
-    if (!reference || !sessionReady) return;
-    let cancelled = false;
-    setLoading(true);
-    downloadServiceManifest(reference)
-      .then((m) => {
-        if (!cancelled) setManifest(m);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(toFriendlyError(err, "Manifest could not be downloaded."));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reference, sessionReady, tick]);
-
-  return { manifest, loading, error, reload: () => setTick((n) => n + 1) };
-}
-
-export default function ServiceDetailPage() {
+function ServiceDetail() {
   const params = useParams<{ serviceId: string }>();
   const serviceId = typeof params?.serviceId === "string" ? params.serviceId : null;
   const session = useSession();
@@ -69,7 +35,6 @@ export default function ServiceDetailPage() {
     const left = remainingSeconds(p, passesState.timing);
     return left === null || left > 0;
   });
-  const activeBearer = usePassBearer(activePass);
   const backLink = <BackLink href={workspaceHref}>{isProviderView ? "My APIs" : "Marketplace"}</BackLink>;
 
   if (loading || !session.roleLoaded) {
@@ -175,11 +140,11 @@ export default function ServiceDetailPage() {
               ) : null}
             </div>
           </section>
-          {!isProviderView && activePass && manifestState.manifest ? <BotConsole serviceId={service.serviceId} manifest={manifestState.manifest} bearer={activeBearer} /> : null}
         </div>
       </div>
 
-      <PrivateFilesPanel service={service} activePass={activePass} />
+      {/* The service page only describes the API: file download and Try API live in My passes. */}
+      <PrivateFilesPanel service={service} activePass={activePass} summary />
       <EnsPanel service={service} isProviderView={isProviderView} />
 
       <div>
@@ -230,5 +195,13 @@ export default function ServiceDetailPage() {
         <JsonInspector value={service} title="Registry data" />
       </div>
     </div>
+  );
+}
+
+export default function ServiceDetailPage() {
+  return (
+    <AuthGate title="Sign in to view this API">
+      <ServiceDetail />
+    </AuthGate>
   );
 }

@@ -53,7 +53,7 @@ always include text or symbols; color is supplementary.
   veil; it must dissolve into the light background as well as the dark one.
 * Use an icon-only appearance picker: monitor for Auto (the default), sun for
   Light, and moon for Dark, with accessible labels and 44px keyboard/touch targets.
-  Keep Docs, account, and workspace switch in that relative order.
+  Keep account, workspace switch, and settings gear (Docs + theme) in that relative order.
 * Default to Auto, following the computer's color scheme before the first paint
   and when it changes. Preserve saved Light and Dark overrides. Save appearance
   separately from workspace and identity and synchronize it across tabs.

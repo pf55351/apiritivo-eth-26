@@ -205,6 +205,7 @@ export function parseSaleEntity(entity: RawServiceEntity): Sale | null {
     serviceId: attrString(entity, ATTR.serviceId),
     providerId: attrString(entity, ATTR.providerId),
     buyerId: attrString(entity, ATTR.buyerId),
+    buyerAddress: attrString(entity, ATTR.buyerAddress),
     txHash: attrString(entity, ATTR.txHash),
     paidUsdc: attrString(entity, ATTR.paidUsdc),
     chainId: attrNumber(entity, ATTR.chainId),

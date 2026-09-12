@@ -7,7 +7,7 @@ import { useSession } from "@/lib/session";
 import { useView } from "@/lib/view";
 
 export function WorkspaceSwitch() {
-  const { setRole } = useSession();
+  const { switchWorkspace } = useSession();
   const { view: active, loaded: roleLoaded } = useView();
   const router = useRouter();
   const pathname = usePathname();
@@ -26,8 +26,9 @@ export function WorkspaceSwitch() {
         aria-disabled={pending || !roleLoaded}
         onClick={() => {
           if (pending) return;
-          startTransition(() => {
-            setRole(next);
+          startTransition(async () => {
+            // Switching signs out: the new workspace asks for Swarm ID again.
+            await switchWorkspace(next);
             // Keep the API open when switching between its provider overview
             // and client purchase actions. Other routes open the new workspace.
             if (!pathname.startsWith("/services/")) router.push(ROLE_HOME[next]);

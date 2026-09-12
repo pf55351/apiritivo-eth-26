@@ -3,7 +3,6 @@
 import type { AccessPass } from "@apiritivo/shared";
 import { useState } from "react";
 import { useQuery } from "@/lib/use-query";
-import { ApiKeyBox } from "./api-key-box";
 import { PassesView } from "./passes-view";
 
 const EXAMPLE_PASSES: AccessPass[] = ["Example market API", "Example weather API"].map((name, index) => ({
@@ -38,16 +37,7 @@ export function PassRefreshExample() {
       <label className="mb-5 flex min-h-11 items-center gap-2 text-xs text-muted">
         <input type="checkbox" checked={fail} onChange={(event) => setFail(event.target.checked)} /> Simulate refresh failure
       </label>
-      <PassesView
-        title="Pass refresh example"
-        data={data}
-        initialLoading={initialLoading}
-        refreshing={refreshing}
-        error={error}
-        timing={timing}
-        reload={reload}
-        renderApiKey={(pass) => <ApiKeyBox serviceId={pass.serviceId} bearer={{ status: "ready", bearer: "Example credential only" }} />}
-      />
+      <PassesView title="Pass refresh example" data={data} initialLoading={initialLoading} refreshing={refreshing} error={error} timing={timing} reload={reload} />
     </section>
   );
 }

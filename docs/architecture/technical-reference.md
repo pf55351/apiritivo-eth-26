@@ -22,13 +22,13 @@ Read-only Fuji RPC observation at **2026-09-12 16:18:09 UTC**, block **58,334,87
 
 | Actor | Signing material / responsibility | Where it runs |
 | --- | --- | --- |
-| Buyer | Injected wallet (MetaMask, Rabby, Core); signs token approval, purchase and one `personal_sign` of `PASS_KEY_MESSAGE` that derives the pass encryption key | Browser, `packages/payments/src/browser.ts`, `apps/web/lib/injected-wallet.tsx` |
+| Buyer | Swarm ID (owns the pass, derives the pass encryption key, holds the ACT sharing key); an injected wallet (MetaMask, Rabby, Core) signs token approval, purchase and the pass claim | Browser, `packages/swarm`, `packages/payments/src/browser.ts`, `apps/web/lib/injected-wallet.tsx` |
 | Provider | Swarm-derived payout account; signs `claim` and optional token transfer | Browser, same payment adapter |
 | Arkiv writer | `ARKIV_WRITER_PRIVATE_KEY`; signs service, pass, sale and grant creation | Next.js server, `packages/arkiv/src/server.ts` |
 | Payment verifier | Public RPC reads only; holds no buyer signing key | Next.js server, `packages/payments/src/server.ts` |
 | Swarm identity | Derives app-specific key material and performs manifest / ACT operations through the Swarm SDK | Browser, `packages/swarm/src/index.ts` |
 
-Provider wallet derivation uses `deriveAppSecret("apiperitivo:wallet:v1")`; pass encryption for a Swarm ID buyer uses the separate `"apiritivo:pass-crypt:v1"` label, for a wallet buyer `keccak256(personal_sign(PASS_KEY_MESSAGE))` (`keyFromSignature`). The identity and app origin affect Swarm derivation. The pre-rename wallet label is deliberate. A local role selection is a UI preference, not authorization.
+Provider wallet derivation uses `deriveAppSecret("apiperitivo:wallet:v1")`; pass encryption uses the separate `"apiritivo:pass-crypt:v1"` label of the buyer's Swarm ID (`keyFromSignature` in packages/payments is kept but unused by the app). The identity and app origin affect Swarm derivation. The pre-rename wallet label is deliberate. A local role selection is a UI preference, not authorization.
 
 ## Direct contract interactions
 

@@ -428,7 +428,7 @@ bun run build                         # stop bun dev first: both write apps/web/
                 ],
                 [
                   "USDC · Fuji",
-                  "the buyer's wallet, MetaMask or Rabby (0.50 per pass; the faucet gives 10)",
+                  "the buyer's payment wallet, MetaMask or Rabby (0.50 per pass; the faucet gives 10)",
                   <Ext key="c" href="https://faucet.circle.com/">
                     faucet.circle.com
                   </Ext>,
@@ -466,7 +466,7 @@ bun run build                         # stop bun dev first: both write apps/web/
                       <Link href="/provider" className="underline">
                         My APIs
                       </Link>
-                      , open Connection details to check storage and the Arkiv writer.
+                      , then open your account menu in the header to check storage and the Arkiv writer.
                     </>
                   ),
                   expect: "Storage ready and a funded writer",
@@ -485,8 +485,8 @@ bun run build                         # stop bun dev first: both write apps/web/
                   title: "Create and fund the buyer",
                   body: (
                     <>
-                      Switch to Client and connect MetaMask or Rabby on Avalanche Fuji (the app offers the network). Open the service from the marketplace, open Fund wallet and
-                      copy your address, fund it with AVAX and USDC from the faucets, click refresh.
+                      Switch to Client: the app signs you out and asks for Swarm ID again. Sign in and open the service from the marketplace. Only the access card asks for MetaMask
+                      or Rabby on Avalanche Fuji (the app offers the network). Open Fund wallet and copy your address, fund it with AVAX and USDC from the faucets, click refresh.
                     </>
                   ),
                   expect: "USDC ≥ 0.50 and some AVAX",
@@ -496,16 +496,17 @@ bun run build                         # stop bun dev first: both write apps/web/
                   body: (
                     <>
                       Buy access · 0.50 USDC. Approve, buy() on the contract, confirmation, mint on Arkiv. Two Fuji transactions signed by your wallet, then one signature that
-                      seals the API key.
+                      claims the pass for your Swarm ID, which seals the API key with its own key.
                     </>
                   ),
-                  expect: "Active access with expiry, Use API, and a payment receipt",
+                  expect: "Active access with expiry and a link to My passes; the service page keeps describing the API",
                 },
                 {
                   title: "Call the API",
                   body: (
                     <>
-                      Try API: <Mono>getQuote</Mono>, <Mono>BTC</Mono>. From a terminal:{" "}
+                      In My passes, under the pass: Try API with <Mono>getQuote</Mono>, <Mono>BTC</Mono>; the private file, when the provider granted it, downloads there too. From
+                      a terminal:{" "}
                       <Mono>bun call:service &lt;serviceId&gt; &quot;&lt;passKey&gt;.&lt;secret&gt;&quot; getQuote &apos;&#123;&quot;symbol&quot;:&quot;ETH&quot;&#125;&apos;</Mono>
                       . See{" "}
                       <a href="#pass" className="underline underline-offset-4">
@@ -530,8 +531,8 @@ bun run build                         # stop bun dev first: both write apps/web/
                   title: "Claim the money",
                   body: (
                     <>
-                      Send a little AVAX to the provider&apos;s Swarm wallet. In Wallet, select Claim USDC. Optional: withdraw USDC to any address, reveal the private key for
-                      MetaMask.
+                      Send a little AVAX to the provider&apos;s Swarm wallet. In Sales, tab Payment activity, select Claim USDC. Optional: withdraw USDC to any address, reveal the
+                      private key for MetaMask.
                     </>
                   ),
                   expect: "USDC balance goes up, claim tx on the explorer",
@@ -573,7 +574,7 @@ bun run build                         # stop bun dev first: both write apps/web/
                 ["packages/payments/src/server.ts", "verifyPayment: Purchased event or USDC Transfer, pure receipt checks"],
                 ["packages/payments/src/browser.ts", "Swarm wallet and browser wallet signers, pass key signature, pay, claim, watchSales live feed"],
                 ["packages/ens/src/index.ts", "read-only ENS: resolve addr, text record and bzz contenthash, verify a linked name"],
-                ["apps/web/lib/injected-wallet.tsx", "client identity: MetaMask / Rabby connection, network switch, pass key sealing"],
+                ["apps/web/lib/injected-wallet.tsx", "client payment wallet: MetaMask / Rabby connection, network switch"],
                 ["contracts/src/APIritivoPayments.sol", "buy / claim ledger, Foundry tests"],
                 ["apps/web/app/api/*", "services, access-passes, grants, bot, gateway"],
                 ["tools/", "demo-check, call-service"],

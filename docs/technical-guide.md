@@ -2,7 +2,7 @@
 
 [← README](../README.md) · Detailed implementation notes and demo walkthrough.
 
-**A machine-readable service marketplace. Providers sign in with Swarm ID, clients with their browser wallet, manifests on Swarm, registry on Arkiv, payments in USDC on Avalanche.**
+**A machine-readable service marketplace. Everyone signs in with Swarm ID, clients pay with their browser wallet, manifests on Swarm, registry on Arkiv, payments in USDC on Avalanche.**
 
 Built at **ETH Rome 2026**. Providers publish APIs that machines can understand; clients (humans or agents) discover them, pay for timed access, and call them with an on-chain access pass. No accounts, no API keys to manage, no database: every listing, manifest, pass and receipt is a public entity anyone can open in the Arkiv Data Explorer.
 
@@ -21,7 +21,7 @@ Split the problem across three decentralised primitives, each doing the one thin
 
 | Layer | Answers | Powered by |
 | --- | --- | --- |
-| **Identity** | who are you? | **Swarm ID** for providers — login without wallet or seed phrase in the app; the payout EVM wallet is *derived* from the identity. **Browser wallet** (MetaMask, Rabby, Core) for clients — the address that pays is the buyer id |
+| **Identity** | who are you? | **Swarm ID** for providers and clients — login without seed phrase in the app; the provider's payout EVM wallet and the client's pass encryption key are *derived* from the identity. A **browser wallet** (MetaMask, Rabby, Core) only pays for the client |
 | **Capability** | how does a machine call this service? | **Swarm** — immutable technical manifest (`operations`, typed inputs, endpoint) referenced by hash |
 | **Registry** | what services exist, at what price, for how long, who bought them? | **Arkiv** — queryable entities: permanent listings, expiring access passes, permanent sale receipts |
 | **Money** | how do I pay, how do I get paid? | **Avalanche Fuji** — USDC through the `APIritivoPayments` contract (pull payments, `claim`), or a direct transfer when no contract is configured |
@@ -33,7 +33,7 @@ An access pass is an **Arkiv entity with a TTL**. When it expires, Arkiv deletes
 Its entity key is public (anyone can list passes in the explorer), so the key alone is not the credential. At purchase the buyer's browser generates a random 32-byte secret:
 
 - the pass stores `secret_hash = keccak256(secret)` as a plain attribute;
-- the secret itself goes in the payload encrypted (AES-256-GCM) under a key only the buyer can re-derive: for a wallet buyer `keccak256` of a deterministic `personal_sign` of `PASS_KEY_MESSAGE` (one free signature per page load), for a Swarm ID buyer `deriveAppSecret("apiritivo:pass-crypt:v1")`. The buyer recovers it on any device and nobody else can;
+- the secret itself goes in the payload encrypted (AES-256-GCM) under a key only the buyer's Swarm ID can re-derive, `deriveAppSecret("apiritivo:pass-crypt:v1")`. The buyer recovers it on any device where that identity is signed in and nobody else can;
 - the API key presented to a service is `<passKey>.<secret>`.
 
 A service checks a call with one Arkiv read: does the entity still exist, is it for me, does `keccak256(secret)` match? Three lines in `verifyAccessPass`.
@@ -51,16 +51,16 @@ Without the secret the gateway answers `401`, with a wrong one `403`.
 ## How it works
 
 ```text
-PROVIDER (Swarm ID)                                CLIENT (browser wallet: MetaMask / Rabby / Core)
+PROVIDER (Swarm ID)                                CLIENT (Swarm ID, pays with MetaMask / Rabby / Core)
    │                                                   │
    ├─ form: name, category, price, duration,           ├─ browse marketplace ── query ──▶ Arkiv
    │        payout wallet, operations                  │
    ├─ manifest ── uploadData ──▶ Swarm ── ref ──┐      ├─ open service ── downloadData(ref) ──▶ Swarm
    │                                            ▼      │
    └─ POST /api/services ── createEntity ──▶ Arkiv     ├─ buy access ── approve + buy() ──▶ APIritivoPayments (Fuji)
-                (service, permanent)                   │      ├─ personal_sign(PASS_KEY_MESSAGE) → key that seals the pass secret
+                (service, permanent)                   │      ├─ Swarm ID deriveAppSecret → key that seals the pass secret; wallet signs the claim
                                                        │      └─ POST /api/access-passes: verify Purchased event on Fuji
-   ┌─ dashboard: live sales feed from Fuji logs        │         ── createEntity ──▶ Arkiv  access_pass (expires) + sale (permanent)
+   ┌─ dashboard: API cards, sales receipts from Arkiv   │         ── createEntity ──▶ Arkiv  access_pass (expires) + sale (permanent)
    ├─ Claim USDC ── claim() ──▶ contract                └─ call service:  Authorization: Bearer <passKey>.<secret>
    └─ Send USDC ── transfer ──▶ anywhere                       └─ bot or gateway: getEntity(passKey) on Arkiv + hash check → answer
 ```
@@ -68,7 +68,7 @@ PROVIDER (Swarm ID)                                CLIENT (browser wallet: MetaM
 ### What is real in the demo
 
 - **Swarm ID** login for providers, `deriveAppSecret` → per-identity EVM wallet ("Swarm wallet", the payout address) and a separate per-identity encryption key for pass secrets; `uploadData` / `downloadData` for manifests through the public gateway, with a subsidised gateway so identities without a postage stamp can publish. If the browser blocks the Swarm ID popup, the sign-in card says so and offers a retry.
-- **Browser wallet** as the client identity (`lib/injected-wallet.tsx`): EIP-1193 connection, silent reconnect, network switch to Fuji, `buyer_id` = lowercase address. One `personal_sign` of `PASS_KEY_MESSAGE` per page load derives the key that seals the pass secret (`keyFromSignature`). Swarm ID is optional for clients: when signed in at purchase, its sharing key is attached to the sale so the provider can grant private files.
+- **Browser wallet** as the client's payment method (`lib/injected-wallet.tsx`): EIP-1193 connection, silent reconnect, network switch to Fuji. It signs `approve`, `buy` and the pass claim; `buyer_address` is its address. The identity stays the Swarm ID: `buyer_id` is the Swarm identity id, its derived key seals the pass secret and its sharing key is attached to every sale so the provider can grant private files.
 - **Swarm drives**: identities that own a postage stamp upload with it (`uploadMode = user-stamp`); the provider dashboard shows the drive Swarm ID resolved for the app (`getPostageBatch` → label, batch id, % used, prepaid time left, ⚠ under 7 days) with a link to Swarm ID's Storage tab. Otherwise the app falls back to the subsidised gateway.
 - **Arkiv (Tiramisu)**: listings, passes and receipts are live entities created by an app-owned writer; every screen, the bot and the gateway read Arkiv directly, no cache, no database. Every entity link in the UI opens the **Arkiv Data Explorer** with the exact query. See [Live from Arkiv](#live-from-arkiv) and [Verify it yourself](#verify-it-yourself-on-arkiv).
 - **Avalanche Fuji**: real USDC from the buyer's wallet, verified server-side from the transaction before a pass is minted. The provider dashboard watches Fuji logs and shows a sale the moment it lands, before Arkiv has the receipt.
@@ -112,18 +112,18 @@ Testing from scratch as a judge? Follow [docs/JUDGE-WALKTHROUGH.txt](../docs/JUD
 
 ## Demo script (≈5 minutes)
 
-Before going on stage: `bun demo:check`. One browser is enough: Swarm ID signed in as **provider**, MetaMask or Rabby on Fuji as **client**. The provider's Swarm wallet needs a little AVAX for the claim; the client wallet needs AVAX and USDC (service page → *Fund wallet* → faucet links). The readiness pill in the bottom right corner says what is missing for the active account.
+Before going on stage: `bun demo:check`. One browser and one Swarm ID are enough: the header switch moves between **provider** and **client** (it signs out and asks for Swarm ID again, so count one extra login per switch), and MetaMask or Rabby on Fuji pays as the client. Marketplace and service pages need a signed-in Swarm ID. The provider's Swarm wallet needs a little AVAX for the claim; the client's browser wallet needs AVAX and USDC (service page → *Fund wallet* → faucet links). The readiness pill in the bottom right corner says what is missing for the active account.
 
 | # | Screen | Do | Say |
 | --- | --- | --- | --- |
 | 1 | `/` (provider view) | **Enter with Swarm ID** | "Provider identity is Swarm ID. No wallet, no seed phrase in the app." |
-| 2 | header switch | **Provider** | "Two workspaces, two identities: Swarm ID publishes, the browser wallet buys." |
-| 3 | `/provider` | Show *Wallet* (address, balances, **Reveal private key**) and *Connection details* (Swarm ID, upload mode, **drive** with % used and time left, Arkiv writer + GLM) | "Storage is the user's own Swarm drive, or a subsidised gateway. The wallet is derived from the Swarm ID: same identity, same address everywhere. Exportable to MetaMask." |
+| 2 | header switch | **Provider**, then **Enter with Swarm ID** again | "Two workspaces, one identity: every workspace starts with a Swarm ID login. Swarm ID publishes and buys; a browser wallet only pays." |
+| 3 | `/provider` | Show the API cards and, in the account menu, the wallet (address, balances) and connection rows (Swarm ID, **drive** with % used and time left, Arkiv writer + GLM). *Sales → Payment activity* holds Claim, Send USDC and **Reveal private key** | "Storage is the user's own Swarm drive, or a subsidised gateway. The wallet is derived from the Swarm ID: same identity, same address everywhere. Exportable to MetaMask." |
 | 4 | `/provider/new` | Name, category, 0.50 USDC, 7 days, operation `getQuote(symbol: string)`; payout is your Swarm wallet. Publish. | "Manifest to Swarm, listing to Arkiv, in that order. Price and payout live on Arkiv; payout is the wallet derived from my Swarm ID." |
 | 5 | success | Open **Swarm gateway** and **Arkiv** links | "Raw bytes on Swarm. The listing opens in the Arkiv Data Explorer with its `$key = key(…)` query, the tx on the Tiramisu block explorer." |
-| 6 | header switch → `/marketplace` | **Client**, **Connect wallet**, open the service | "The client is my everyday wallet. Cards are live Arkiv queries." |
+| 6 | header switch → `/marketplace` | **Client**, sign in with Swarm ID again, open the service, **Connect wallet to pay** | "Same Swarm ID, now as a client. The wallet appears only at checkout: it is my everyday wallet, it just pays. Cards are live Arkiv queries." |
 | 7 | service page | **Buy access**; watch approve → buy → confirm → mint, plus one signature | "USDC into the payments contract on Avalanche; the server verifies the `Purchased` event and mints an expiring pass on Arkiv. The API key is the pass key plus a secret sealed under a key only this wallet can re-derive." |
-| 8 | same page | **Try API**: `getQuote` / `BTC` → *Pass verified on Arkiv ✓* | "Every answer starts with a read of the pass entity and a hash check. Expired = deleted = denied." |
+| 8 | `/passes` | Under the pass, **Try API**: `getQuote` / `BTC` → *Pass verified on Arkiv ✓* | "The service page only describes the API. Every answer starts with a read of the pass entity and a hash check. Expired = deleted = denied." |
 | 9 | `/passes` | Pass with time left, **Show credentials**, **Arkiv** link | "Client side, every pass is inspectable on-chain, secret excluded." |
 | 10 | `/provider` (provider) | The sale toast, recorded sales and revenue, **Sales receipts** with **Sale receipt on Arkiv** | "The sale shows up from Fuji logs first, then Arkiv has the permanent receipt with `buyer_id`, `buyer_address` and `tx_hash`. That is how you prove who bought what." |
 | 11 | wallet section | **Claim USDC**, then **Send USDC** to any address | "Two steps, two signatures from the Swarm wallet key: pull earnings out of the contract, then move them wherever you like." |
@@ -162,11 +162,11 @@ Without a contract address the app runs in **direct mode**: `buy` becomes a USDC
 [Technical contract map](../docs/architecture/contracts.html) · [Purchase sequence](../docs/architecture/purchase.html) · [Claim sequence](../docs/architecture/claim.html) · [Contract addresses and call reference](../docs/architecture/technical-reference.md)
 
 ```text
-apps/web            Next.js UI + 5 API routes (services, access-passes, grants, bot, gateway); lib/injected-wallet.tsx (client identity), lib/identity.ts (active account per view), lib/readiness.ts (account checks)
+apps/web            Next.js UI + 5 API routes (services, access-passes, grants, bot, gateway); lib/injected-wallet.tsx (client payment wallet), lib/identity.ts (Swarm ID plus paying account per view), lib/readiness.ts (account checks)
 packages/shared     Zod schemas: manifest, service, access pass, sale, grant; role helpers
 packages/swarm      Swarm ID adapter: login, upload/download manifests, derive wallet + pass-encryption keys, ACT private files, read the drive
 packages/arkiv      Arkiv adapter: typed reads (browser/server), block timing, pass secrets, Data Explorer links, server writer (service, pass, sale, grant), verifyAccessPass
-packages/payments   Fuji/USDC: signers (Swarm wallet, injected wallet), pass key message + signature-derived key, pay/claim/send, live sales watcher, on-chain verification, contract ABI
+packages/payments   Fuji/USDC: signers (Swarm wallet, injected wallet), pass key message + signature-derived key, pay/claim/send, on-chain verification, contract ABI
 packages/ens        Read-only ENS: resolve addr / text / contenthash, verify a linked name against a service
 contracts           Foundry: src/APIritivoPayments.sol + 28 tests + deploy script (deployed on Fuji)
 tools               bun demo:check (readiness), bun call:service (call a bought API by service id or ENS name)
@@ -213,8 +213,8 @@ There is no database and no cache: every number on screen is an Arkiv query made
 | --- | --- | --- |
 | `/marketplace` | `service` where `available = true`, newest creation block first, one entry per `service_id` (highest `version` wins) | Service cards: name, category, price, duration, provider, manifest link |
 | `/services/<id>` | `service` where `service_id = <id>`, then `downloadData(manifest_ref)` on Swarm | Listing + decoded manifest (operations, typed inputs, endpoint) |
-| `/services/<id>` (wallet connected) | `access_pass` where `service_id` and `buyer_id` match, plus `getBlockTiming()` | Your live passes for this service with a countdown; enables **Try API** |
-| `/passes` | `access_pass` where `buyer_id = you`, sorted by expiry block, plus `getBlockTiming()` | Time left per pass (`(expires_at_block − current_block) × block_duration`), pass key, explorer and payment-tx links |
+| `/services/<id>` (signed in) | `access_pass` where `service_id` and `buyer_id` match, plus `getBlockTiming()` | Your live pass for this service with a countdown; the page stays descriptive (no Try API, no file download) |
+| `/passes` | `access_pass` where `buyer_id = you`, sorted by expiry block, plus `getBlockTiming()`; per pass the `service` and its manifest, and the `grant` for your Swarm ID key | Time left per pass (`(expires_at_block − current_block) × block_duration`), API key, **Try API**, private file download once granted, explorer and payment-tx links |
 | `/provider` | `service` where `provider_id = you` (available or not) and `sale` where `provider_id = you`; refreshed when the Fuji watcher sees a new `Purchased` / `Transfer` | Published services, revenue = Σ `paid_usdc` of the permanent receipts, earnings per service, recent sales with buyer and tx |
 | `/provider` connection details, readiness pill | `GET /api/services` → writer address and native GLM balance from the Tiramisu RPC | "Arkiv writer ✓ / unfunded / not configured" with faucet, balance and Data Explorer links |
 | `POST /api/bot/<id>`, `POST /api/gateway/<id>` | `getEntity(<passKey>)` + `getBlockTiming()` + `keccak256(secret)` vs `secret_hash` | **Pass verified on Arkiv ✓** with expiry block and seconds left, or `401` / `403`. Expired passes are gone from Arkiv, so "not found" is "no access" |
@@ -252,7 +252,7 @@ The Arkiv writer is app-owned (`ARKIV_WRITER_PRIVATE_KEY`) and it is the only ow
 - An Arkiv entity key is public. Anything that acts as a credential needs a secret next to it; store the hash on-chain and encrypt the secret for its owner.
 - Swarm ID identities without a postage stamp can still upload if the dApp passes a **subsidised gateway** (what the official demo does). `Swarm-Pin` is not on the gateway's CORS allow-list, so `pin: true` fails as "Failed to fetch".
 - `deriveAppSecret` turns any Swarm ID into deterministic key material: one label for the EVM wallet, a different label for encryption, so the wallet key never doubles as a cipher key. The wallet label stays `apiperitivo:wallet:v1` after the rename so existing addresses do not move.
-- A browser wallet has no `deriveAppSecret`, but `personal_sign` of a fixed message is deterministic for EOAs: `keccak256(signature)` is a stable per-wallet key, obtained once per page load and never stored. Swarm ID secrets are scoped to the page origin, so the Swarm wallet differs per domain; a MetaMask address does not.
+- The pass secret is sealed with the Swarm ID's derived key, never with the paying wallet, so a buyer can change wallets and keep the passes. Swarm ID secrets are scoped to the page origin, so the derived wallet and pass key differ per domain; a MetaMask address does not.
 - A payments contract only needs addresses. The Swarm ID ↔ wallet link lives entirely in the deterministic derivation, which is why the same identity can claim from any device.
 - Mount the Swarm ID iframe once in a hidden container and let the user click the SDK's own button: the popup must keep the iframe as opener, or session handover breaks in browsers with partitioned storage.
 - A dApp cannot pick a postage stamp: Swarm ID resolves one drive per app and `getPostageBatch` only reads it. Show it (label, % used, TTL) and send users to Swarm ID → Storage to add or renew drives.

@@ -1,6 +1,7 @@
 "use client";
 
-import { type EnsServiceRecords, type EnsVerification, resolveEnsName, resolveServiceRecords, verifyServiceRecords } from "@apiritivo/ens";
+import { type EnsServiceRecords, type EnsVerification, normalizeEnsName, resolveEnsAddress, resolveEnsName, resolveServiceRecords, verifyServiceRecords } from "@apiritivo/ens";
+import type { Address } from "@apiritivo/payments";
 import type { ArkivService } from "@apiritivo/shared";
 import { useEffect, useState } from "react";
 import { friendlyMessage } from "./errors";
@@ -50,21 +51,10 @@ export function useEnsService(service: ArkivService | null | undefined): EnsStat
 
 const nameCache = new Map<string, string | null>();
 
-/** Forget a cached reverse lookup (after the user sets a primary name). */
-export function forgetEnsName(address: string): void {
-  nameCache.delete(address.toLowerCase());
-}
-
 /** Primary ENS name of an address (reverse record, forward-verified), null while unknown or when there is none. */
 export function useEnsName(address: string | null | undefined): string | null {
   const key = address ? address.toLowerCase() : null;
   const [name, setName] = useState<string | null>(key ? (nameCache.get(key) ?? null) : null);
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const onChange = () => setTick((n) => n + 1);
-    window.addEventListener("apiritivo:ens-name-changed", onChange);
-    return () => window.removeEventListener("apiritivo:ens-name-changed", onChange);
-  }, []);
   useEffect(() => {
     if (!key) {
       setName(null);
@@ -82,6 +72,51 @@ export function useEnsName(address: string | null | undefined): string | null {
     return () => {
       cancelled = true;
     };
-  }, [key, tick]);
+  }, [key]);
   return name;
+}
+
+export type RecipientState =
+  | { status: "empty" }
+  /** A plain `0x…` address. */
+  | { status: "address"; address: Address }
+  | { status: "resolving"; name: string }
+  | { status: "resolved"; name: string; address: Address }
+  /** A well-formed `.eth` name with no address record on the ENS chain. */
+  | { status: "unresolved"; name: string }
+  | { status: "invalid" };
+
+const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+
+/**
+ * What a recipient field means: an address as typed, or an ENS name resolved
+ * to its address record (debounced while typing). Operations must use the
+ * returned address, never the raw input.
+ */
+export function useResolvedRecipient(input: string): RecipientState {
+  const raw = input.trim();
+  const name = ADDRESS_RE.test(raw) ? null : normalizeEnsName(raw);
+  const [resolved, setResolved] = useState<{ name: string; address: Address | null } | null>(null);
+
+  useEffect(() => {
+    if (!name) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      resolveEnsAddress(name)
+        .catch(() => null)
+        .then((address) => {
+          if (!cancelled) setResolved({ name, address });
+        });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [name]);
+
+  if (!raw) return { status: "empty" };
+  if (ADDRESS_RE.test(raw)) return { status: "address", address: raw as Address };
+  if (!name) return { status: "invalid" };
+  if (resolved?.name !== name) return { status: "resolving", name };
+  return resolved.address ? { status: "resolved", name, address: resolved.address } : { status: "unresolved", name };
 }

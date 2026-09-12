@@ -62,6 +62,12 @@ describe("commercial terms", () => {
     expect(formatAccessDuration(DEMO_ACCESS_SECONDS)).toBe("30 seconds");
   });
 
+  test("offers a 2-minute duration that Arkiv can mint (even seconds)", () => {
+    expect(ACCESS_DURATIONS.some((duration) => duration.seconds === 120)).toBe(true);
+    expect(publishServiceInputSchema.shape.accessSeconds.parse(120)).toBe(120);
+    expect(formatAccessDuration(120)).toBe("2 minutes");
+  });
+
   test("formats price and duration", () => {
     expect(formatPriceUsdc("0.5")).toBe("0.50 USDC");
     expect(formatPriceUsdc("12")).toBe("12.00 USDC");

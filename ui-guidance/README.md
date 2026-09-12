@@ -29,8 +29,8 @@ Reference: [Supabase](https://supabase.com/). Keep APIritivo orange.
 * One place for each metric. Label recorded sales separately from contract balances.
 * Service page: access box beside the service introduction on desktop and immediately below it on mobile. Operations and tester stay together, with supporting data below. Highlight the access duration in orange.
 * Checkout uses the active account: the connected wallet for Client, Swarm ID for Provider. Show balances and funding controls without a wallet selector. Reuse WalletBalances for separate USDC and AVAX amounts, and WalletFunding for checkout funding and stable refresh feedback.
-* Provider page: API list and wallet first. History and connection details below.
-* Connection details: flat identity, storage, and writer rows. Use compact status dots, a shortened copyable identity reference, Address and Registry links, and three-decimal GLM balances. Keep the full balance and drive reference in tooltips; show drive usage and expiry without a pill.
+* Provider page: one card per API (price, earnings, private file and its grants) at full width. The Sales page holds two tabs: Receipts (Arkiv) and Payment activity (Earnings with Claim, wallet balance, Advanced send/export, contract activity). The Swarm wallet address and balances live in the Provider account dropdown.
+* Connection details live in the Provider account dropdown, not on the dashboard: compact identity, storage, and writer rows with status dots, a shortened copyable identity id, Manage, Address and Registry links, and three-decimal GLM balances. Keep the full balance and drive reference in tooltips; show drive usage and expiry without a pill.
 * Publishing uses expandable steps: API details, Price and duration, Operations, optional Private file, then Review and publish. Mark valid completed steps green with a check and “Validated.” Advance after leaving a completed field group, never while typing. Keep every step editable, preserve collapsed values, and require a separate final publish action.
 * Prefer borderless sections and simple rows. Use a surface only to focus a decision.
 * Keep actionable errors and disabled action reasons visible outside disclosures.
@@ -59,9 +59,11 @@ The account control uses a plain neutral circle with the user's initials.
 Reuse `ProfileAvatar` in the header and account menu. Keep it free of decorative
 rings and animation.
 Both account menus use AccountPanel with the name and an "Address" link to the
-active wallet on the payment-chain explorer. Omit the workspace label and raw
-identity ID. Display upload availability for Provider and network status for
-Client as compact rows. Keep Client wallet and private-file sign-in actions.
+active wallet on the payment-chain explorer. Docs and the appearance picker are
+not in the account menu: they live in SettingsMenu, behind the header gear. Omit the workspace label and raw
+identity ID. The Provider menu splits into two tabs, Wallet (default) and Connection
+(storage, Arkiv writer); the Connection tab shows a warning dot when something
+needs attention. The Client menu shows the payment wallet as compact rows. Keep Client wallet and private-file sign-in actions.
 Marketplace refresh retains results and filters. Use the same fixed-width
 RefreshButton and SVG empty-state icons throughout both workspaces.
 
@@ -69,7 +71,7 @@ Favicon: use the original transparent brand symbol, tightly framed to about 96% 
 
 Form fields and code editors may have functional boundaries. Remove extra decorative containers around them.
 
-Marketplace cards lead with a larger semibold API title. Category names stay in
+Marketplace cards are surface cards (rounded panel, surface background, 20px padding), the same treatment as the Provider API cards, in a grid with a 16px gap; the border only appears on hover and focus. They lead with a larger semibold API title. Category names stay in
 filters and API details, without a separate category row on each card. Keep the
 price close to the description and the arrow immediately beside "View API".
 Place provider initials in a neutral circular ProfileAvatar at the top right beside the API title. Remove the separate provider-name row; show the full name on hover, keyboard focus, or tap. Keep ENS and availability metadata when present.
@@ -81,16 +83,16 @@ Show private-file inclusion with a lock beside the card action. Reveal its expla
 ## Workspaces
 
 * Client: Marketplace, My passes.
-* Provider: My APIs, Publish.
-* Docs and service details: shared. Service actions follow the active view; switching keeps the current API open.
+* Provider: My APIs, Sales, Publish.
+* Docs: shared and public. Service details: shared between workspaces but, like Marketplace, My passes, My APIs and Publish, shown only to a signed-in Swarm ID (AuthGate). Service actions follow the active view; switching keeps the current API open behind the sign-in gate.
 * Docs shows only the selected topic. Highlight its navigation link, preserve topic hashes and browser history, and keep secondary reference disclosures inside that topic.
-* The navbar shows the account control followed by the workspace switch. Docs and the inline theme selector live inside AccountPanel in both workspaces. Keep the account dropdown available to guests, with sign-in inside it.
-* Header switch: compact toggle with an orange thumb and an animated role label beside it. Keep keyboard focus and reduced motion support.
+* The navbar shows, from left to right after the navigation: the account control, the workspace switch, then the settings gear (Docs and theme) at the far right. Keep the account dropdown available to guests, with sign-in inside it; the account menu holds only identity and wallet rows plus Logout. The payment wallet is never connected from the menu: only the checkout offers it, and the menu shows it once connected.
+* Header switch: compact toggle with an orange thumb and an animated role label beside it. Keep keyboard focus and reduced motion support. Switching always signs out of Swarm ID and reopens the sign-in dialog; never switch a signed-in session silently.
 * Navbar: transparent with backdrop blur. Active and hovered links use a thin content-colored underline, never a filled rectangle. Respect reduced transparency preferences.
 * Appearance: Auto follows the computer's light or dark theme, including live changes. Offer saved Light and Dark overrides separately from workspace and identity. Use semantic color tokens throughout; orange button labels stay charcoal in both themes.
-* Appearance control: a Theme row inside the account dropdown, with monitor, sun, and moon icons for Auto, Light, and Dark. Auto is the default. Keep accessible labels, keyboard selection, and 44px targets. ThemeSync stays mounted so Auto and cross-tab changes keep working when the dropdown is closed.
+* Appearance control: a Theme row inside the settings dropdown (header gear), with monitor, sun, and moon icons for Auto, Light, and Dark. Auto is the default. Keep accessible labels, keyboard selection, and 44px targets. ThemeSync stays mounted so Auto and cross-tab changes keep working when the dropdown is closed.
 * Hide the other view's navigation and actions. Direct links require an explicit switch.
-* Two identities, one per view: the Client identity is the connected wallet (MetaMask, Rabby, Core); the Provider identity is Swarm ID. Swarm ID may stay signed in while a wallet is the client, only to open private files. Save the view per identity; guests use a separate preference.
+* One identity, Swarm ID, in both views. The Client view adds a payment wallet (MetaMask, Rabby, Core) inside the account menu and the checkout; it pays but never stands in for the identity. Save the view per identity; guests use a separate preference.
 * View selection controls the interface, never permissions or payment validation.
 
 ## Source files

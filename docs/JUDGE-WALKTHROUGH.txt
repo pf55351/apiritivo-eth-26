@@ -14,8 +14,8 @@ Short path (5 phases, details below)
 ------------------------------------
   SETUP    clone, bun install, copy .env.example, bun demo:check, bun dev              (STEP 0)
   CREATOR  sign in with Swarm ID as Provider, publish a service, open the two proofs    (STEP 1-2)
-  BUYER    switch to Client, connect MetaMask or Rabby, fund it from the two faucets, buy,
-           copy the API key from the "Your API key" box, Try API, call from terminal    (STEP 3-5)
+  BUYER    switch to Client (same Swarm ID), connect MetaMask or Rabby, fund it, buy,
+           in My passes copy the API key, Try API, call from terminal                  (STEP 3-5)
   VERIFY   creator sees the sale live and opens the receipt in the Arkiv Data Explorer  (STEP 6)
   PAYOUT   claim from the contract to the Swarm wallet, then send USDC anywhere         (STEP 7-8)
 
@@ -25,8 +25,8 @@ Short path (5 phases, details below)
 
 Networks and identities involved
 --------------------------------
-  Swarm ID          provider identity (no wallet, no seed phrase). https://swarm-id.snaha.net
-  Browser wallet    client identity: MetaMask, Rabby or Core on Avalanche Fuji. Pays and signs the pass key
+  Swarm ID          identity for providers and buyers (no seed phrase). https://swarm-id.snaha.net
+  Browser wallet    the buyer's payment method: MetaMask, Rabby or Core on Avalanche Fuji. Pays and signs the claim
   Swarm             stores the technical manifest (bytes). Public gateway: https://api.gateway.ethswarm.org
   Arkiv (Tiramisu)  registry: service listings, access passes, sale receipts. Explorer: https://data.arkiv.network/?chain=tiramisu
   ENS (Sepolia)     optional: a .eth name that resolves to payout wallet, Arkiv service id and Swarm manifest
@@ -44,7 +44,8 @@ Assets you need (all free, testnet)
 
 The CREATOR does not need MetaMask: every Swarm ID gets its own EVM wallet derived from the
 identity ("Swarm wallet"). The app shows its address; faucet funds for claims go there.
-The BUYER needs a browser wallet (MetaMask, Rabby or Core). The app switches it to Avalanche Fuji.
+The BUYER signs in with Swarm ID too (the pass, API key and private files belong to it) and pays
+with a browser wallet (MetaMask, Rabby or Core). The app switches the wallet to Avalanche Fuji.
 
 
 STEP 0 — Run the app
@@ -72,8 +73,9 @@ STEP 1 — Create the CREATOR identity (Swarm ID)
   2. A dialog opens with the Swarm ID widget. Click its button; a popup opens on swarm-id.snaha.net.
      Create a new identity (or sign in to one you already have). No wallet, no seed phrase.
      If nothing appears, your browser blocked the popup: allow it and click "retry".
-  3. Back in the app, flip the header switch to Provider. This is only a preference; both areas
-     stay reachable and the app remembers the last view per identity.
+  3. Back in the app, flip the header switch to Provider. Switching workspace signs you out of
+     Swarm ID and reopens the sign-in dialog: sign in again with the same identity. The app
+     remembers the last workspace, so the next login lands there directly.
 
   You land on /provider ("My APIs"). Open "Connection details" at the bottom:
     - Swarm ID: your identity name and id
@@ -107,13 +109,17 @@ STEP 2 — CREATOR publishes an API  (Swarm + Arkiv)
 
 STEP 3 — Connect the BUYER wallet and fund it
 ---------------------------------------------
-  The buyer is a browser wallet, not a Swarm ID. You can stay in the same browser: the header
-  switch changes the view, and the Client view uses the wallet while Swarm ID stays signed in
-  for the Provider view. A second profile only makes the demo clearer.
+  The buyer is a Swarm ID that pays with a browser wallet. You can stay in the same browser
+  and the same Swarm ID: the header switch signs you out and asks for Swarm ID again in the
+  Client workspace. A second Swarm ID in another profile only makes the demo clearer (the
+  private-file paywall then locks for the buyer). Marketplace and service pages are visible
+  only after signing in with Swarm ID.
 
-  1. Switch the header toggle to Client. Click "Connect wallet" and approve MetaMask or Rabby.
-     If the wallet is on another network the app offers to switch to Avalanche Fuji.
+  1. Switch the header toggle to Client and sign in again with Swarm ID. The wallet is not
+     asked for yet: it is connected only when you buy.
   2. Open /marketplace, click the service you published. The listing is a live Arkiv query.
+     In the access card click "Connect wallet to pay" and approve MetaMask or Rabby.
+     If the wallet is on another network the app offers to switch to Avalanche Fuji.
   3. In the access card, open "Fund wallet" and copy the wallet address.
   4. Fund it:
        AVAX  https://core.app/tools/testnet-faucet/   (gas for approve + buy; 0.1 AVAX is plenty)
@@ -145,7 +151,8 @@ STEP 4 — BUYER pays and gets an access pass  (Fuji + Arkiv)
 STEP 5 — BUYER calls the API
 ----------------------------
   In the browser:
-    Scroll down to "Try API". Operation getQuote, symbol BTC, Run request.
+    Open /passes ("My passes"): the service page only describes the API. Under your pass find
+    "Try API". Operation getQuote, symbol BTC, Run request.
     Expect: "Pass verified on Arkiv" with expiry block and seconds left, and a live BTC price.
 
   From a terminal (what a script or an agent would do):
@@ -225,7 +232,7 @@ What to look at in the code (5 minutes)
   packages/payments/src/browser.ts     Swarm wallet + injected wallet signers, pay, claim, pass key signature
   packages/payments/src/server.ts      verifyPayment: Purchased event / USDC Transfer check
   packages/ens/src/index.ts            ENS resolution + verification (addr, text record, bzz contenthash)
-  apps/web/lib/injected-wallet.tsx     client identity: MetaMask / Rabby connection and pass key sealing
+  apps/web/lib/injected-wallet.tsx     client payment wallet: MetaMask / Rabby connection and network switch
   contracts/src/APIritivoPayments.sol  buy / claim ledger, 28 tests in contracts/test
   apps/web/app/api/*                   5 routes: services, access-passes, grants, bot, gateway
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { WalletGate } from "@/components/auth-gate";
+import { AuthGate } from "@/components/auth-gate";
 import { PassesView } from "@/components/passes-view";
 import { useActiveIdentity } from "@/lib/identity";
 import { useMyPasses } from "@/lib/use-access";
@@ -13,8 +13,8 @@ function PassesList() {
 
 export default function PassesPage() {
   return (
-    <WalletGate title="Connect a wallet for your passes">
+    <AuthGate title="Sign in for your passes">
       <PassesList />
-    </WalletGate>
+    </AuthGate>
   );
 }

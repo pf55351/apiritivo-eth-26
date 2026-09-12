@@ -1,27 +1,32 @@
 "use client";
 
-import { type Address, explorerAddressUrl, explorerTxUrl, isContractMode, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
-import { claimEarnings, type ProviderStats, readProviderStats, transferUsdc } from "@apiritivo/payments/browser";
+import { ensChainLabel } from "@apiritivo/ens";
+import { type Address, explorerAddressUrl, explorerTxUrl, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
+import { claimEarnings, transferUsdc } from "@apiritivo/payments/browser";
 import { formatPriceUsdc } from "@apiritivo/shared";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { friendlyMessage } from "@/lib/errors";
-import { invalidateRequest, sharedRequest } from "@/lib/shared-request";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
 import { useCopy } from "@/lib/use-copy";
+import { useResolvedRecipient } from "@/lib/use-ens";
+import { useProviderStats } from "@/lib/use-provider-stats";
+import { AddressLabel } from "./address-label";
 import { RefreshButton } from "./refresh-button";
 import { Button, Disclosure, ErrorNotice } from "./ui";
-import { WalletFunding } from "./wallet-funding";
+import { WalletBalances } from "./wallet-balances";
 
 const fieldCls = "field-control font-mono";
 
 /**
- * Provider wallet section: the EVM account derived from the Swarm ID.
- * Shows balances, lets the provider reveal/export the private key, claim
- * contract earnings into this wallet (contract mode) and send USDC anywhere.
+ * Earnings of the provider, on the Sales page: what the contract holds for
+ * the Swarm-derived wallet and the Claim that moves it there, then the wallet
+ * balance. Sending USDC elsewhere and exporting the key sit under Advanced.
  */
-export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
+export function EarningsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const wallet = useSwarmWallet();
   const { copied, copy } = useCopy();
+  const address = wallet.address;
+  const { stats, reload: reloadStats, contractMode } = useProviderStats(address, refreshKey);
   const [revealed, setRevealed] = useState<string | null>(null);
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
@@ -30,32 +35,17 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [sendTx, setSendTx] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
-  const [stats, setStats] = useState<ProviderStats | null>(null);
-  const contractMode = isContractMode();
-
-  const address = wallet.address;
-  const loadStats = useCallback(
-    async (fresh = false) => {
-      if (!address) return;
-      if (fresh) invalidateRequest("provider-stats");
-      // Same read the payment activity panel makes: one request serves both.
-      setStats(await sharedRequest(`provider-stats:${address.toLowerCase()}`, () => readProviderStats(address)).catch(() => null));
-    },
-    [address],
-  );
-
-  // Contract mode: show what is waiting in the contract as soon as the wallet is known.
-  useEffect(() => {
-    if (contractMode) void loadStats(refreshKey > 0);
-  }, [contractMode, loadStats, refreshKey]);
+  // The recipient may be typed as an ENS name: the transfer goes to what it resolves to.
+  const recipient = useResolvedRecipient(to);
+  const recipientAddress: Address | null = recipient.status === "address" || recipient.status === "resolved" ? recipient.address : null;
 
   async function withdraw() {
-    if (!wallet.signer) return;
+    if (!wallet.signer || !recipientAddress) return;
     setBusy("withdraw");
     setSendError(null);
     setSendTx(null);
     try {
-      const hash = await transferUsdc(wallet.signer, to.trim() as Address, amount.trim());
+      const hash = await transferUsdc(wallet.signer, recipientAddress, amount.trim());
       setSendTx(hash);
       setAmount("");
       await wallet.refreshBalances();
@@ -75,7 +65,7 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
       // Always pull contract earnings into the Swarm wallet; moving them elsewhere is the next step.
       const hash = await claimEarnings(wallet.signer, address);
       setClaimTx(hash);
-      await Promise.all([wallet.refreshBalances(), loadStats(true)]);
+      await Promise.all([wallet.refreshBalances(), reloadStats()]);
     } catch (err) {
       setClaimError(friendlyMessage(err, "Claim failed."));
     } finally {
@@ -83,111 +73,129 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     }
   }
 
-  return (
-    <section className="min-w-0">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-medium">Wallet</h2>
-        <RefreshButton
-          variant="subtle"
-          onClick={async () => {
-            await Promise.all([wallet.refreshBalances(), ...(contractMode ? [loadStats(true)] : [])]);
-          }}
-        />
-      </div>
-      {wallet.status === "deriving" ? (
-        <p role="status" className="mt-4 text-sm text-subtle">
-          Preparing wallet…
-        </p>
-      ) : null}
-      {wallet.status === "error" && wallet.error ? (
-        <div className="mt-4">
+  if (wallet.status === "deriving" || !address) {
+    return (
+      <div className="pt-4">
+        {wallet.status === "error" && wallet.error ? (
           <ErrorNotice message={wallet.error.message} detail={wallet.error.detail} />
-        </div>
-      ) : null}
-      {address ? (
-        <div className="mt-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer" title={address} className="font-mono text-xs text-muted hover:text-content">
-              {address.slice(0, 6)}…{address.slice(-4)} ↗
+        ) : (
+          <p role="status" className="text-sm text-subtle">
+            Preparing your Swarm wallet…
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <section className="min-w-0 pt-4" aria-label="Earnings">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl font-medium">Earnings</h2>
+        <RefreshButton variant="subtle" onClick={async () => void (await Promise.all([wallet.refreshBalances(), reloadStats()]))} />
+      </div>
+      <div className="mt-4 grid gap-6 border-b border-line pb-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        {contractMode ? (
+          <div>
+            <p className="text-xs text-subtle">Ready to claim</p>
+            <p className="mt-1 text-3xl font-medium text-accent-text">{stats ? formatPriceUsdc(stats.claimableUsdc) : "…"}</p>
+            <p className="mt-1 text-xs text-subtle">Held by the contract until you claim it into your Swarm wallet.</p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted">Direct-transfer mode: every purchase is paid straight into your Swarm wallet.</p>
+        )}
+        {contractMode ? (
+          <div className="sm:text-right">
+            <Button size="lg" onClick={claim} disabled={busy !== null || !stats || Number(stats.claimableUsdc) <= 0}>
+              {busy === "claim" ? "Claiming…" : "Claim USDC"}
+            </Button>
+            {claimTx ? (
+              <a href={explorerTxUrl(claimTx)} target="_blank" rel="noreferrer" className="mt-2 block text-xs text-success">
+                Claim confirmed ↗
+              </a>
+            ) : null}
+            {claimError ? (
+              <p role="alert" className="mt-2 text-xs text-danger">
+                {claimError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium">Swarm wallet · {PAYMENT_CHAIN_NAME}</p>
+          <span className="flex flex-wrap items-center gap-2">
+            <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer" className="text-xs text-muted hover:text-content">
+              <AddressLabel address={address} /> ↗
             </a>
             <Button variant="subtle" size="sm" onClick={() => void copy("address", address)}>
               {copied === "address" ? "Copied" : "Copy address"}
             </Button>
-          </div>
-          <div className="my-5">
-            <WalletFunding label={PAYMENT_CHAIN_NAME} address={address} balances={wallet.balances} onRefresh={wallet.refreshBalances} />
-          </div>
-          {contractMode ? (
-            <div className="mb-5 border-t border-line pt-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs text-subtle">Ready to claim</p>
-                  <p className="mt-1 text-xl font-medium text-accent-text">{stats ? formatPriceUsdc(stats.claimableUsdc) : "…"}</p>
-                </div>
-                <Button onClick={claim} disabled={busy !== null || !stats || Number(stats.claimableUsdc) <= 0}>
-                  {busy === "claim" ? "Claiming…" : "Claim USDC"}
-                </Button>
+          </span>
+        </div>
+        <div className="mt-4">
+          <WalletBalances balances={wallet.balances} />
+        </div>
+      </div>
+      <div className="mt-4">
+        <Disclosure title="Advanced">
+          <div className="space-y-6">
+            <div>
+              <p className="text-sm font-medium">Send USDC</p>
+              <p className="mt-1 mb-3 text-xs text-subtle">Transfer from the Swarm wallet to any address or ENS name on {PAYMENT_CHAIN_NAME}.</p>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
+                <label className="block">
+                  <span className="mb-1 block text-xs text-muted">Recipient</span>
+                  <input
+                    className={fieldCls}
+                    placeholder="0x… or name.eth"
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                    spellCheck={false}
+                    aria-invalid={recipient.status === "unresolved" || recipient.status === "invalid" || undefined}
+                    aria-describedby="send-recipient-hint"
+                  />
+                  <span id="send-recipient-hint" className={`mt-1 block min-h-4 text-[11px] ${recipient.status === "unresolved" ? "text-danger" : "text-subtle"}`}>
+                    {recipient.status === "resolving"
+                      ? `Resolving ${recipient.name}…`
+                      : recipient.status === "resolved"
+                        ? `${recipient.name} → ${recipient.address}`
+                        : recipient.status === "unresolved"
+                          ? `${recipient.name} has no address on ${ensChainLabel()}.`
+                          : recipient.status === "invalid"
+                            ? "Enter a 0x address or a .eth name."
+                            : ""}
+                  </span>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs text-muted">Amount in USDC</span>
+                  <input className={fieldCls} placeholder="0.00" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                </label>
               </div>
-              <p className="mt-2 text-xs text-subtle">Moves earnings to this wallet.</p>
-              {claimTx ? (
-                <a href={explorerTxUrl(claimTx)} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-success">
-                  Claim confirmed ↗
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={withdraw} disabled={busy !== null || !recipientAddress || !/^\d+(\.\d{1,6})?$/.test(amount.trim())}>
+                  {busy === "withdraw" ? "Sending…" : "Send USDC"}
+                </Button>
+                {wallet.balances && Number(wallet.balances.usdc) > 0 ? (
+                  <Button variant="subtle" size="sm" onClick={() => setAmount(wallet.balances!.usdc)}>
+                    Max
+                  </Button>
+                ) : null}
+              </div>
+              {sendTx ? (
+                <a href={explorerTxUrl(sendTx)} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-success">
+                  Transfer confirmed ↗
                 </a>
               ) : null}
-              {claimError ? (
+              {sendError ? (
                 <p role="alert" className="mt-2 text-xs text-danger">
-                  {claimError}
+                  {sendError}
                 </p>
               ) : null}
             </div>
-          ) : null}
-          <Disclosure title="Send USDC">
-            <p className="mb-4 text-xs text-subtle">Transfer from this wallet on {PAYMENT_CHAIN_NAME}.</p>
-            <div className="space-y-3">
-              <label className="block">
-                <span className="mb-1 block text-xs text-muted">Recipient</span>
-                <input className={fieldCls} placeholder="0x…" value={to} onChange={(e) => setTo(e.target.value)} spellCheck={false} />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs text-muted">Amount in USDC</span>
-                <input className={fieldCls} placeholder="0.00" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-              </label>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button size="sm" onClick={withdraw} disabled={busy !== null || !/^0x[0-9a-fA-F]{40}$/.test(to.trim()) || !/^\d+(\.\d{1,6})?$/.test(amount.trim())}>
-                {busy === "withdraw" ? "Sending…" : "Send USDC"}
-              </Button>
-              {wallet.balances && Number(wallet.balances.usdc) > 0 ? (
-                <Button variant="subtle" size="sm" onClick={() => setAmount(wallet.balances!.usdc)}>
-                  Max
-                </Button>
-              ) : null}
-            </div>
-            {sendTx ? (
-              <a href={explorerTxUrl(sendTx)} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-success">
-                Transfer confirmed ↗
-              </a>
-            ) : null}
-            {sendError ? (
-              <p role="alert" className="mt-2 text-xs text-danger">
-                {sendError}
-              </p>
-            ) : null}
-          </Disclosure>
-          <details
-            className="ui-disclosure"
-            onToggle={(event) => {
-              if (!event.currentTarget.open) setRevealed(null);
-            }}
-          >
-            <summary>
-              Export wallet{" "}
-              <span className="disclosure-chevron" aria-hidden="true">
-                ⌄
-              </span>
-            </summary>
-            <div className="pb-5">
-              <p className="mb-3 text-xs text-subtle">Anyone with this private key controls your funds. Testnet only.</p>
+            <div className="border-t border-line pt-5">
+              <p className="text-sm font-medium">Export wallet</p>
+              <p className="mt-1 mb-3 text-xs text-subtle">Anyone with this private key controls your funds. Testnet only.</p>
               <Button variant="danger" size="sm" onClick={() => setRevealed(revealed ? null : wallet.revealPrivateKey())}>
                 {revealed ? "Hide key" : "Reveal private key"}
               </Button>
@@ -200,9 +208,9 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 </div>
               ) : null}
             </div>
-          </details>
-        </div>
-      ) : null}
+          </div>
+        </Disclosure>
+      </div>
     </section>
   );
 }

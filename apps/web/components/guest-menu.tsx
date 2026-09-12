@@ -10,7 +10,7 @@ import { Button } from "./ui";
  */
 export function GuestMenu({ action, onAction, disabled = false }: { action: string; onAction: () => void; disabled?: boolean }) {
   return (
-    <AccountDropdown label="Account settings" trigger={<GuestAccountIcon />}>
+    <AccountDropdown label="Account" trigger={<GuestAccountIcon />}>
       {(close) => (
         <AccountPanel>
           <div className="px-3 py-2">

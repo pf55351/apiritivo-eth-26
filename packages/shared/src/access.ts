@@ -39,6 +39,8 @@ export const saleSchema = z.object({
   serviceId: z.string(),
   providerId: z.string(),
   buyerId: z.string(),
+  /** The wallet that paid (`buyer_address`); older receipts may lack it. */
+  buyerAddress: evmAddressSchema.optional(),
   txHash: z.string(),
   paidUsdc: priceUsdcSchema,
   chainId: z.number().int(),

@@ -2,8 +2,20 @@
 
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
-/** The same account entry point stays available before and after sign-in. */
-export function AccountDropdown({ label, trigger, children }: { label: string; trigger: ReactNode; children: (close: () => void) => ReactNode }) {
+/** Header dropdown: the account entry point (before and after sign-in) and the settings gear share it. */
+export function AccountDropdown({
+  label,
+  panelLabel = "Account",
+  caret = true,
+  trigger,
+  children,
+}: {
+  label: string;
+  panelLabel?: string;
+  caret?: boolean;
+  trigger: ReactNode;
+  children: (close: () => void) => ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -41,17 +53,19 @@ export function AccountDropdown({ label, trigger, children }: { label: string; t
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={() => setOpen((value) => !value)}
-        className="flex min-h-11 w-11 items-center justify-center gap-2 rounded-full border border-transparent p-1 transition-colors hover:border-line hover:bg-surface sm:w-auto sm:justify-start sm:pr-3"
+        className={`flex min-h-11 w-11 items-center justify-center gap-2 rounded-full border border-transparent p-1 transition-colors hover:border-line hover:bg-surface ${caret ? "sm:w-auto sm:justify-start sm:pr-3" : ""}`}
       >
         {trigger}
-        <span className="hidden text-xs text-subtle sm:inline" aria-hidden="true">
-          ▾
-        </span>
+        {caret ? (
+          <span className="hidden text-xs text-subtle sm:inline" aria-hidden="true">
+            ▾
+          </span>
+        ) : null}
       </button>
       {open ? (
         <section
           id={id}
-          aria-label="Account settings"
+          aria-label={panelLabel}
           onClickCapture={(event) => {
             if (event.target instanceof Element && event.target.closest("a")) close();
           }}

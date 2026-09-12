@@ -5,11 +5,6 @@ export function isRole(value: unknown): value is Role {
   return value === "client" || value === "provider";
 }
 
-/** localStorage key: role is a per-identity app preference, not a security boundary. */
-export function roleStorageKey(identityId: string): string {
-  return `apiritivo:role:${identityId}`;
-}
-
 export const ROLE_HOME: Record<Role, string> = {
   client: "/marketplace",
   provider: "/provider",
