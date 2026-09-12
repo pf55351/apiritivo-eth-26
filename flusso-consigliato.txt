@@ -1,0 +1,9 @@
+APIperitivo — flusso originale
+
+1. Il provider pubblica il manifest su Swarm; il piano su Avalanche e la scheda su Arkiv contengono la sua reference.
+2. L'utente entra con Swarm ID, cerca il servizio nel catalogo Arkiv e legge le condizioni da Swarm.
+3. Paga una volta in USDC su Avalanche; il backend verifica il pagamento e crea il pass temporaneo su Arkiv.
+4. A ogni chiamata il gateway controlla identità e pass Arkiv prima di eseguire l'operazione sull'API protetta.
+5. Alla scadenza del pass, le nuove chiamate vengono bloccate. L'utente può archiviare ricevute e risultati consentiti su Swarm.
+
+SQLite conserva sessioni e stato delle attivazioni. Questo flusso non include Swarm Feed né le nuove proposte di rinnovo e recupero automatico del catalogo.

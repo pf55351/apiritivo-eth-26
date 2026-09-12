@@ -1,0 +1,8 @@
+APIperitivo — demo locale
+
+Da questa cartella esegui: pnpm install --frozen-lockfile, poi pnpm demo.
+Apri http://localhost:3002 e scegli Sign in > Enter the demo.
+Prova Text Spritz o JSON Tonic: il pass dura 60 secondi, poi puoi scaricare la ricevuta.
+In Create an offer puoi pubblicare un’offerta per le API già implementate.
+Pagamenti, Arkiv e Swarm sono simulati; le operazioni API funzionano davvero in locale.
+Non servono chiavi o fondi. Per il percorso testnet vedi docs/frontend.md.

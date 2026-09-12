@@ -6,11 +6,26 @@ Avalanche Fuji regola il pagamento in test USDC, Arkiv conserva il pass con scad
 
 ## Stato del progetto
 
-Prima implementazione backend disponibile: schemi Zod/JSON Schema, `AccessMarket.sol`, gateway Fastify, SQLite, autenticazione con chiave derivata da Swarm ID, adapter Fuji/Arkiv/Bee, worker recuperabile e ricevute firmate. Il frontend marketplace è lo step successivo.
+Frontend marketplace disponibile: catalogo con ricerca e filtri, login, acquisto e attivazione dei pass, playground API, scadenza, ricevute e studio per creare offerte. React/Vite e gateway Fastify condividono la stessa origine. Grafica leggera, responsive, in inglese per la demo ETHRome.
 
-Il server usa integrazioni reali. I test usano adapter simulati dichiarati e una blockchain Anvil isolata; non rappresentano scritture sulle reti degli sponsor. Per pubblicare e attivare pass reali servono wallet testnet finanziati e un nodo/gateway Bee con batch disponibile.
+`pnpm start` usa gli adapter reali. `pnpm demo` avvia una demo locale separata, con pagamenti, Arkiv e Swarm simulati e dichiarati nella UI; le operazioni API vengono eseguite realmente dal gateway. Per pubblicare e attivare pass sulle reti degli sponsor servono wallet testnet finanziati e un nodo/gateway Bee con batch disponibile.
 
-## Avvio backend
+## Prova subito la demo
+
+Servono Node.js 24+ e pnpm 10.8.1; nessun wallet, chiave o token.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm demo
+```
+
+Apri **http://localhost:3002**. Entra con **Sign in → Enter the demo**, scegli **Text Spritz** o **JSON Tonic** e premi **Try this API**. In **My passes** esegui richieste vere; dopo 60 secondi l’accesso viene bloccato e puoi scaricare la ricevuta firmata. Da **Create an offer** puoi pubblicare un nuovo piano per una delle operazioni implementate, anche da 30 secondi.
+
+La demo non legge `.env` e usa `var/demo.sqlite`, separato dallo stato testnet. L’identità locale rimane nella scheda del browser; sessioni, piani, manifest e pass persistono ai riavvii del server. Per un’identità portabile si usa Swarm ID in modalità testnet. Dettagli e procedure di recupero nella [guida frontend](docs/frontend.md).
+
+Per provare il bundle compilato: `pnpm web:build && pnpm demo:built`. Puoi cambiare porta con `DEMO_PORT=3003 pnpm demo`; apri sempre l’URL `localhost` indicato nel terminale.
+
+## Avvio con integrazioni testnet
 
 Node.js 24+, pnpm 10.8.1 e Foundry.
 
@@ -20,7 +35,7 @@ pnpm env:init
 pnpm start
 ```
 
-Il gateway risponde su `http://localhost:3001/health`. Senza configurazione, segnala le integrazioni mancanti con `503`; non crea dati fittizi. `pnpm dev` abilita il riavvio automatico.
+Frontend e gateway rispondono su `http://localhost:3001`; il controllo di stato è `/health`. Senza configurazione, le integrazioni mancanti restituiscono `503`; questo avvio non crea offerte simulate. `pnpm dev` abilita il riavvio automatico del gateway. In produzione esegui prima `pnpm build` e configura un’origine HTTPS: il server serve il frontend compilato.
 
 La configurazione è in `.env`, nella cartella del progetto. `SWARM_POSTAGE_BATCH_ID` è la credenziale del batch per gli upload. La **reference del contenuto** è invece `manifestRef`: viene generata dall’upload e inserita automaticamente nel piano Fuji e nel listing Arkiv.
 
@@ -46,6 +61,7 @@ pnpm check:networks
 ```text
 APIperitivo/
 ├── apps/gateway/src/       # HTTP, sessioni, acquisti, worker, SQLite
+├── apps/web/               # Catalogo, login, pass, playground e studio React
 ├── packages/
 │   ├── domain/            # Schemi condivisi, tipi, identificativi
 │   ├── auth/              # Challenge Ed25519 e subject

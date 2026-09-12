@@ -6,17 +6,22 @@ import { ArkivNetwork } from '../../../packages/arkiv/src/client.ts';
 import { FujiMarket } from '../../../packages/avalanche/src/client.ts';
 import { BeeStorage } from '../../../packages/swarm/src/server.ts';
 import { privateKeyToAccount } from 'viem/accounts';
+import { accessMarketAbi } from '../../../packages/avalanche/src/abi.ts';
+import { registerWeb } from './web.ts';
 
 const config = readConfig();
 const release = acquireLock(config.DATABASE_PATH);
 const store = new Store(config.DATABASE_PATH);
 store.recoverInterruptedUsage();
 const issuer = config.ARKIV_ISSUER_ADDRESS ?? (config.ARKIV_PRIVATE_KEY ? privateKeyToAccount(config.ARKIV_PRIVATE_KEY).address : undefined);
+const market = config.MARKET_ADDRESS ? new FujiMarket(config.FUJI_RPC_URL, config.MARKET_ADDRESS, config.PAYMENT_CONFIRMATIONS) : undefined;
 const { api, worker } = await createApp({ config, store,
   arkiv: issuer ? new ArkivNetwork(config.ARKIV_RPC_URL, issuer, config.ARKIV_PRIVATE_KEY) : undefined,
-  market: config.MARKET_ADDRESS ? new FujiMarket(config.FUJI_RPC_URL, config.MARKET_ADDRESS, config.PAYMENT_CONFIRMATIONS) : undefined,
+  market,
+  marketOwner: market ? () => market.client.readContract({ address: market.address, abi: accessMarketAbi, functionName: 'owner' }) : undefined,
   swarm: new BeeStorage(config.SWARM_BEE_URL, config.SWARM_POSTAGE_BATCH_ID),
 });
+await registerWeb(api, config.NODE_ENV !== 'production');
 let timer: ReturnType<typeof setInterval> | undefined;
 if (config.ARKIV_PRIVATE_KEY && worker) {
   const tick = () => { void worker.tick().catch(() => api.log.error('Activation worker failed; retrying next interval')); };
