@@ -2,7 +2,7 @@
 
 Generated with the `ux-flow-designer` skill from the project docs (README, judge walkthrough, pitch, web README). Input was the existing documentation, not a PRD. The goal was to find every flow described in the docs, draw it, and simplify it.
 
-> **Snapshot note (2026-09-12).** These flows, use cases, diagrams and wireframes were drawn when the buyer was a second Swarm ID paying from its Swarm wallet and the app had 4 API routes. Since then the Client identity is the browser wallet (MetaMask, Rabby, Core), Swarm ID is only needed by clients for private files, `/api/grants` was added, "Try the bot" became "Try API", and `/docs` and `/design-system` exist. Read UC-001, UC-003, UC-004 and UC-006 with that in mind; the current behaviour is in [docs/JUDGE-WALKTHROUGH.txt](../JUDGE-WALKTHROUGH.txt) and [docs/technical-guide.md](../technical-guide.md).
+> **Snapshot note (2026-09-12).** These flows, use cases, diagrams and wireframes were drawn when the buyer was a second Swarm ID paying from its Swarm wallet and the app had 4 API routes. Since then the Client identity is the browser wallet (MetaMask, Rabby, Core), Swarm ID is only needed by clients for private files, `/api/grants` was added, "Try the bot" became "Try API", `/docs` and `/design-system` exist, and the `/choose-role` screen was removed (the header switch picks the workspace and the app remembers it per identity). Read UC-001, UC-003, UC-004 and UC-006 with that in mind; the current behaviour is in [docs/JUDGE-WALKTHROUGH.txt](../JUDGE-WALKTHROUGH.txt) and [docs/technical-guide.md](../technical-guide.md).
 
 ## Master screen map
 

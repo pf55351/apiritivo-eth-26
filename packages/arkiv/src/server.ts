@@ -55,7 +55,7 @@ function writeRpcUrl(): string | undefined {
   return fromEnv && fromEnv.length > 0 ? fromEnv : undefined;
 }
 
-export function writerAddress(): Hex | undefined {
+function writerAddress(): Hex | undefined {
   const pk = writerPrivateKey();
   return pk ? privateKeyToAccount(pk).address : undefined;
 }

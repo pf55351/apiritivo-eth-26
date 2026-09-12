@@ -64,7 +64,7 @@ export function verifyUsdcReceipt(receipt: ReceiptLike | null, params: { to: Add
 }
 
 /** Direct mode: fetches the receipt, then `verifyUsdcReceipt`. */
-export async function verifyUsdcPayment(params: { txHash: Hash; to: Address; minUsdc: string }): Promise<PaymentVerification> {
+async function verifyUsdcPayment(params: { txHash: Hash; to: Address; minUsdc: string }): Promise<PaymentVerification> {
   const lookup = await receiptOf(params.txHash);
   return lookupFailure(lookup) ?? verifyUsdcReceipt(lookup.receipt, params);
 }
@@ -106,13 +106,7 @@ export function verifyContractReceipt(
 }
 
 /** Contract mode: fetches the receipt, then `verifyContractReceipt` against the configured contract. */
-export async function verifyContractPurchase(params: {
-  txHash: Hash;
-  provider: Address;
-  serviceId: string;
-  minUsdc: string;
-  accessSeconds?: number;
-}): Promise<PaymentVerification> {
+async function verifyContractPurchase(params: { txHash: Hash; provider: Address; serviceId: string; minUsdc: string; accessSeconds?: number }): Promise<PaymentVerification> {
   const contract = paymentsContractAddress();
   if (!contract) return { ok: false, reason: "Payments contract not configured." };
   const lookup = await receiptOf(params.txHash);

@@ -20,7 +20,6 @@ Taste: variance 6 · motion 3 · density 3. Project layout, copy, and review ski
 | `/passes` | Reuse purchased access | Name, expiry, copy actions, Use API; receipt closed | Failed load never looks empty; expiry states; keys stay hidden until requested |
 | `/provider` | Manage APIs and earnings | Flat metrics; compact API rows; wallet and claim action | Unavailable metrics distinct from zero; sales feed waits for provider address |
 | `/provider/new` | Publish a listing | Plain section headings; compact preview; optional details closed; brief success | Field order and handlers; public listing notice; private file grants; validation retained |
-| `/choose-role` | Pick a workspace | Two plain action rows | Saved view and navigation preserved; keyboard buttons |
 | `/docs` | Learn or troubleshoot | Topics expand on demand; short overview; reference tables retained | Existing anchors; hash opens topic; no scroll listeners; walkthrough labels updated |
 | `/design-system` | Reuse actual UI | Fewer labels; flat examples; underline navigation preview | Shared tokens and components; sample actions stay local |
 
@@ -44,7 +43,7 @@ Scale follow-up: artwork now spans the landing width behind the hero and infrast
 
 Source review: image dimensions and responsive sizing retained; no new dependencies, scroll listeners, or changes to login and workspace actions. Runtime animation and browser support were not tested, following the user's instructions. Scroll range reference: [MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/animation-range).
 
-Built-in ImageGen output: [api-flow.png](../apps/web/public/images/api-flow.png). Previous landing asset.
+Built-in ImageGen output: `api-flow.png`, the previous landing asset (removed from the repo; in git history before commit `13b10cb`).
 
 Prompt:
 
@@ -64,7 +63,7 @@ Prompt:
 
 ## Previous hero asset
 
-Built-in ImageGen output: [api-connection.png](../apps/web/public/images/api-connection.png).
+Built-in ImageGen output: `api-connection.png` (removed from the repo; in git history before commit `13b10cb`).
 
 Prompt:
 

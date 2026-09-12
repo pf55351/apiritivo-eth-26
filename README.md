@@ -59,7 +59,9 @@ The app is a standard Next.js build; only `apps/web` is deployed.
 | Build Command | `next build` (workspace packages are transpiled by Next, no separate build) |
 | Production Branch | the branch that contains this README |
 
-Environment variables to set in the project (see [.env.example](.env.example)): `ARKIV_WRITER_PRIVATE_KEY` (required, server only), `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS` (required for contract mode), and optionally `AVALANCHE_FUJI_RPC_URL` for a dedicated Fuji RPC and `NEXT_PUBLIC_ENS_CHAIN` (`sepolia` default, or `mainnet`) for ENS resolution. Every other `NEXT_PUBLIC_*` has a default in the code.
+Environment variables to set in the project (see [.env.example](.env.example)): `ARKIV_WRITER_PRIVATE_KEY` (required, server only), `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS` (required for contract mode), and optionally `AVALANCHE_FUJI_RPC_URL` for a dedicated Fuji RPC and `NEXT_PUBLIC_ENS_CHAIN` (`sepolia` default, or `mainnet`) for ENS resolution. Every other `NEXT_PUBLIC_*` has a default in the code. If you run your own writer key, also set `NEXT_PUBLIC_ARKIV_WRITER_ADDRESS` to its address: the app only lists entities written by that address.
+
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs Biome, TypeScript, the unit tests, a production build and the Foundry tests on every push and pull request.
 
 Swarm ID scopes the app secret to the page origin: the same identity gets a different derived wallet and pass key on every domain, including each preview URL. Fund and publish on one stable production domain and run the demo there.
 

@@ -6,21 +6,13 @@
   "scripts": {
     "demo:check": "bun demo-check.ts",
     "call": "bun call-service.ts",
-    "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit",
-    "build": "tsc --noEmit",
-    "test": "echo 'no tests'"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@apiritivo/arkiv": "workspace:*",
     "@apiritivo/ens": "workspace:*",
     "@apiritivo/payments": "workspace:*",
-    "@arkiv-network/sdk": "^0.8.1",
+    "@apiritivo/swarm": "workspace:*",
     "viem": "^2.21.0"
-  },
-  "devDependencies": {
-    "@types/bun": "^1.2.0",
-    "@types/node": "^24.3.0",
-    "typescript": "^5.9.0"
   }
 }

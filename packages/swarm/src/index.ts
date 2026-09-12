@@ -8,6 +8,7 @@
 
 import { type ManifestValidation, manifestFromBytes, manifestToBytes, type ServiceManifest } from "@apiritivo/shared";
 import type { ConnectionInfo as SdkConnectionInfo, SwarmIdClient } from "@snaha/swarm-id";
+import { uploadBytesToGateway } from "./gateway";
 
 export type SwarmIdentity = {
   id: string;
@@ -229,17 +230,7 @@ export type UploadedManifest = {
 async function uploadViaGateway(bytes: Uint8Array): Promise<string | null> {
   const gateway = config?.gatewayUrl?.replace(/\/+$/, "");
   if (!gateway) return null;
-  const res = await fetch(`${gateway}/bytes`, {
-    method: "POST",
-    // Only headers on the gateway's CORS allow-list. No Swarm-Pin: it is not allowed and
-    // makes the preflight fail ("Failed to fetch").
-    headers: { "content-type": "application/octet-stream" },
-    body: bytes as BodyInit,
-  });
-  if (!res.ok) throw new Error(`Gateway upload responded ${res.status}`);
-  const json = (await res.json()) as { reference?: string };
-  if (!json.reference) throw new Error("Gateway upload returned no reference");
-  return json.reference;
+  return uploadBytesToGateway(bytes, { gatewayUrl: gateway });
 }
 
 /**
@@ -451,17 +442,6 @@ export async function downloadPrivateFile(params: { encryptedRef: string; histor
     return await c.actDownloadData(params.encryptedRef, params.historyRef, params.publisherPubKey, undefined, { timeout: 60_000 });
   } catch (err) {
     throw new SwarmError("act-failed", "Private file could not be downloaded.", err);
-  }
-}
-
-/** Tear down the iframe (used on hot reload / unmount). */
-export function destroySwarm(): void {
-  try {
-    client?.destroy();
-  } finally {
-    client = undefined;
-    initPromise = undefined;
-    lastInfo = DISCONNECTED;
   }
 }
 

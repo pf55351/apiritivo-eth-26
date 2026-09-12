@@ -2,7 +2,7 @@
 
 APIritivo runs its backend in the Node.js route handlers of the Next.js 15 application at `apps/web`. The server validates requests, verifies Fuji payment receipts, signs Arkiv writes, and gates API execution. Arkiv holds the application records; Swarm holds technical manifests and optional encrypted files; Avalanche Fuji settles USDC payments.
 
-[Open the interactive architecture view](architecture/backend.html) · [Editable diagram specification](architecture/backend.architecture.json) · [Delivery receipt](architecture/backend.delivery.json)
+[Open the interactive architecture view](architecture/backend.html) · [Editable diagram specification](architecture/backend.architecture.json)
 
 This describes the local implementation inspected on 2026-09-12, based on commit `d7c00fcf0cb0537a478369d01f84b89eac3f3c56` and the current working tree. Diagram source links are pinned to that commit; browser components also have local UI edits. The diagram summarizes server dependencies; the browser's direct storage and payment operations are described in its cards and below. External service availability and the active environment configuration were not checked for this documentation task.
 
@@ -97,22 +97,14 @@ Sources: [`entity writer`](../packages/arkiv/src/server.ts), [`query adapter`](.
 
 ## Implemented trust model
 
-All application entity writes are signed by the server's app-owned Arkiv key. `providerId` and `buyerId` are supplied by clients without a server-verified Swarm identity signature. A verified payment proves an observed on-chain transfer or purchase; matching a caller-supplied address does not authenticate that caller's identity. The pass secret is generated and encrypted in the browser, so issuance receives only its hash and ciphertext. Later API calls necessarily send the plaintext secret to the pass guard as part of the bearer credential.
+All application entity writes are signed by the server's app-owned Arkiv key, and all reads trust only that key: queries filter by owner and parsers refuse entities from any other address (`NEXT_PUBLIC_ARKIV_WRITER_ADDRESS`, default = the shipped writer). Anyone can write `app = apiritivo` attributes to the public chain; without the owner check a forged pass, a fake listing or a sale carrying someone else's transaction hash would have been accepted.
 
-Replay prevention is a sale lookup followed by separate pass and receipt writes, not an atomic uniqueness guarantee. Concurrent requests or a failure between those writes can leave a gap. ACT authorization is independent of an access pass's TTL. The gateway supplies access-context headers to a configured provider endpoint, but this repository does not implement the upstream provider's independent authentication or gateway-origin enforcement.
+`providerId` is supplied by the client without a server-verified Swarm identity signature (hackathon boundary). `buyerId` must equal the paying wallet when it is an address, and the paying wallet must sign the pass claim (`personal_sign` over the transaction hash, the secret hash and, when present, the Swarm key allowed to decrypt the private file); the route verifies that signature before verifying the payment, so a bystander who saw the transaction cannot mint the pass with their own secret. The verifier accepts exactly one `Purchased` event per transaction and checks its `accessSeconds` against the listing. The pass secret is generated and encrypted in the browser, so issuance receives only its hash and ciphertext. Later API calls necessarily send the plaintext secret to the pass guard as part of the bearer credential.
 
-These are properties of the current code, not a proposed production topology. Signing publish/purchase requests and contract-driven issuance remain future work.
+The pass and the sale receipt are written in one Arkiv transaction (`executeBatch`), so a retry can never mint a second pass for one payment; concurrent claims for the same transaction share one in-flight write per process. Publishing verifies that the manifest reference resolves to a valid manifest on the Swarm gateway and refuses a service id that already exists. Grants are recorded only for a buyer whose sale carries the same public key. The gateway calls only public `https` endpoints that resolve to public addresses, does not follow redirects, and caps upstream bodies; the Swarm manifest fetch is capped and timed. Every route answers JSON with a stable `{ error, reason? }` shape, bodies are limited to 64 KB, and the write routes are rate limited per IP in memory (5 publications, 10 mints and 20 grants per minute per instance). An RPC outage on Arkiv or Fuji answers 503, never "expired" or "not found".
+
+ACT authorization is independent of an access pass's TTL. This repository does not implement the upstream provider's independent authentication or gateway-origin enforcement. These are properties of the current code, not a proposed production topology. Signing publish requests with the Swarm-derived key, contract-driven issuance and a shared rate-limit store remain future work.
 
 ## Rebuild and verification
 
-The standalone HTML is generated with the `archify` skill. From the repository root, with that skill installed at the path below:
-
-```bash
-node /Users/lory/.codex/skills/archify/bin/archify.mjs validate architecture docs/architecture/backend.architecture.json --repo-root . --quality showcase --json
-node /Users/lory/.codex/skills/archify/bin/archify.mjs deliver architecture docs/architecture/backend.architecture.json docs/architecture/backend.html --repo-root . --quality showcase --json
-node /Users/lory/.codex/skills/archify/bin/archify.mjs visual-check docs/architecture/backend.html --json
-```
-
-Use the installed skill's equivalent path on another machine. `ARCHIFY_CHROME` can point to a local Chrome/Chromium executable for visual checks. Edit the JSON specification and regenerate rather than editing the generated HTML.
-
-The [delivery receipt](architecture/backend.delivery.json) binds the exact specification and HTML SHA-256 digests, reports all nine showcase checks and verifies 15 source references. The [visual-check receipt](architecture/backend.visual-check.json) records viewport measurements and screenshots; its automated `visualReview: pending` field is separate from human/model visual inspection. The final visual review is recorded in [backend.review.json](architecture/backend.review.json).
+The standalone HTML is generated with the `archify` skill (`archify.mjs validate` then `deliver`, both with `--repo-root . --quality showcase`) from the JSON specification next to it. Edit the JSON and regenerate rather than editing the generated HTML. Delivery receipts and visual-check screenshots are not kept in the repository; regenerate them locally when a diagram changes.

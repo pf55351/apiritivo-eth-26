@@ -8,17 +8,10 @@
     "./browser": "./src/browser.ts"
   },
   "scripts": {
-    "build": "tsc --noEmit",
-    "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
     "viem": "^2.21.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.0",
-    "@types/node": "^24.3.0",
-    "@types/bun": "^1.2.0"
   }
 }

@@ -117,10 +117,11 @@ export function parseServiceEntity(entity: RawServiceEntity): ArkivService | nul
 
   const candidate = {
     serviceId: attrString(entity, ATTR.serviceId),
-    category: attrString(entity, ATTR.category) ?? "utility",
+    // No defaults for the fields that decide whether a listing is sold: a half-written entity is dropped.
+    category: attrString(entity, ATTR.category),
     providerId: attrString(entity, ATTR.providerId),
     providerName: attrString(entity, ATTR.providerName),
-    available: attrBool(entity, ATTR.available) ?? true,
+    available: attrBool(entity, ATTR.available),
     version: attrNumber(entity, ATTR.version) ?? 1,
     manifestRef: attrString(entity, ATTR.manifestRef),
     priceUsdc: attrString(entity, ATTR.priceUsdc),
@@ -135,7 +136,7 @@ export function parseServiceEntity(entity: RawServiceEntity): ArkivService | nul
     privateAttachment: attrString(entity, ATTR.privateEncRef)
       ? {
           name: attrString(entity, ATTR.privateName) ?? "private file",
-          bytes: attrNumber(entity, ATTR.privateBytes) ?? 0,
+          bytes: attrNumber(entity, ATTR.privateBytes),
           contentType: attrString(entity, ATTR.privateType),
           encryptedRef: attrString(entity, ATTR.privateEncRef),
           historyRef: attrString(entity, ATTR.privateHistoryRef),

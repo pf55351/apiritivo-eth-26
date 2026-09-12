@@ -1,14 +1,11 @@
 /**
  * Pre-demo readiness check. Run from the repo root: `bun demo:check`
- * Reads apps/web/.env.local, then pings every external dependency the demo needs.
+ * Reads apps/web/.env.local, then pings every external dependency the demo
+ * needs through the same adapters the app uses.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { PAYMENT_CHAIN, paymentsAbi, USDC_ADDRESS, unitsToUsdc } from "@apiritivo/payments";
-import { createPublicClient as createArkivClient } from "@arkiv-network/sdk";
-import { tiramisu } from "@arkiv-network/sdk/chains";
-import { and, eq } from "@arkiv-network/sdk/query";
-import { createPublicClient, erc20Abi, formatEther, http } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { createPublicClient, erc20Abi, http } from "viem";
 
 const envPath = new URL("../apps/web/.env.local", import.meta.url).pathname;
 const env: Record<string, string> = {};
@@ -18,6 +15,11 @@ if (existsSync(envPath)) {
     if (m) env[m[1]!] = m[2]!.trim();
   }
 }
+// The adapters read their configuration from process.env, like the app does.
+for (const [k, v] of Object.entries(env)) if (process.env[k] === undefined) process.env[k] = v;
+const { listServices, trustedWriterAddress } = await import("@apiritivo/arkiv");
+const { getWriterStatus } = await import("@apiritivo/arkiv/server");
+const { uploadBytesToGateway } = await import("@apiritivo/swarm/gateway");
 
 let failures = 0;
 const ok = (label: string, detail = "") => console.log(`  ✓ ${label}${detail ? `  ${detail}` : ""}`);
@@ -26,6 +28,7 @@ const fail = (label: string, detail = "") => {
   failures += 1;
   console.log(`  ✗ ${label}${detail ? `  ${detail}` : ""}`);
 };
+const firstLine = (err: unknown) => String((err as Error)?.message ?? err).split("\n")[0] ?? "";
 
 console.log("\nAPIritivo demo check\n");
 
@@ -39,31 +42,25 @@ if (!pk || !/^0x[0-9a-fA-F]{64}$/.test(pk)) fail("ARKIV_WRITER_PRIVATE_KEY missi
 // 2. Arkiv
 console.log("\nArkiv · Tiramisu");
 try {
-  const arkiv = createArkivClient({ chain: tiramisu, transport: http(env.NEXT_PUBLIC_ARKIV_RPC_URL || undefined) });
-  const chainId = await arkiv.getChainId();
-  ok("RPC reachable", `chain ${chainId}`);
-  if (pk && /^0x[0-9a-fA-F]{64}$/.test(pk)) {
-    const writer = privateKeyToAccount(pk as `0x${string}`);
-    const bal = await arkiv.getBalance({ address: writer.address });
-    const glm = Number(formatEther(bal));
-    (glm > 0.01 ? ok : fail)("writer funded", `${writer.address} · ${glm.toFixed(4)} GLM${glm <= 0.01 ? " → https://hub.arkiv.network/faucet" : ""}`);
+  const writer = await getWriterStatus();
+  if (!writer.configured) fail("writer not configured");
+  else {
+    const glm = Number(writer.balance ?? "0");
+    if (writer.balance === undefined) fail("writer balance unavailable", "RPC unreachable");
+    else (glm > 0.01 ? ok : fail)("writer funded", `${writer.address} · ${glm.toFixed(4)} GLM${glm <= 0.01 ? ` → ${writer.faucetUrl}` : ""}`);
+    (writer.ownerMismatch ? fail : ok)(
+      "reads trust this writer",
+      writer.ownerMismatch ? `writes go to ${writer.address} but reads trust ${writer.trustedOwner}: set NEXT_PUBLIC_ARKIV_WRITER_ADDRESS` : trustedWriterAddress(),
+    );
   }
-  const services = await arkiv
-    .select({ key: true, attributes: true })
-    .where(and(eq("app", "apiritivo"), eq("entity_type", "service")))
-    .limit(50)
-    .fetch();
-  (services.entities.length > 0 ? ok : warn)("services published", `${services.entities.length} (publish one from /provider/new if 0)`);
-  const missingPayout = services.entities.filter((e) => !e.attributes?.payout_address).length;
+  const services = await listServices();
+  (services.length > 0 ? ok : warn)("services published", `${services.length} (publish one from /provider/new if 0)`);
+  const missingPayout = services.filter((s) => !s.payoutAddress).length;
   if (missingPayout > 0) warn("services without payout wallet", `${missingPayout} (not purchasable, republish them)`);
-  const passes = await arkiv
-    .select({ key: true })
-    .where(and(eq("app", "apiritivo"), eq("entity_type", "access_pass")))
-    .limit(50)
-    .fetch();
-  ok("live access passes", String(passes.entities.length));
+  const oddDurations = services.filter((s) => s.accessSeconds !== undefined && s.accessSeconds % 2 !== 0).length;
+  if (oddDurations > 0) warn("services with an odd duration", `${oddDurations} (Arkiv cannot mint their passes)`);
 } catch (err) {
-  fail("Arkiv unreachable", (err as Error).message.split("\n")[0]);
+  fail("Arkiv unreachable", firstLine(err));
 }
 
 // 3. Swarm gateway
@@ -72,16 +69,10 @@ const gateway = (env.NEXT_PUBLIC_SWARM_GATEWAY_URL || "https://api.gateway.ethsw
 try {
   const res = await fetch(`${gateway}/health`, { signal: AbortSignal.timeout(10_000) });
   (res.ok ? ok : fail)("gateway reachable", `${gateway} → ${res.status}`);
-  const up = await fetch(`${gateway}/bytes`, {
-    method: "POST",
-    headers: { "content-type": "application/octet-stream" },
-    body: new TextEncoder().encode('{"v":1,"operations":{"ping":{"input":{}}}}'),
-    signal: AbortSignal.timeout(20_000),
-  });
-  const json = (await up.json().catch(() => ({}))) as { reference?: string };
-  (up.ok && json.reference ? ok : fail)("unstamped upload works", json.reference ? `ref ${json.reference.slice(0, 12)}…` : `HTTP ${up.status}`);
+  const reference = await uploadBytesToGateway(new TextEncoder().encode('{"v":1,"operations":{"ping":{"input":{}}}}'), { gatewayUrl: gateway });
+  ok("unstamped upload works", `ref ${reference.slice(0, 12)}…`);
 } catch (err) {
-  fail("gateway error", (err as Error).message);
+  fail("gateway error", firstLine(err));
 }
 ok("subsidised gateway for Swarm ID", env.NEXT_PUBLIC_SWARM_SUBSIDISED_GATEWAY_URL || "(default) https://api.gateway.ethswarm.org/");
 
@@ -102,7 +93,7 @@ try {
     warn("contract not configured", "direct-transfer mode (deploy with contracts/script/Deploy.s.sol when ready)");
   }
 } catch (err) {
-  fail("Fuji error", (err as Error).message.split("\n")[0]);
+  fail("Fuji error", firstLine(err));
 }
 
 // 5. ENS (read-only, optional)
@@ -116,7 +107,7 @@ try {
   const addr = await resolveEnsAddress(probe);
   (addr ? ok : warn)("universal resolver answers", `${probe} → ${addr ?? "no address record"}`);
 } catch (err) {
-  warn("ENS check skipped", (err as Error).message.split("\n")[0]);
+  warn("ENS check skipped", firstLine(err));
 }
 
 console.log(`\n${failures === 0 ? "READY — go present." : `${failures} blocker(s) to fix before the demo.`}\n`);

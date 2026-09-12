@@ -166,12 +166,12 @@ With no valid `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS`, the adapter switches to d
 
 ## Artifact evidence
 
-The architecture sources are pinned to commit `d7c00fcf0cb0537a478369d01f84b89eac3f3c56`; the inspected API, package and contract source files have no working-tree diff. Browser components have local UI edits. The chain snapshot is independent evidence with its own block and observation time.
+The architecture sources are pinned to commit `d7c00fcf0cb0537a478369d01f84b89eac3f3c56`; the chain snapshot above is independent evidence with its own block and observation time.
 
-| Diagram | Editable input | Delivery receipt |
-| --- | --- | --- |
-| Contract integration | [contracts.architecture.json](contracts.architecture.json) | [contracts.delivery.json](contracts.delivery.json) |
-| Purchase sequence | [purchase.sequence.json](purchase.sequence.json) | [purchase.delivery.json](purchase.delivery.json) |
-| Claim sequence | [claim.sequence.json](claim.sequence.json) | [claim.delivery.json](claim.delivery.json) |
+| Diagram | Editable input |
+| --- | --- |
+| Contract integration | [contracts.architecture.json](contracts.architecture.json) |
+| Purchase sequence | [purchase.sequence.json](purchase.sequence.json) |
+| Claim sequence | [claim.sequence.json](claim.sequence.json) |
 
-Each delivery receipt binds the exact JSON and HTML SHA-256 digests and reports the nine showcase checks. [technical.review.json](technical.review.json) records final visual review. Chain reads were read-only; no wallet signatures, contract writes or deployments were performed.
+The HTML views are regenerated from these files with the `archify` skill. Chain reads were read-only; no wallet signatures, contract writes or deployments were performed.

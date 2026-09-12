@@ -36,4 +36,4 @@ Without a configured payments contract, the client signs a direct USDC transfer 
 | Provider grants and buyer downloads | [`private-grants-panel.tsx`](../../apps/web/components/private-grants-panel.tsx), [`private-files-panel.tsx`](../../apps/web/components/private-files-panel.tsx) |
 | Contract accounting | [`APIritivoPayments.sol`](../../contracts/src/APIritivoPayments.sol) |
 
-Editable inputs: [client.workflow.json](client.workflow.json) and [provider.workflow.json](provider.workflow.json). Delivery receipts: [client.delivery.json](client.delivery.json) and [provider.delivery.json](provider.delivery.json). [Role workflow review](roles.review.json) records the exact artifact digests, nine showcase checks per diagram, and visual verification.
+Editable inputs: [client.workflow.json](client.workflow.json) and [provider.workflow.json](provider.workflow.json). Regenerate the HTML from them with the `archify` skill; receipts and screenshots are not kept in the repository.

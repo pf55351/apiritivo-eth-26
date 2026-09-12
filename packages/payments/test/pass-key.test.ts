@@ -51,3 +51,18 @@ describe("passClaimMessage", () => {
     expect(passClaimMessage(tx, hash)).toBe(passClaimMessage(tx, hash, ""));
   });
 });
+
+describe("keyFromSignature determinism", () => {
+  test("the same account signs PASS_KEY_MESSAGE to the same key, another account to a different one", async () => {
+    const { privateKeyToAccount } = await import("viem/accounts");
+    const { PASS_KEY_MESSAGE } = await import("../src/index");
+    const a = privateKeyToAccount(`0x${"5".repeat(64)}`);
+    const b = privateKeyToAccount(`0x${"6".repeat(64)}`);
+    const k1 = keyFromSignature(await a.signMessage({ message: PASS_KEY_MESSAGE }));
+    const k2 = keyFromSignature(await a.signMessage({ message: PASS_KEY_MESSAGE }));
+    const k3 = keyFromSignature(await b.signMessage({ message: PASS_KEY_MESSAGE }));
+    expect(k1).toEqual(k2);
+    expect(k1.length).toBe(32);
+    expect(Buffer.from(k1).equals(Buffer.from(k3))).toBe(false);
+  });
+});

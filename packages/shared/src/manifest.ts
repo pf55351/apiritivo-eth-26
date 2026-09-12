@@ -30,7 +30,6 @@ export const serviceManifestSchema = z.object({
 });
 
 export type ServiceManifest = z.infer<typeof serviceManifestSchema>;
-export type ServiceOperation = z.infer<typeof operationSchema>;
 
 /** Form-level representation used by the operations builder. */
 export type OperationInputDraft = { id: string; name: string; type: OperationInputType };

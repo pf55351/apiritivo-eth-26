@@ -97,6 +97,7 @@ Other commands: `bun typecheck · bun lint · bun check:fix · bun test · bun r
 | `NEXT_PUBLIC_SWARM_GATEWAY_URL` | browser + server | Public Bee API for manifest links, download fallback and the gateway route (`https://api.gateway.ethswarm.org`) |
 | `NEXT_PUBLIC_SWARM_SUBSIDISED_GATEWAY_URL` | browser | Subsidised gateway passed to Swarm ID so identities without a stamp can upload (`off` to disable) |
 | `NEXT_PUBLIC_ARKIV_RPC_URL`, `ARKIV_RPC_URL` | browser / server | Optional Arkiv RPC overrides (default: Tiramisu public RPC) |
+| `NEXT_PUBLIC_ARKIV_WRITER_ADDRESS` | browser + server | The only Arkiv owner the app trusts when reading. Defaults to the shipped writer; must match `ARKIV_WRITER_PRIVATE_KEY` |
 | `ARKIV_WRITER_PRIVATE_KEY` | **server** | App-owned Arkiv writer. Needs testnet GLM: https://hub.arkiv.network/faucet |
 | `AVALANCHE_FUJI_RPC_URL` | server | Optional Fuji RPC override for payment verification |
 | `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS` | browser + server | `APIritivoPayments` on Fuji. Empty = direct USDC transfers. Changing it needs a `bun dev` restart |
@@ -237,7 +238,7 @@ Note: Tiramisu is a testnet and has been reset before. If `bun demo:check` repor
 
 ### Trust boundary (hackathon)
 
-The Arkiv writer is app-owned (`ARKIV_WRITER_PRIVATE_KEY`); `provider_id` comes from the caller's Swarm ID session and `buyer_id` from the connected wallet, neither is signed. Payments **are** verified on-chain before a pass is minted (`Purchased` event in contract mode, USDC `Transfer` in direct mode), the paying wallet must match `buyer_address`, and a tx can be used once. The pass secret is generated and encrypted in the buyer's browser: the server stores `secret_hash` and the ciphertext and never sees the secret. Going trustless means signing publish/purchase requests with the Swarm-derived key and minting passes from the contract; the entity layout already allows it.
+The Arkiv writer is app-owned (`ARKIV_WRITER_PRIVATE_KEY`) and it is the only owner the app reads: every query filters by that address and every parser refuses entities from another owner, so forged listings, passes or receipts written by someone else with faucet GLM are invisible. `provider_id` comes from the caller's Swarm ID session and is not signed. The buyer **is** proven: the paying wallet signs the pass claim (tx hash + secret hash + optional file key) and the server verifies that signature, then the payment on-chain (`Purchased` event in contract mode, USDC `Transfer` in direct mode, one purchase per tx, duration matching the listing), the paying wallet must match `buyer_address`, and a tx can be used once because pass and receipt land in one Arkiv transaction. The pass secret is generated and encrypted in the buyer's browser: the server stores `secret_hash` and the ciphertext and never sees the secret. Write routes are rate limited per IP, publishing checks the manifest on Swarm first, and the gateway only calls public https endpoints. Going fully trustless means signing publish requests with the Swarm-derived key and minting passes from the contract; the entity layout already allows it.
 
 ### Contract
 

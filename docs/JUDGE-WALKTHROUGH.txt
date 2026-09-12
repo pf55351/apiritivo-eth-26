@@ -72,8 +72,8 @@ STEP 1 — Create the CREATOR identity (Swarm ID)
   2. A dialog opens with the Swarm ID widget. Click its button; a popup opens on swarm-id.snaha.net.
      Create a new identity (or sign in to one you already have). No wallet, no seed phrase.
      If nothing appears, your browser blocked the popup: allow it and click "retry".
-  3. Back in the app, choose "I'm a Provider". This is only a preference; both areas stay reachable.
-     The role screen appears only on the first login of an identity; later logins go straight to the last area.
+  3. Back in the app, flip the header switch to Provider. This is only a preference; both areas
+     stay reachable and the app remembers the last view per identity.
 
   You land on /provider ("My APIs"). Open "Connection details" at the bottom:
     - Swarm ID: your identity name and id

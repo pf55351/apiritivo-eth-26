@@ -8,8 +8,6 @@
     "./server": "./src/server.ts"
   },
   "scripts": {
-    "build": "tsc --noEmit",
-    "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
@@ -17,10 +15,5 @@
     "@apiritivo/shared": "workspace:*",
     "@arkiv-network/sdk": "^0.8.1",
     "viem": "^2.21.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.0",
-    "@types/node": "^24.3.0",
-    "@types/bun": "^1.2.0"
   }
 }

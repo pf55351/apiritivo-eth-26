@@ -8,18 +8,11 @@
     "./gateway": "./src/gateway.ts"
   },
   "scripts": {
-    "build": "tsc --noEmit",
-    "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
     "@apiritivo/shared": "workspace:*",
     "@snaha/swarm-id": "^0.4.1"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.0",
-    "@types/node": "^24.3.0",
-    "@types/bun": "^1.2.0"
   }
 }

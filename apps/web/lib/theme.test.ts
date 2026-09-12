@@ -10,7 +10,7 @@ function rgb(hex: string): RGB {
 }
 
 function luminance(color: RGB) {
-  const [r, g, b] = color.map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  const [r, g, b] = color.map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)) as RGB;
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
@@ -20,7 +20,7 @@ function contrast(a: RGB, b: RGB) {
 }
 
 function mix(foreground: RGB, background: RGB, alpha: number): RGB {
-  return foreground.map((value, index) => value * alpha + background[index] * (1 - alpha)) as RGB;
+  return foreground.map((value, index) => value * alpha + (background[index] ?? 0) * (1 - alpha)) as RGB;
 }
 
 // Read the actual stylesheet, so a later palette edit cannot silently break contrast.
@@ -32,14 +32,20 @@ const blocks = {
 
 for (const [theme, block] of Object.entries(blocks)) {
   describe(`${theme} palette`, () => {
-    const tokens = Object.fromEntries([...block.matchAll(/--ui-([\w-]+):\s*(#[\da-f]{6})/g)].map((match) => [match[1], rgb(match[2])]));
+    const tokens = Object.fromEntries([...block.matchAll(/--ui-([\w-]+):\s*(#[\da-f]{6})/g)].map((match) => [match[1]!, rgb(match[2]!)]));
+    // Every token the assertions name must exist in the palette; a typo fails loudly instead of comparing undefined.
+    const token = (name: string): RGB => {
+      const value = tokens[name];
+      if (!value) throw new Error(`missing token --ui-${name}`);
+      return value;
+    };
     for (const surface of ["canvas", "surface", "surface-raised", "surface-active"]) {
       test(`text and control boundaries on ${surface}`, () => {
         for (const text of ["content", "content-secondary", "muted", "subtle", "accent-text", "success", "warning", "danger"]) {
-          expect(contrast(tokens[text], tokens[surface]), `${text} on ${surface}`).toBeGreaterThanOrEqual(4.5);
+          expect(contrast(token(text), token(surface)), `${text} on ${surface}`).toBeGreaterThanOrEqual(4.5);
         }
         for (const control of ["focus", "border-strong", "primary-border"]) {
-          expect(contrast(tokens[control], tokens[surface]), `${control} on ${surface}`).toBeGreaterThanOrEqual(3);
+          expect(contrast(token(control), token(surface)), `${control} on ${surface}`).toBeGreaterThanOrEqual(3);
         }
       });
     }
@@ -47,9 +53,9 @@ for (const [theme, block] of Object.entries(blocks)) {
     test("state labels on their tinted badge backgrounds", () => {
       for (const surface of ["canvas", "surface", "surface-raised"]) {
         for (const state of ["success", "warning", "danger"]) {
-          expect(contrast(tokens[state], mix(tokens[state], tokens[surface], 0.1)), `${state} badge on ${surface}`).toBeGreaterThanOrEqual(4.5);
+          expect(contrast(token(state), mix(token(state), token(surface), 0.1)), `${state} badge on ${surface}`).toBeGreaterThanOrEqual(4.5);
         }
-        expect(contrast(tokens["accent-text"], mix(rgb("#ff7847"), tokens[surface], 0.1))).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(token("accent-text"), mix(rgb("#ff7847"), token(surface), 0.1))).toBeGreaterThanOrEqual(4.5);
       }
     });
   });

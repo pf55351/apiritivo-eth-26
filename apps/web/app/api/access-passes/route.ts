@@ -2,7 +2,7 @@ import { findSaleByTxHash, getService } from "@apiritivo/arkiv";
 import { issueAccessPass, isWriterConfigured } from "@apiritivo/arkiv/server";
 import { PAYMENT_CHAIN_ID } from "@apiritivo/payments";
 import { verifyPassClaim, verifyPayment } from "@apiritivo/payments/server";
-import { type IssueAccessPassResult, issueAccessPassInputSchema } from "@apiritivo/shared";
+import { type IssueAccessPassInput, type IssueAccessPassResult, issueAccessPassInputSchema } from "@apiritivo/shared";
 import { NextResponse } from "next/server";
 import { clientIp, jsonError, readJsonBody, shortMessage, withJsonErrors } from "@/lib/server/http";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/server/rate-limit";
@@ -44,9 +44,9 @@ export const POST = withJsonErrors("api/access-passes", async (request: Request)
   return work;
 });
 
-async function mint(input: typeof issueAccessPassInputSchema._output, txHash: string): Promise<NextResponse> {
+async function mint(input: IssueAccessPassInput, txHash: string): Promise<NextResponse> {
   const buyerAddress = input.buyerAddress.toLowerCase();
-  // A wallet buyer's id is its address. A Swarm ID buyer keeps its identity id.
+  // The buyer id is the Swarm ID (trusted, see README). An address-shaped id must at least be the payer's.
   if (/^0x[0-9a-fA-F]{40}$/.test(input.buyerId) && input.buyerId.toLowerCase() !== buyerAddress) {
     return jsonError(400, "Buyer id does not match the paying wallet.");
   }
@@ -60,8 +60,8 @@ async function mint(input: typeof issueAccessPassInputSchema._output, txHash: st
   const existing = await findSaleByTxHash(txHash);
   if (existing) return jsonError(409, "This payment was already used for an access pass.", undefined, { passKey: existing.passKey });
 
-  // Only the wallet that paid can claim the pass: it signed this tx hash together with its secret hash
-  // and, when it wants the private file, the Swarm ID key allowed to decrypt it.
+  // Only the wallet that paid can claim the pass: it signed this tx hash together with the secret hash
+  // and the Swarm ID key allowed to decrypt the private file.
   const claimed = await verifyPassClaim({
     buyerAddress: input.buyerAddress as `0x${string}`,
     txHash: txHash as `0x${string}`,

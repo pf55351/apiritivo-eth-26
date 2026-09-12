@@ -153,8 +153,9 @@ export async function resolveServiceRecords(name: string): Promise<EnsServiceRec
   const n = normalizeEnsName(name);
   if (!n) throw new Error("Invalid ENS name.");
   const c = client();
+  // The address lookup is not caught: an RPC outage must surface as an error, not as "record not set".
   const [address, serviceId, contenthash] = await Promise.all([
-    c.getEnsAddress({ name: n, universalResolverAddress: universalResolverAddress() }).catch(() => null),
+    c.getEnsAddress({ name: n, universalResolverAddress: universalResolverAddress() }),
     c.getEnsText({ name: n, key: ENS_SERVICE_TEXT_KEY, universalResolverAddress: universalResolverAddress() }).catch(() => null),
     readContenthash(c, n),
   ]);

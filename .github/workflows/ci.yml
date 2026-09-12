@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, feat/**]
+  pull_request:
+
+jobs:
+  web:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.8"
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun typecheck
+      - run: bun test
+      - name: Production build (apps/web)
+        run: bun run build
+        env:
+          # Public config only; the writer key is not needed to build.
+          NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS: "0x4e98f464dc8c667e3b0fd3092e0f2d4585702fa3"
+          NEXT_PUBLIC_ENS_CHAIN: sepolia
+
+  contracts:
+    name: Foundry tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - run: forge test -vv
+        working-directory: contracts

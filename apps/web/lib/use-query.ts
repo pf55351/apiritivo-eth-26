@@ -43,5 +43,3 @@ export function useQuery<T>(key: string | null, load: (key: string) => Promise<T
   const visible = state.key === key ? state : emptyQuery<T>(key);
   return { ...visible, initialLoading: visible.loading && visible.data === null, refreshing: visible.loading && visible.data !== null, reload };
 }
-
-export type QueryResult<T> = ReturnType<typeof useQuery<T>>;

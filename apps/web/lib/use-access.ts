@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  type BlockTiming,
-  findGrant,
-  findGrantForKey,
-  getBlockTiming,
-  listAccessPassesByBuyer,
-  listAccessPassesForService,
-  listSalesByProvider,
-  secondsUntilBlock,
-} from "@apiritivo/arkiv";
+import { type BlockTiming, findGrantForKey, getBlockTiming, listAccessPassesByBuyer, listAccessPassesForService, listSalesByProvider, secondsUntilBlock } from "@apiritivo/arkiv";
 import type { AccessPass, Grant, Sale } from "@apiritivo/shared";
 import { useEffect, useRef, useState } from "react";
 import { watchPassTiming } from "./pass-timing";
@@ -45,17 +36,6 @@ export function useMyPasses(buyerId: string | null) {
 
 export function useProviderSales(providerId: string | null) {
   return useQuery<Sale[]>(providerId, listSalesByProvider, "Could not load your sales from Arkiv.", getBlockTiming);
-}
-
-const loadGrant = (k: string) => {
-  const [s, b] = k.split("::");
-  return findGrant(s!, b!);
-};
-
-/** The grant a buyer holds for a service's private file; `null` data = none yet. */
-export function useGrant(serviceId: string | null, buyerId: string | null) {
-  const key = serviceId && buyerId ? `${serviceId}::${buyerId}` : null;
-  return useQuery<Grant | null>(key, loadGrant, "Could not check private file access on Arkiv.");
 }
 
 const loadGrantForKey = (k: string) => {

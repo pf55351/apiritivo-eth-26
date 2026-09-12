@@ -138,16 +138,22 @@ async function queryEntities<T>(entityType: string, extra: ReturnType<typeof eq>
   return out;
 }
 
+function compareBigint(a: bigint, b: bigint): number {
+  return a > b ? 1 : a < b ? -1 : 0;
+}
+const byExpiryDesc = (a: AccessPass, b: AccessPass) => compareBigint(BigInt(b.expiresAtBlock), BigInt(a.expiresAtBlock));
+const byCreatedDesc = (a: { createdAtBlock?: string }, b: { createdAtBlock?: string }) => compareBigint(BigInt(b.createdAtBlock ?? "0"), BigInt(a.createdAtBlock ?? "0"));
+
 /** Live (non-expired) passes owned by a buyer. Arkiv drops expired entities itself. */
 export async function listAccessPassesByBuyer(buyerId: string): Promise<AccessPass[]> {
   const passes = await queryEntities(ACCESS_PASS_ENTITY_TYPE, [eq(ATTR.buyerId, buyerId)], parseAccessPassEntity);
-  return passes.sort((a, b) => (BigInt(b.expiresAtBlock) > BigInt(a.expiresAtBlock) ? 1 : -1));
+  return passes.sort(byExpiryDesc);
 }
 
 /** Live passes of one buyer for one service. */
 export async function listAccessPassesForService(serviceId: string, buyerId: string): Promise<AccessPass[]> {
   const passes = await queryEntities(ACCESS_PASS_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerId, buyerId)], parseAccessPassEntity);
-  return passes.sort((a, b) => (BigInt(b.expiresAtBlock) > BigInt(a.expiresAtBlock) ? 1 : -1));
+  return passes.sort(byExpiryDesc);
 }
 
 /**
@@ -175,13 +181,13 @@ export async function listSalesByProvider(providerId: string): Promise<Sale[]> {
 /** Grants of a service's private file, newest first (the newest history ref is the live ACT). */
 export async function listGrantsForService(serviceId: string): Promise<Grant[]> {
   const grants = await queryEntities(GRANT_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId)], parseGrantEntity);
-  return grants.sort((a, b) => (BigInt(b.createdAtBlock ?? "0") > BigInt(a.createdAtBlock ?? "0") ? 1 : -1));
+  return grants.sort(byCreatedDesc);
 }
 
 /** The grant a buyer holds for a service's private file, if any. */
 export async function findGrant(serviceId: string, buyerId: string): Promise<Grant | null> {
   const grants = await queryEntities(GRANT_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerId, buyerId)], parseGrantEntity);
-  grants.sort((a, b) => (BigInt(b.createdAtBlock ?? "0") > BigInt(a.createdAtBlock ?? "0") ? 1 : -1));
+  grants.sort(byCreatedDesc);
   return grants[0] ?? null;
 }
 
@@ -192,14 +198,14 @@ export async function findGrant(serviceId: string, buyerId: string): Promise<Gra
  */
 export async function findGrantForKey(serviceId: string, buyerPublicKey: string): Promise<Grant | null> {
   const grants = await queryEntities(GRANT_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerPublicKey, buyerPublicKey)], parseGrantEntity);
-  grants.sort((a, b) => (BigInt(b.createdAtBlock ?? "0") > BigInt(a.createdAtBlock ?? "0") ? 1 : -1));
+  grants.sort(byCreatedDesc);
   return grants[0] ?? null;
 }
 
 /** Newest sale receipt of a buyer for a service (grants are only recorded for real purchases). */
 export async function findSaleForBuyer(serviceId: string, buyerId: string): Promise<Sale | null> {
   const sales = await queryEntities(SALE_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerId, buyerId)], parseSaleEntity);
-  sales.sort((a, b) => (BigInt(b.createdAtBlock ?? "0") > BigInt(a.createdAtBlock ?? "0") ? 1 : -1));
+  sales.sort(byCreatedDesc);
   return sales[0] ?? null;
 }
 

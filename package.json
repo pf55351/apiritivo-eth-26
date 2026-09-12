@@ -9,8 +9,8 @@
   ],
   "scripts": {
     "dev": "turbo dev",
-    "build": "turbo build",
-    "lint": "biome check . && turbo lint",
+    "build": "turbo build --filter=@apiritivo/web",
+    "lint": "biome check . && bun --cwd apps/web lint",
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "format": "biome format --write .",
@@ -24,6 +24,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",
+    "@types/bun": "^1.2.0",
+    "@types/node": "^24.3.0",
     "turbo": "^2.5.0",
     "typescript": "^5.9.0"
   }

@@ -60,7 +60,7 @@ export function secretToPrivateKey(secret: Uint8Array): `0x${string}` {
   return toHex(secret);
 }
 
-export async function connectInjectedWallet(): Promise<{ address: Address; chainId: number }> {
+async function connectInjectedWallet(): Promise<{ address: Address; chainId: number }> {
   const eth = provider();
   try {
     const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
@@ -175,10 +175,6 @@ export async function getBalances(address: Address): Promise<Balances> {
   return { avax: formatEther(avax), usdc: unitsToUsdc(usdc) };
 }
 
-export async function getUsdcBalance(address: Address): Promise<string> {
-  return (await getBalances(address)).usdc;
-}
-
 export type ProviderStats = { claimableUsdc: string; totalEarnedUsdc: string };
 export type ServiceStats = { revenueUsdc: string; purchases: number };
 
@@ -208,8 +204,9 @@ export async function readServiceStats(serviceId: string): Promise<ServiceStats 
 export async function readRecentPurchases(limit = 20): Promise<OnChainPurchase[] | null> {
   const contract = paymentsContractAddress();
   if (!contract) return null;
-  const rows = await publicClient().readContract({ address: contract, abi: paymentsAbi, functionName: "getPurchases", args: [0n, BigInt(limit)] });
+  // Count first: a purchase landing between the two reads would otherwise shift every id.
   const total = Number(await publicClient().readContract({ address: contract, abi: paymentsAbi, functionName: "purchaseCount" }));
+  const rows = await publicClient().readContract({ address: contract, abi: paymentsAbi, functionName: "getPurchases", args: [0n, BigInt(Math.min(limit, total || 0))] });
   return rows.map((r, i) => ({
     purchaseId: total - 1 - i,
     buyer: r.buyer,

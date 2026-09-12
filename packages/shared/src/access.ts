@@ -92,8 +92,8 @@ export const issueAccessPassInputSchema = z.object({
     .string()
     .regex(/^0x[0-9a-fA-F]+$/)
     .max(512),
-  /** Buyer's Swarm public key, so the provider can grant private files (optional). */
-  buyerPublicKey: actPublicKeySchema.optional(),
+  /** The buying Swarm ID's sharing key: the only key the provider may grant private files to. */
+  buyerPublicKey: actPublicKeySchema,
   /** `personal_sign` by `buyerAddress` of the pass claim for `txHash` + `secretHash` (see `passClaimMessage`). */
   buyerSignature: z.string().regex(/^0x[0-9a-fA-F]{130}$/, "Expected a 65-byte signature"),
 });
@@ -116,7 +116,6 @@ export const botRequestSchema = z.object({
   operation: z.string().min(1).max(64),
   input: z.record(z.string(), z.unknown()).default({}),
 });
-export type BotRequest = z.infer<typeof botRequestSchema>;
 
 export type BotVerification = {
   passKey: string;

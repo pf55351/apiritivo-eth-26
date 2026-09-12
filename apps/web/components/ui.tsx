@@ -114,7 +114,7 @@ export function ProfileAvatar({ name, size = 36 }: { name: string; size?: number
   );
 }
 
-export function Avatar({ name, seed, src, size = 36 }: { name: string; seed?: string; src?: string; size?: number }) {
+export function Avatar({ name, seed, size = 36 }: { name: string; seed?: string; size?: number }) {
   const hue = hueFor(seed ?? name);
   const style = {
     width: size,
@@ -124,12 +124,7 @@ export function Avatar({ name, seed, src, size = 36 }: { name: string; seed?: st
   };
   return (
     <span className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg font-semibold text-on-accent" style={style} role="img" aria-label={name}>
-      {src ? (
-        // biome-ignore lint/performance/noImgElement: avatar URLs come from Swarm ID and are not allow-listed for next/image
-        <img src={src} alt={name} className="h-full w-full object-cover" /> // eslint-disable-line @next/next/no-img-element
-      ) : (
-        initials(name)
-      )}
+      {initials(name)}
     </span>
   );
 }

@@ -49,6 +49,6 @@ describe("verifyServiceRecords", () => {
   test("records recipe lists the three records", () => {
     const r = recordsForService(service);
     expect(r.map((x) => x.kind)).toEqual(["addr", "text", "contenthash"]);
-    expect(r[2].value).toBe(`bzz://${REF}`);
+    expect(r[2]?.value).toBe(`bzz://${REF}`);
   });
 });

@@ -71,3 +71,26 @@ export async function readCapped(res: Response, maxBytes: number): Promise<Uint8
   }
   return out;
 }
+
+/**
+ * `POST <gateway>/bytes`: the public gateway stamps the upload on our behalf.
+ * Only headers on the gateway's CORS allow-list; never `Swarm-Pin`.
+ */
+export async function uploadBytesToGateway(bytes: Uint8Array, options: GatewayFetchOptions): Promise<string> {
+  const base = options.gatewayUrl.replace(/\/+$/, "");
+  let res: Response;
+  try {
+    res = await fetch(`${base}/bytes`, {
+      method: "POST",
+      headers: { "content-type": "application/octet-stream" },
+      body: bytes as BodyInit,
+      signal: AbortSignal.timeout(options.timeoutMs ?? 20_000),
+    });
+  } catch (err) {
+    throw new GatewayError("unreachable", "Swarm gateway did not answer.", err);
+  }
+  if (!res.ok) throw new GatewayError("bad-status", `Gateway upload responded ${res.status}.`);
+  const json = (await res.json().catch(() => ({}))) as { reference?: string };
+  if (!json.reference) throw new GatewayError("bad-status", "Gateway upload returned no reference.");
+  return json.reference;
+}

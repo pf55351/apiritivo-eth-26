@@ -21,8 +21,6 @@ export const SERVICE_CATEGORIES = [
   { slug: "utility", label: "Utility" },
 ] as const;
 
-export type CategorySlug = (typeof SERVICE_CATEGORIES)[number]["slug"];
-
 export function categoryLabel(slug: string): string {
   const found = SERVICE_CATEGORIES.find((c) => c.slug === slug);
   if (found) return found.label;
