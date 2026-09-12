@@ -71,6 +71,8 @@ export function canonical(value: unknown): string {
   return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${canonical((value as Record<string, unknown>)[k])}`).join(',')}}`;
 }
 export const manifestMessage = (m: Manifest) => `APIperitivo manifest v1\n${canonical(m)}`;
+// Separate from the public manifest: a copied manifest signature cannot claim a publisher session.
+export const publicationMessage = (subject: Hex, m: Manifest) => `APIperitivo publication authorization v1\n${subject}\n${keccak256(stringToHex(canonical(m)))}`;
 export const receiptMessage = (r: unknown) => `APIperitivo receipt v1\n${canonical(r)}`;
 export const namedId = (name: string): Hex => keccak256(stringToHex(`${APP}:${name}`));
 export function purchaseId(chainId: number, market: Hex, payer: Hex, intent: Hex): Hex {

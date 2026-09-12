@@ -49,5 +49,6 @@ export class Purchases {
 // Never expose signed raw activation transactions through HTTP responses.
 export function purchaseView(p: Purchase) {
   return { purchaseId: p.payment.purchaseId, planId: p.intent.planId, subject: p.intent.subject, payer: p.intent.payer,
-    status: p.status, payment: p.payment, activation: p.activation, attempts: p.attempts, lastError: p.lastError };
+    status: p.status, payment: p.payment, activation: p.activation, attempts: p.attempts, lastError: p.lastError,
+    manifest: p.manifest, manifestRef: p.intent.manifestRef };
 }

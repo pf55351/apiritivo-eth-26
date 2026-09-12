@@ -14,15 +14,19 @@ import { Purchases, purchaseView } from './services/purchases.ts';
 import type { Config } from './config.ts';
 import type { Store } from './db/store.ts';
 import { operationSchemas } from '../../../packages/domain/src/operations.ts';
+import { Offers } from './services/offers.ts';
+import type { DemoNetwork } from './demo/network.ts';
 
-export type Dependencies = { config: Config; store: Store; arkiv?: ArkivPort; market?: MarketPort; swarm: SwarmPort; operations?: Record<string, Operation> };
+export type Dependencies = { config: Config; store: Store; arkiv?: ArkivPort; market?: MarketPort; swarm: SwarmPort; operations?: Record<string, Operation>; demo?: DemoNetwork; marketOwner?: () => Promise<Hex> };
 export async function createApp(deps: Dependencies) {
   const { config, store, arkiv, market, swarm } = deps;
+  if (deps.demo && config.NODE_ENV === 'production') throw new Error('Demo adapters cannot run in production');
   const api = Fastify({ logger: { level: config.NODE_ENV === 'test' ? 'silent' : 'info', redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers.set-cookie'] }, bodyLimit: 131072, requestTimeout: 35000 });
   await api.register(cookie);
   await api.register(rateLimit, { max: 120, timeWindow: '1 minute' });
   const purchases = arkiv && market ? new Purchases(store, market, arkiv, swarm) : undefined;
-  const worker = arkiv && market ? new ActivationWorker(store, arkiv, market) : undefined;
+  const offers = arkiv && market && (deps.demo || deps.marketOwner) ? new Offers(store, market, arkiv, swarm, deps.marketOwner) : undefined;
+  const worker = arkiv && market ? new ActivationWorker(store, arkiv, market, async () => { await offers?.recoverPending(); }) : undefined;
   const operations = deps.operations ?? defaultOperations;
   const requirePurchases = () => { if (!purchases) throw new AppError('PAYMENTS_NOT_CONFIGURED', 503); return purchases; };
   const requireArkiv = () => { if (!arkiv) throw new AppError('ARKIV_NOT_CONFIGURED', 503); return arkiv; };
@@ -48,6 +52,10 @@ export async function createApp(deps: Dependencies) {
       if (!bearerInvoke && request.headers.origin !== config.APP_ORIGIN) throw new AppError('ORIGIN_REJECTED', 403);
     }
   });
+  api.addHook('onSend', async (request, reply) => {
+    if (request.url.startsWith('/api/')) reply.header('Cache-Control', 'no-store');
+    reply.header('X-Content-Type-Options', 'nosniff');
+  });
   api.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {
     const appError = error instanceof AppError ? error : error instanceof ZodError
       ? new AppError('INVALID_INPUT', 400) : new AppError(error.statusCode === 429 ? 'RATE_LIMITED' : error.statusCode === 413 ? 'BODY_TOO_LARGE' : error.statusCode === 400 ? 'INVALID_INPUT' : 'DEPENDENCY_UNAVAILABLE', error.statusCode && error.statusCode < 500 ? error.statusCode : 503);
@@ -57,7 +65,42 @@ export async function createApp(deps: Dependencies) {
     reply.code(appError.status).send({ error: { code: appError.code, message: appError.message }, requestId: request.id });
   });
   api.get('/health', async () => ({ app: 'apiperitivo', status: 'running', configured: { arkiv: !!arkiv, payments: !!market, swarmUpload: !!config.SWARM_POSTAGE_BATCH_ID, activationSigner: !!config.ARKIV_PRIVATE_KEY } }));
-  api.get('/api/config', async () => ({ appOrigin: config.APP_ORIGIN, swarmIdUrl: config.SWARM_ID_URL, chainId: 43113, market: market?.address, arkivIssuer: arkiv?.issuer }));
+  api.get('/api/config', async () => ({ appOrigin: config.APP_ORIGIN, swarmIdUrl: config.SWARM_ID_URL, chainId: 43113, market: market?.address, arkivIssuer: arkiv?.issuer,
+    mode: deps.demo ? 'demo' : 'testnet', treasury: config.TREASURY_ADDRESS ?? deps.demo?.issuer, feeBps: 1000,
+    publisher: await deps.marketOwner?.().catch(() => undefined),
+    ready: { catalog: !!arkiv, checkout: !!market && !!arkiv && (!!deps.demo || !!config.ARKIV_PRIVATE_KEY), publishing: !!offers && (!!deps.demo || !!config.SWARM_POSTAGE_BATCH_ID) && (!!deps.demo || !!config.ARKIV_PRIVATE_KEY), receipts: !!config.RECEIPT_PRIVATE_KEY },
+  }));
+  api.get('/api/auth/session', async request => ({ subject: session(request) }));
+  api.get('/api/offers', async request => { const subject = session(request); return { offers: offers?.list(subject) ?? [] }; });
+  api.post('/api/offers', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async request => {
+    const subject = session(request);
+    if (!offers) throw new AppError('PUBLISHING_NOT_CONFIGURED', 503);
+    return offers.prepare(subject, request.body);
+  });
+  api.post('/api/offers/:planId/publish', async request => {
+    const subject = session(request), { planId } = z.strictObject({ planId: nonzero32 }).parse(request.params);
+    if (!offers || !worker) throw new AppError('PUBLISHING_NOT_CONFIGURED', 503);
+    return offers.publish(subject, planId, worker);
+  });
+  api.post('/api/offers/:planId/prepare', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async request => {
+    const subject = session(request), { planId } = z.strictObject({ planId: nonzero32 }).parse(request.params);
+    if (!offers) throw new AppError('PUBLISHING_NOT_CONFIGURED', 503);
+    return offers.resume(subject, planId);
+  });
+  if (deps.demo) {
+    api.post('/api/demo/pay', async request => {
+      const subject = session(request), { purchaseIntentId } = z.strictObject({ purchaseIntentId: nonzero32 }).parse(request.body);
+      const intent = store.getIntent(purchaseIntentId);
+      if (!intent || intent.subject !== subject) throw new AppError('PURCHASE_NOT_FOUND', 404);
+      return deps.demo!.pay(intent);
+    });
+    api.post('/api/demo/register', async request => {
+      const subject = session(request), { planId } = z.strictObject({ planId: nonzero32 }).parse(request.body);
+      const offer = offers!.get(planId, subject);
+      if (!offer.reference) throw new AppError('MANIFEST_NOT_UPLOADED', 409);
+      deps.demo!.register(offer.signed.manifest, offer.reference); return { registered: true };
+    });
+  }
   api.get('/api/operations', async () => Object.fromEntries(Object.entries(operationSchemas).map(([id, schemas]) => [id, {
     input: z.toJSONSchema(schemas.input), output: z.toJSONSchema(schemas.output),
   }])));
@@ -96,12 +139,12 @@ export async function createApp(deps: Dependencies) {
   api.get('/api/passes', async request => {
     const result = [];
     for (const p of store.purchases(session(request))) {
-      let access = 'pending';
+      let access = 'pending', remainingSeconds: number | undefined;
       if (p.activation) {
-        try { const live = await check(p); access = live.active ? 'active' : live.head >= BigInt(p.activation.expiresAtBlock) ? 'expired' : 'inactive'; }
+        try { const live = await check(p); access = live.active ? 'active' : live.head >= BigInt(p.activation.expiresAtBlock) ? 'expired' : 'inactive'; remainingSeconds = Math.max(0, Number(BigInt(p.activation.expiresAtBlock) - live.head) * 2); }
         catch { access = 'unavailable'; }
       }
-      result.push({ ...purchaseView(p), access });
+      result.push({ ...purchaseView(p), access, remainingSeconds, checkedAt: Date.now() });
     }
     return { passes: result };
   });

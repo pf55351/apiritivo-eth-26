@@ -4,14 +4,22 @@ import type { Store } from '../db/store.ts';
 
 export class ActivationWorker {
   private running?: Promise<void>;
-  constructor(private store: Store, private arkiv: ArkivPort, private market: MarketPort) {}
+  constructor(private store: Store, private arkiv: ArkivPort, private market: MarketPort, private recoverPublication: () => Promise<void> = async () => {}) {}
   async drain() { await this.running; }
+  async exclusive<T>(work: () => Promise<T>): Promise<T> {
+    if (this.running || this.store.purchases().some(p => p.signedTransaction && !p.activation)) throw new AppError('ISSUER_BUSY', 409);
+    const task = work();
+    this.running = task.then(() => {}, () => {}).finally(() => { this.running = undefined; });
+    return task;
+  }
   tick(): Promise<void> {
     if (this.running) return this.running;
     this.running = this.run().finally(() => { this.running = undefined; });
     return this.running;
   }
   private async run() {
+    // Resolve a saved publication transaction before assigning the issuer another nonce.
+    await this.recoverPublication();
     // A signed tx may not have reached the mempool. Reserve its nonce by blocking
     // later creates until it has a receipt; retry backoff must not allow overtaking.
     const jobs = this.store.purchases().sort((a, b) => Number(!!b.signedTransaction && !b.activation) - Number(!!a.signedTransaction && !a.activation));
