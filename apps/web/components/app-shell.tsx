@@ -1,14 +1,16 @@
 "use client";
 
-import { explorerAddressUrl, PAYMENT_CHAIN_NAME, paymentsContractAddress } from "@apiritivo/payments";
+import { explorerAddressUrl, paymentsContractAddress } from "@apiritivo/payments";
 import type { Role } from "@apiritivo/shared";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useSession } from "@/lib/session";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
+import { AccountDropdown, GuestAccountIcon } from "./account-dropdown";
+import { AccountPanel } from "./account-panel";
 import { SwarmSignIn } from "./swarm-sign-in";
-import { ThemeToggle } from "./theme-toggle";
+import { ThemeSync } from "./theme-toggle";
 import { BrandLogo, BrandMark, Button, ProfileAvatar } from "./ui";
 import { WalletMenu } from "./wallet-menu";
 import { WorkspaceSwitch } from "./workspace-switch";
@@ -61,77 +63,47 @@ function IdentityMenu() {
   const session = useSession();
   const wallet = useSwarmWallet();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        ref.current?.querySelector("button")?.focus();
-      }
-    };
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
   // Client workspace: the connected wallet is the identity; Swarm ID stays optional for private files.
   if ((session.role ?? "client") === "client") return <WalletMenu />;
 
   if (!session.identity) {
     return (
-      <Button size="sm" className="w-11 whitespace-nowrap px-0 sm:w-auto sm:px-2.5" onClick={session.connect} disabled={session.status !== "ready" || session.connecting}>
-        <span className="sr-only sm:not-sr-only">{session.connecting ? "Complete sign in" : "Enter with Swarm ID"}</span>
-        <svg className="h-5 w-5 sm:hidden" aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M11 3h5v14h-5M3 10h9m-3-3 3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </Button>
+      <AccountDropdown label="Account settings" trigger={<GuestAccountIcon />}>
+        {(close) => (
+          <AccountPanel>
+            <div className="px-3 py-2">
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  close();
+                  session.connect();
+                }}
+                disabled={session.status !== "ready" || session.connecting}
+              >
+                {session.connecting ? "Complete sign in" : "Enter with Swarm ID"}
+              </Button>
+            </div>
+          </AccountPanel>
+        )}
+      </AccountDropdown>
     );
   }
 
   const { identity } = session;
 
   return (
-    <div className="sm:relative" ref={ref}>
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-label={`Account for ${identity.name}`}
-        onClick={() => setOpen((v) => !v)}
-        className="flex min-h-11 w-11 items-center justify-center gap-2 rounded-full border border-transparent p-1 transition-colors hover:border-line hover:bg-surface sm:w-auto sm:justify-start sm:pr-3"
-      >
-        <ProfileAvatar name={identity.name} size={34} />
-        <span className="hidden max-w-[120px] truncate text-sm xl:block">{identity.name}</span>
-        <span className="hidden text-xs text-subtle sm:inline">▾</span>
-      </button>
-      {open ? (
-        <div className="absolute right-3 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-panel border border-line bg-surface p-2 shadow-lg sm:right-0 sm:top-auto">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <ProfileAvatar name={identity.name} size={48} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{identity.name}</p>
-              {wallet.address ? (
-                <a
-                  href={explorerAddressUrl(wallet.address)}
-                  target="_blank"
-                  rel="noreferrer"
-                  title={`View wallet on ${PAYMENT_CHAIN_NAME}`}
-                  className="inline-flex min-h-8 items-center gap-1 rounded-control text-xs text-accent-text hover:underline"
-                >
-                  Address <span aria-hidden="true">↗</span>
-                </a>
-              ) : null}
-            </div>
-          </div>
-          <div className="mx-3 my-1 border-t border-line" />
+    <AccountDropdown
+      label={`Account for ${identity.name}`}
+      trigger={
+        <>
+          <ProfileAvatar name={identity.name} size={34} />
+          <span className="hidden max-w-[120px] truncate text-sm xl:block">{identity.name}</span>
+        </>
+      }
+    >
+      {(close) => (
+        <AccountPanel name={identity.name} address={wallet.address}>
           <div className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
             <span className="text-muted">Swarm upload</span>
             <span className={`inline-flex items-center gap-1.5 ${session.canUpload ? "text-success" : "text-warning"}`}>
@@ -143,16 +115,16 @@ function IdentityMenu() {
             type="button"
             className="mt-2 min-h-11 w-full rounded-control px-3 py-2 text-left text-sm text-danger hover:bg-danger/10"
             onClick={async () => {
-              setOpen(false);
+              close();
               await session.disconnect();
               router.push("/");
             }}
           >
             Logout
           </button>
-        </div>
-      ) : null}
-    </div>
+        </AccountPanel>
+      )}
+    </AccountDropdown>
   );
 }
 
@@ -165,11 +137,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="bg-scene flex min-h-dvh flex-col">
+      <ThemeSync />
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
       <header className="app-navbar sticky top-0 z-20 border-b border-line" data-workspace={view}>
-        <div className="mx-auto grid min-h-16 max-w-7xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:gap-x-4 sm:px-6 lg:grid-cols-[auto_1fr_auto_auto_auto] lg:px-8">
+        <div className="mx-auto grid min-h-16 max-w-7xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:gap-x-4 sm:px-6 lg:grid-cols-[auto_1fr_auto_auto] lg:px-8">
           <Link href="/" aria-label="APIritivo home" className="order-1 flex min-h-11 items-center justify-center gap-2.5 sm:justify-start">
             <span className="sm:hidden">
               <BrandMark />
@@ -180,7 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <nav
             aria-label={`${view === "client" ? "Client" : "Provider"} navigation`}
-            className="order-4 col-span-3 col-start-1 row-start-2 flex min-w-0 items-center gap-1 overflow-x-auto p-1 pr-20 lg:order-2 lg:col-span-1 lg:col-start-auto lg:row-start-auto lg:justify-center lg:pr-1"
+            className="order-4 col-span-3 col-start-1 row-start-2 flex min-w-0 items-center gap-1 overflow-x-auto p-1 lg:order-2 lg:col-span-1 lg:col-start-auto lg:row-start-auto lg:justify-center"
           >
             {roleLoaded ? (
               VIEW_LINKS[view].map((link) => (
@@ -194,17 +167,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               </span>
             )}
           </nav>
-          <div className="order-2 flex items-center justify-self-center gap-1 sm:gap-3 lg:order-3">
-            <nav aria-label="Documentation">
-              <NavLink href="/docs">Docs</NavLink>
-            </nav>
+          <div className="order-2 justify-self-end lg:order-3">
             <IdentityMenu />
           </div>
           <div className="order-3 justify-self-end lg:order-4">
             <WorkspaceSwitch />
-          </div>
-          <div className="order-5 col-start-3 row-start-2 justify-self-end lg:col-start-auto lg:row-start-auto">
-            <ThemeToggle />
           </div>
         </div>
       </header>

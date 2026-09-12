@@ -13,6 +13,7 @@ import {
   SERVICE_ENTITY_TYPE,
   saleSchema,
 } from "@apiritivo/shared";
+import { trustedWriterAddress } from "./config";
 
 /**
  * On-chain attribute names. snake_case because the Arkiv engine only accepts
@@ -70,6 +71,15 @@ export type RawServiceEntity = {
   toJson?: () => unknown;
 };
 
+/**
+ * Only entities written by the app-owned writer are APIritivo entities. Anyone
+ * can put `app = apiritivo` on a public chain; the owner is what the writer key
+ * proves. Every parser applies this before looking at attributes.
+ */
+export function isTrustedEntity(entity: RawServiceEntity): boolean {
+  return typeof entity.owner === "string" && entity.owner.toLowerCase() === trustedWriterAddress().toLowerCase();
+}
+
 function attrString(entity: RawServiceEntity, name: string): string | undefined {
   const v = entity.attributes?.[name]?.value;
   return typeof v === "string" ? v : undefined;
@@ -93,6 +103,7 @@ function attrNumber(entity: RawServiceEntity, name: string): number | undefined 
  * write attributes to a public chain).
  */
 export function parseServiceEntity(entity: RawServiceEntity): ArkivService | null {
+  if (!isTrustedEntity(entity)) return null;
   if (attrString(entity, ATTR.app) !== APP_ID) return null;
   if (attrString(entity, ATTR.entityType) !== SERVICE_ENTITY_TYPE) return null;
 
@@ -138,6 +149,7 @@ export function parseServiceEntity(entity: RawServiceEntity): ArkivService | nul
 }
 
 export function parseAccessPassEntity(entity: RawServiceEntity): AccessPass | null {
+  if (!isTrustedEntity(entity)) return null;
   if (attrString(entity, ATTR.app) !== APP_ID) return null;
   if (attrString(entity, ATTR.entityType) !== ACCESS_PASS_ENTITY_TYPE) return null;
   let payload: Record<string, unknown> = {};
@@ -166,6 +178,7 @@ export function parseAccessPassEntity(entity: RawServiceEntity): AccessPass | nu
 }
 
 export function parseGrantEntity(entity: RawServiceEntity): Grant | null {
+  if (!isTrustedEntity(entity)) return null;
   if (attrString(entity, ATTR.app) !== APP_ID) return null;
   if (attrString(entity, ATTR.entityType) !== GRANT_ENTITY_TYPE) return null;
   const parsed = grantSchema.safeParse({
@@ -183,6 +196,7 @@ export function parseGrantEntity(entity: RawServiceEntity): Grant | null {
 }
 
 export function parseSaleEntity(entity: RawServiceEntity): Sale | null {
+  if (!isTrustedEntity(entity)) return null;
   if (attrString(entity, ATTR.app) !== APP_ID) return null;
   if (attrString(entity, ATTR.entityType) !== SALE_ENTITY_TYPE) return null;
   const parsed = saleSchema.safeParse({

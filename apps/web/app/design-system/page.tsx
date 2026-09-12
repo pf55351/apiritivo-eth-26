@@ -1,10 +1,18 @@
 "use client";
 
+import { ACCESS_DURATIONS, type OperationDraft } from "@apiritivo/shared";
 import { useState } from "react";
+import { AccountPanel } from "@/components/account-panel";
 import { ApiExample } from "@/components/api-example";
 import { CodePanel } from "@/components/code-panel";
+import { ConnectionDetails } from "@/components/connection-details";
+import { FormSteps } from "@/components/form-steps";
+import { OperationsBuilder } from "@/components/operations-builder";
+import { PassRefreshExample } from "@/components/pass-refresh-example";
 import { ReadinessPanel } from "@/components/readiness-panel";
 import { Avatar, Badge, BrandLogo, Button, CategoryPill, EmptyState, ErrorNotice, ProfileAvatar, ProofChip, SectionTitle, Skeleton } from "@/components/ui";
+import { WalletFunding } from "@/components/wallet-funding";
+import { publishStepIssues } from "@/lib/publish-validation";
 import { buildChecks } from "@/lib/readiness";
 
 const PALETTE = [
@@ -33,10 +41,31 @@ const SECTIONS = [
 export default function DesignSystemPage() {
   const [exampleName, setExampleName] = useState("");
   const [exampleCategory, setExampleCategory] = useState("market-data");
+  const [exampleOperations, setExampleOperations] = useState<OperationDraft[]>([
+    { id: "example-operation", name: "getQuote", inputs: [{ id: "example-input", name: "symbol", type: "string" }] },
+  ]);
+  const [stepName, setStepName] = useState("");
+  const [stepDescription, setStepDescription] = useState("");
+  const [stepPrice, setStepPrice] = useState("0.50");
+  const [stepDuration, setStepDuration] = useState(7 * 86400);
+  const [stepFile, setStepFile] = useState<File | null>(null);
+  const [exampleSubmitted, setExampleSubmitted] = useState(false);
+  const stepIssues = publishStepIssues({
+    name: stepName,
+    description: stepDescription,
+    category: "market-data",
+    priceUsdc: stepPrice,
+    accessSeconds: stepDuration,
+    payoutAddress: `0x${"1".repeat(40)}`,
+    ensName: "",
+    operations: exampleOperations,
+    privateFile: stepFile,
+  });
   const [exampleChecksReady, setExampleChecksReady] = useState(false);
+  const [exampleClientChecks, setExampleClientChecks] = useState(false);
   const exampleChecks = buildChecks({
-    view: "provider",
-    wallet: { status: "ready", balances: { avax: "0.3", usdc: "0" } },
+    view: exampleClientChecks ? "client" : "provider",
+    wallet: { status: "ready", balances: { avax: "0.3", usdc: exampleChecksReady ? "10" : "0" } },
     writer: { funded: true, balance: "0.099" },
     drive: { mode: "user-stamp", ttlSeconds: (exampleChecksReady ? 30 : 3) * 86_400, usable: true, manageUrl: "#states" },
     faucets: { avax: "#states", usdc: "#states", glm: "#states" },
@@ -144,6 +173,93 @@ export default function DesignSystemPage() {
                 Reset example
               </Button>
             </div>
+            <div className="mt-8 border-t border-line pt-6">
+              <h3 className="mb-2 text-lg font-medium">Publishing steps example</h3>
+              <p className="mb-5 text-xs text-subtle">Local preview. Files and form data stay in this page.</p>
+              <FormSteps
+                id="example-publish"
+                onSubmit={() => setExampleSubmitted(true)}
+                steps={[
+                  {
+                    id: "details",
+                    title: "API details",
+                    summary: stepName || "Name and description",
+                    issues: stepIssues.details,
+                    children: (
+                      <>
+                        <label className="block text-xs text-muted">
+                          <span className="mb-2 block">Example API name</span>
+                          <input className="field-control" value={stepName} onChange={(event) => setStepName(event.target.value)} />
+                        </label>
+                        <label className="block text-xs text-muted">
+                          <span className="mb-2 block">Example description</span>
+                          <textarea className="field-control" value={stepDescription} onChange={(event) => setStepDescription(event.target.value)} />
+                        </label>
+                      </>
+                    ),
+                  },
+                  {
+                    id: "pricing",
+                    title: "Price and duration",
+                    issues: stepIssues.pricing,
+                    children: (
+                      <>
+                        <label className="block text-xs text-muted">
+                          <span className="mb-2 block">Example price</span>
+                          <input className="field-control" value={stepPrice} onChange={(event) => setStepPrice(event.target.value)} />
+                        </label>
+                        <label className="block text-xs text-muted">
+                          <span className="mb-2 block">Example duration</span>
+                          <select className="field-control" value={stepDuration} onChange={(event) => setStepDuration(Number(event.target.value))}>
+                            {ACCESS_DURATIONS.map((duration) => (
+                              <option key={duration.seconds} value={duration.seconds}>
+                                {duration.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </>
+                    ),
+                  },
+                  {
+                    id: "operations",
+                    title: "Operations",
+                    issues: stepIssues.operations,
+                    children: <OperationsBuilder operations={exampleOperations} onChange={setExampleOperations} />,
+                  },
+                  {
+                    id: "file",
+                    title: "Private file",
+                    optional: true,
+                    hasValue: Boolean(stepFile),
+                    issues: stepIssues.file,
+                    children: (
+                      <label className="block text-xs text-muted">
+                        <span className="mb-2 block">Example private file</span>
+                        <input type="file" className="field-control" onChange={(event) => setStepFile(event.target.files?.[0] ?? null)} />
+                      </label>
+                    ),
+                  },
+                  {
+                    id: "review",
+                    title: "Review and publish",
+                    issues: Object.values(stepIssues).flat(),
+                    children: (
+                      <>
+                        <Button type="submit" disabled={Object.values(stepIssues).some((issues) => issues.length > 0)}>
+                          Finish example
+                        </Button>
+                        {exampleSubmitted ? (
+                          <p role="status" className="text-sm text-success">
+                            Example complete. Nothing was published.
+                          </p>
+                        ) : null}
+                      </>
+                    ),
+                  },
+                ]}
+              />
+            </div>
           </section>
 
           <section id="data" aria-labelledby="data-title">
@@ -154,6 +270,32 @@ export default function DesignSystemPage() {
               <ProfileAvatar name="APIritivo-swarm" size={34} />
               <ProfileAvatar name="Example provider" size={48} />
               <ProfileAvatar name="Example client" size={64} />
+            </section>
+            <section aria-label="Client account examples" className="mt-8">
+              <p className="mb-4 text-xs text-subtle">Example account and balances. No wallet connection or network request.</p>
+              <div className="grid items-start gap-6 sm:grid-cols-2">
+                <div className="w-72 max-w-full">
+                  <AccountPanel name="Wallet" address={`0x${"1".repeat(40)}`}>
+                    <div className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                      <span className="text-muted">Network</span>
+                      <span className="inline-flex items-center gap-1.5 text-success">
+                        <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+                        Avalanche Fuji
+                      </span>
+                    </div>
+                  </AccountPanel>
+                </div>
+                <div className="min-w-0 rounded-panel bg-surface p-5">
+                  <WalletFunding
+                    label="Example wallet"
+                    address={`0x${"1".repeat(40)}`}
+                    balances={{ usdc: "10", avax: "0.3" }}
+                    onRefresh={async () => {
+                      await new Promise((resolve) => setTimeout(resolve, 1200));
+                    }}
+                  />
+                </div>
+              </div>
             </section>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Avatar name="Example provider" seed="ui-library" />
@@ -168,16 +310,44 @@ export default function DesignSystemPage() {
               <ProofChip label="Swarm" ok={false} />
             </div>
             <ApiExample />
+            <div className="mt-8">
+              <p className="mb-3 text-xs text-subtle">Example connection. Sample values and local links.</p>
+              <ConnectionDetails
+                identity={{ id: "0123456789abcdef0123456789abcdef", name: "Example provider" }}
+                canUpload
+                uploadMode="user-stamp"
+                drive={{ batchId: "abcdef0123456789abcdef0123456789", label: "", usedPercent: 0, ttlSeconds: 3 * 86_400, usable: true }}
+                writer={{
+                  writerConfigured: true,
+                  address: `0x${"1".repeat(40)}`,
+                  balance: "0.097760807995521616",
+                  funded: true,
+                  explorerUrl: "#data",
+                  dataExplorerUrl: "#data",
+                  faucetUrl: "#data",
+                }}
+                manageUrl="#data"
+              />
+            </div>
           </section>
 
           <section id="states" aria-labelledby="states-title">
             <h2 id="states-title" className="text-2xl font-medium">
               Loading, empty, and error
             </h2>
+            <PassRefreshExample />
             <div className="mt-6 space-y-5">
               <div className="max-w-80">
-                <p className="mb-3 text-xs text-subtle">Example balances. Refresh changes the drive status.</p>
-                <ReadinessPanel title="Example provider checks" checks={exampleChecks} onRefresh={() => setExampleChecksReady((value) => !value)} />
+                <p className="mb-3 text-xs text-subtle">Example checks. Refresh changes the example balance and drive status.</p>
+                <label className="mb-3 flex min-h-11 items-center gap-2 text-xs text-muted">
+                  <input type="checkbox" checked={exampleClientChecks} onChange={(event) => setExampleClientChecks(event.target.checked)} />
+                  Client checks
+                </label>
+                <ReadinessPanel
+                  title={exampleClientChecks ? "Example client checks" : "Example provider checks"}
+                  checks={exampleChecks}
+                  onRefresh={() => setExampleChecksReady((value) => !value)}
+                />
               </div>
               <section aria-label="Loading state example" className="space-y-3 border-t border-line py-5">
                 <Skeleton className="h-5 w-1/3" />

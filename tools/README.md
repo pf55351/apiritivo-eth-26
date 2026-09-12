@@ -7,3 +7,5 @@
 - **Avalanche Fuji**: RPC, USDC contract symbol, `APIritivoPayments` (token, purchase count, fees accrued) or a warning when running in direct-transfer mode.
 
 Exits non-zero on blockers. "0 services" is not a blocker: Tiramisu is a testnet and can be reset, publish again from `/provider/new`.
+
+`bun call:service <serviceId | name.eth> "<passKey>.<secret>" [operation] [inputJson]` (from the repo root, `call-service.ts`) — what a script or agent does with a bought pass: resolves an ENS name to its Arkiv `service_id` when given one, then calls `POST /api/gateway/<serviceId>` with the bearer credential. `APP_URL` overrides `http://localhost:3000`.

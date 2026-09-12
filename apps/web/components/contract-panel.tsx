@@ -5,7 +5,8 @@ import { type ProviderStats, readProviderStats, readRecentPurchases, readService
 import { formatAccessDuration, formatPriceUsdc } from "@apiritivo/shared";
 import { useEffect, useState } from "react";
 import type { Address } from "viem";
-import { Button, Disclosure } from "./ui";
+import { RefreshButton } from "./refresh-button";
+import { Disclosure } from "./ui";
 
 /**
  * "On-chain" panel for the Avalanche bounty: contract address, live stats read
@@ -28,10 +29,12 @@ export function ContractPanel({
   const [providerStats, setProviderStats] = useState<ProviderStats | null>(null);
   const [purchases, setPurchases] = useState<OnChainPurchase[] | null>(null);
   const [tick, setTick] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!contract) return;
     let cancelled = false;
+    setLoading(true);
     (async () => {
       const [s, p, list] = await Promise.all([
         serviceId ? readServiceStats(serviceId).catch(() => null) : Promise.resolve(null),
@@ -45,6 +48,7 @@ export function ContractPanel({
       setPurchases(
         (list ?? []).filter((x) => (key ? x.serviceKey.toLowerCase() === key : true) && (provider ? x.provider.toLowerCase() === provider.toLowerCase() : true)).slice(0, 10),
       );
+      setLoading(false);
     })();
     return () => {
       cancelled = true;
@@ -55,9 +59,7 @@ export function ContractPanel({
     <Disclosure title={title} meta={PAYMENT_CHAIN_NAME}>
       {contract ? (
         <div className="mb-4 flex justify-end">
-          <Button variant="subtle" size="sm" onClick={() => setTick((n) => n + 1)}>
-            Refresh
-          </Button>
+          <RefreshButton variant="subtle" refreshing={loading} onClick={() => setTick((n) => n + 1)} />
         </div>
       ) : null}
       {!contract ? (

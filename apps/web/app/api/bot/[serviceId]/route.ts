@@ -1,10 +1,11 @@
 import { botRequestSchema } from "@apiritivo/shared";
 import { NextResponse } from "next/server";
 import { requireAccessPass, runDemoOperation } from "@/lib/server/access";
+import { jsonError, readJsonBody, shortMessage, withJsonErrors } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/** Vercel: on-chain verification plus Arkiv writes can exceed the 10 s default. */
+/** Vercel: the Arkiv pass check plus the price lookup can exceed the 10 s default. */
 export const maxDuration = 60;
 
 /**
@@ -12,24 +13,18 @@ export const maxDuration = 60;
  * token on Arkiv (`verifyAccessPass`): the pass entity must exist (Arkiv
  * deletes expired ones), match this service and still be in the future.
  */
-export async function POST(request: Request, context: { params: Promise<{ serviceId: string }> }) {
+export const POST = withJsonErrors("api/bot", async (request: Request, context: { params: Promise<{ serviceId: string }> }) => {
   const { serviceId } = await context.params;
   const gate = await requireAccessPass(request, serviceId);
   if (gate instanceof NextResponse) return gate;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    body = {};
-  }
-  const parsed = botRequestSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ ok: false, error: "Invalid request: expected { operation, input }." }, { status: 400 });
+  const body = await readJsonBody(request, botRequestSchema, "bot");
+  if (!body.ok) return body.response;
 
   try {
-    const result = await runDemoOperation(parsed.data.operation, parsed.data.input);
-    return NextResponse.json({ ok: true, operation: parsed.data.operation, result, verification: gate.verification });
+    const result = await runDemoOperation(body.data.operation, body.data.input);
+    return NextResponse.json({ ok: true, operation: body.data.operation, result, verification: gate.verification });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: (err as Error).message, verification: gate.verification }, { status: 500 });
+    return jsonError(500, "Demo operation failed.", shortMessage(err), { ok: false, verification: gate.verification });
   }
-}
+});

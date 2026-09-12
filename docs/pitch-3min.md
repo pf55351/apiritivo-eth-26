@@ -1,8 +1,8 @@
 # APIritivo — pitch demo da 3 minuti (ETH Rome 2026)
 
 Parlato: ~430 parole, ritmo normale. Demo live in parallelo al parlato.
-Prima di salire: `bun demo:check`, due profili browser già loggati (provider / client),
-un servizio **già pubblicato** come rete di sicurezza, USDC e AVAX nei due Swarm wallet.
+Prima di salire: `bun demo:check`, Swarm ID già loggato (provider) e MetaMask/Rabby già connesso su Fuji (client),
+un servizio **già pubblicato** come rete di sicurezza, USDC e AVAX nel wallet client, un po' di AVAX nello Swarm wallet del provider.
 
 ---
 
@@ -23,7 +23,7 @@ un servizio **già pubblicato** come rete di sicurezza, USDC e AVAX nei due Swar
 > APIritivo è un marketplace di servizi leggibile dalle macchine.
 > Nessun account, nessuna API key da custodire, nessun database.
 > Quattro domande, quattro primitive decentralizzate:
-> chi sei → **Swarm ID**; come ti chiamo → manifest su **Swarm**;
+> chi sei → **Swarm ID** per chi pubblica, il tuo wallet per chi compra; come ti chiamo → manifest su **Swarm**;
 > cosa esiste e a che prezzo → registro su **Arkiv**; come pago → **USDC su Avalanche**.
 >
 > Il trucco è uno: **il pass di accesso è un'entità Arkiv con scadenza.
@@ -38,10 +38,10 @@ un servizio **già pubblicato** come rete di sicurezza, USDC e AVAX nei due Swar
 | 1:05 | `/provider` | Mostra i chip di stato e *Your Swarm wallet* | "Il wallet è **derivato** dall'identità Swarm: stessa identità, stesso indirizzo ovunque. Lo storage è il drive Swarm dell'utente." |
 | 1:15 | `/provider/new` | Nome, 0.50 USDC, 7 giorni, payout = Swarm wallet, operazione `getQuote(symbol)`. **Publish** | "Prima il manifest tecnico su Swarm, poi la listing su Arkiv con prezzo e wallet. Sempre in quest'ordine." |
 | 1:35 | successo | Click su link Swarm gateway + Arkiv explorer | "Byte reali su Swarm, entità e transazione reali su Tiramisu." |
-| 1:45 | `/marketplace` (client) | Apri il servizio | "Ogni card è una query live su Arkiv. Zero cache." |
-| 1:55 | pagina servizio | **Buy access** dal Swarm wallet: pay → confirm → mint | "USDC su Avalanche direttamente al provider. Il server verifica la transazione on-chain e conia un pass a scadenza su Arkiv." |
-| 2:10 | stessa pagina | **Try the bot** → `getQuote` / `BTC` → *Pass verified on Arkiv ✓* | "Ogni risposta inizia con una lettura del pass. Scaduto = cancellato = negato." |
-| 2:20 | `/provider` (provider) | Earnings, vendite recenti, wallet +0.50 USDC | "Le ricevute di vendita sono permanenti su Arkiv; i fondi sono già nel wallet del provider." |
+| 1:45 | switch → `/marketplace` (client) | **Client**, wallet già connesso, apri il servizio | "Il client è il mio wallet di tutti i giorni. Ogni card è una query live su Arkiv. Zero cache." |
+| 1:55 | pagina servizio | **Buy access** da MetaMask: approve → buy → confirm → mint, più una firma | "USDC nel contratto su Avalanche. Il server verifica l'evento on-chain e conia un pass a scadenza su Arkiv. La API key è sigillata con una chiave che solo questo wallet può rigenerare." |
+| 2:10 | stessa pagina | **Try API** → `getQuote` / `BTC` → *Pass verified on Arkiv ✓* | "Ogni risposta inizia con una lettura del pass. Scaduto = cancellato = negato." |
+| 2:20 | switch → `/provider` (provider) | Vendite registrate, ricevute, **Claim USDC** | "Le ricevute di vendita sono permanenti su Arkiv; il provider ritira i fondi dal contratto con una firma." |
 
 Se il tempo stringe: salta la pubblicazione (1:15–1:35) e usa il servizio pre-pubblicato.
 Guadagni 20 secondi e la parte più rischiosa della demo sparisce.
@@ -67,9 +67,10 @@ Guadagni 20 secondi e la parte più rischiosa della demo sparisce.
 
 - Popup Swarm ID bloccato → la card di login mostra il retry. Non usare Brave.
 - Upload Swarm ID fallisce → fallback automatico sul gateway diretto, nessuna azione.
-- USDC insufficienti → link ai faucet dentro il pannello di acquisto (meglio verificarlo prima).
+- USDC insufficienti → link ai faucet dentro "Fund wallet" nel pannello di acquisto; il pill in basso a destra dice cosa manca (meglio verificarlo prima).
+- Wallet sulla rete sbagliata → "Switch" nel menu wallet porta su Fuji.
 - Arkiv lento nella conferma → parla del contratto su Snowtrace mentre attendi.
-- Se tutto si blocca: il servizio pre-pubblicato ha già un pass valido nel profilo client, vai dritto a **Try the bot**.
+- Se tutto si blocca: il servizio pre-pubblicato ha già un pass valido nel profilo client, vai dritto a **Try API**.
 
 ## Numeri da tenere a mente
 

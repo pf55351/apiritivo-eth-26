@@ -2,14 +2,15 @@
 
 import { categoryLabel, SERVICE_CATEGORIES } from "@apiritivo/shared";
 import { useMemo, useState } from "react";
+import { RefreshButton } from "@/components/refresh-button";
 import { ServiceCard } from "@/components/service-card";
-import { Button, EmptyState, ErrorNotice, SectionTitle, ServiceCardSkeleton } from "@/components/ui";
+import { Button, EmptyState, EmptyStateIcon, ErrorNotice, SectionTitle, ServiceCardSkeleton } from "@/components/ui";
 import { useMarketplace } from "@/lib/use-services";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5", "s6"];
 
 export default function MarketplacePage() {
-  const { data, loading, error, reload } = useMarketplace();
+  const { data, initialLoading, refreshing, error, reload } = useMarketplace();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("all");
 
@@ -37,16 +38,7 @@ export default function MarketplacePage() {
 
   return (
     <div className="space-y-8">
-      <SectionTitle
-        title="Explore APIs"
-        right={
-          <div className="flex items-center gap-2 text-xs text-subtle">
-            <Button variant="ghost" size="sm" onClick={reload} disabled={loading}>
-              Refresh
-            </Button>
-          </div>
-        }
-      />
+      <SectionTitle title="Explore APIs" right={<RefreshButton onClick={reload} refreshing={initialLoading || refreshing} />} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="relative flex-1">
@@ -63,35 +55,29 @@ export default function MarketplacePage() {
         </select>
       </div>
 
-      {!loading && !error ? (
+      {!initialLoading && data !== null ? (
         <p role="status" className="text-xs text-subtle">
           {filtered.length} {filtered.length === 1 ? "API" : "APIs"}
           {query || category !== "all" ? " found" : " available"}
         </p>
       ) : null}
 
-      {error ? <ErrorNotice message={error.message} detail={error.detail} onRetry={reload} /> : null}
+      <span role="status" className="sr-only">
+        {refreshing ? "Refreshing APIs. Current results stay available." : ""}
+      </span>
+      {error ? <ErrorNotice message={data !== null ? "Refresh failed. Showing the last loaded APIs." : error.message} detail={error.detail} onRetry={reload} /> : null}
 
-      {loading ? (
+      {initialLoading ? (
         <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {SKELETON_KEYS.map((k) => (
             <ServiceCardSkeleton key={k} />
           ))}
         </div>
-      ) : !error && (data?.length ?? 0) === 0 ? (
+      ) : data !== null && data.length === 0 ? (
+        <EmptyState title="No APIs yet" description="Published APIs will appear here." action={<RefreshButton onClick={reload} refreshing={refreshing} />} />
+      ) : data !== null && filtered.length === 0 ? (
         <EmptyState
-          icon="◌"
-          title="No APIs yet"
-          description="Published APIs will appear here."
-          action={
-            <Button variant="ghost" onClick={reload}>
-              Refresh
-            </Button>
-          }
-        />
-      ) : !error && filtered.length === 0 ? (
-        <EmptyState
-          icon="⌕"
+          icon={<EmptyStateIcon kind="search" />}
           title="No matching APIs"
           description="Try another search or clear filters."
           action={
@@ -107,7 +93,7 @@ export default function MarketplacePage() {
           }
         />
       ) : (
-        <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div aria-busy={refreshing} className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((s) => (
             <ServiceCard key={s.serviceId} service={s} />
           ))}

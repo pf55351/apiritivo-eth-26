@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useSyncExternalStore } from "react";
 import { currentThemePreference, setThemePreference, subscribeTheme, type ThemePreference } from "@/lib/theme";
 
 const OPTIONS = [
@@ -29,98 +29,39 @@ function ThemeIcon({ theme }: { theme: ThemePreference }) {
   );
 }
 
+/** Keep Auto and cross-tab preferences live while the account dropdown is closed. */
+export function ThemeSync() {
+  useEffect(() => subscribeTheme(() => {}), []);
+  return null;
+}
+
 export function ThemeToggle() {
   const preference = useSyncExternalStore(subscribeTheme, currentThemePreference, () => "system" as ThemePreference);
-  const [open, setOpen] = useState(false);
   const id = useId();
-  const root = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  const currentLabel = OPTIONS.find((option) => option.value === preference)?.label ?? "Auto";
-
-  function closeAndFocus() {
-    setOpen(false);
-    trigger.current?.focus();
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    root.current?.querySelector<HTMLInputElement>("input:checked")?.focus();
-    const onPointerDown = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onFocusIn = (event: FocusEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpen(false);
-        trigger.current?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("focusin", onFocusIn);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("focusin", onFocusIn);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
   return (
-    <div ref={root} className="relative">
-      <button
-        ref={trigger}
-        type="button"
-        aria-label={`Color theme: ${currentLabel}`}
-        title={preference === "system" ? "Auto: follows your computer" : `${currentLabel} theme`}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={open ? id : undefined}
-        onClick={() => setOpen((value) => !value)}
-        onKeyDown={(event) => {
-          if (event.key === "ArrowDown") {
-            event.preventDefault();
-            setOpen(true);
-          }
-        }}
-        className="theme-toggle flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-subtle transition-colors hover:bg-surface-raised hover:text-content"
-      >
-        <ThemeIcon theme={preference} />
-      </button>
-      {open ? (
-        <div id={id} role="dialog" aria-label="Choose color theme" className="absolute right-0 top-full z-50 mt-2 rounded-panel border border-line bg-surface p-1 shadow-lg">
-          <fieldset className="flex gap-1">
-            <legend className="sr-only">Color theme</legend>
-            {OPTIONS.map((option) => (
-              <label key={option.value} className="relative" title={option.value === "system" ? "Auto: follows your computer" : `${option.label} theme`}>
-                <input
-                  type="radio"
-                  name={id}
-                  value={option.value}
-                  checked={preference === option.value}
-                  aria-label={`${option.label} theme`}
-                  onChange={() => setThemePreference(option.value)}
-                  onClick={(event) => {
-                    if (event.detail > 0) closeAndFocus();
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      closeAndFocus();
-                    }
-                  }}
-                  className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                />
-                <span className="flex h-11 w-11 items-center justify-center rounded-control border border-transparent text-subtle peer-checked:border-line-strong peer-checked:bg-surface-raised peer-checked:text-content peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus peer-hover:text-content">
-                  <ThemeIcon theme={option.value} />
-                </span>
-              </label>
-            ))}
-          </fieldset>
-        </div>
-      ) : null}
+    <div className="flex min-h-11 items-center justify-between gap-3">
+      <span className="text-sm text-muted" aria-hidden="true">
+        Theme
+      </span>
+      <fieldset className="flex gap-1">
+        <legend className="sr-only">Color theme</legend>
+        {OPTIONS.map((option) => (
+          <label key={option.value} className="relative" title={option.value === "system" ? "Auto: follows your computer" : `${option.label} theme`}>
+            <input
+              type="radio"
+              name={id}
+              value={option.value}
+              checked={preference === option.value}
+              aria-label={`${option.label} theme`}
+              onChange={() => setThemePreference(option.value)}
+              className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+            <span className="flex h-11 w-11 items-center justify-center rounded-control border border-transparent text-subtle peer-checked:border-line-strong peer-checked:bg-surface-raised peer-checked:text-content peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus peer-hover:text-content">
+              <ThemeIcon theme={option.value} />
+            </span>
+          </label>
+        ))}
+      </fieldset>
     </div>
   );
 }

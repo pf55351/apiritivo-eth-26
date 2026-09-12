@@ -166,16 +166,43 @@ export function Skeleton({ className = "" }: { className?: string }) {
 export function ServiceCardSkeleton() {
   return (
     <div className="flex min-w-0 flex-col gap-4 border-t border-line py-5">
-      <Skeleton className="h-6 w-2/3" />
+      <div className="flex min-h-11 items-center justify-between gap-3">
+        <Skeleton className="h-6 w-2/3" />
+        <Skeleton className="size-9 shrink-0 rounded-full" />
+      </div>
       <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-7 w-40" />
       <Skeleton className="h-5 w-28" />
-      <Skeleton className="h-4 w-16" />
+      <div className="flex min-h-11 items-center">
+        <Skeleton className="h-4 w-16" />
+      </div>
     </div>
   );
 }
 
-export function EmptyState({ title, description, action, icon = "◌" }: { title: string; description?: string; action?: ReactNode; icon?: ReactNode }) {
+export function EmptyStateIcon({ kind = "api" }: { kind?: "api" | "search" | "pass" }) {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {kind === "search" ? (
+        <>
+          <circle cx="10.5" cy="10.5" r="6.5" />
+          <path d="m16 16 5 5" />
+        </>
+      ) : kind === "pass" ? (
+        <>
+          <path d="M4 5h16a1 1 0 0 1 1 1v3a3 3 0 0 0 0 6v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a3 3 0 0 0 0-6V6a1 1 0 0 1 1-1Z" />
+          <path d="M15 5v14" strokeDasharray="2 3" />
+        </>
+      ) : (
+        <>
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="m8 9-3 3 3 3m8-6 3 3-3 3m-3-7-2 8" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+export function EmptyState({ title, description, action, icon = <EmptyStateIcon /> }: { title: string; description?: string; action?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
       <div aria-hidden="true" className="text-2xl text-accent-text">
@@ -225,8 +252,43 @@ export function ErrorNotice({
   );
 }
 
-export function SectionTitle({ eyebrow, title, description, right }: { eyebrow?: string; title: string; description?: string; right?: ReactNode }) {
+export function BackLink({ href, children }: { href: string; children: ReactNode }) {
   return (
+    <Link href={href} className="flex min-h-11 w-fit max-w-full items-center gap-1.5 rounded-control text-sm text-subtle transition-colors hover:text-content">
+      <svg
+        aria-hidden="true"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="shrink-0"
+      >
+        <path d="m12 5-7 7 7 7M5 12h14" />
+      </svg>
+      <span className="sr-only">Back to </span>
+      <span>{children}</span>
+    </Link>
+  );
+}
+
+export function SectionTitle({
+  eyebrow,
+  title,
+  description,
+  right,
+  back,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  right?: ReactNode;
+  back?: { href: string; label: string };
+}) {
+  const heading = (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         {eyebrow ? <Eyebrow className="mb-3">{eyebrow}</Eyebrow> : null}
@@ -235,6 +297,14 @@ export function SectionTitle({ eyebrow, title, description, right }: { eyebrow?:
       </div>
       {right ? <div>{right}</div> : null}
     </div>
+  );
+  return back ? (
+    <div className="space-y-3">
+      <BackLink href={back.href}>{back.label}</BackLink>
+      {heading}
+    </div>
+  ) : (
+    heading
   );
 }
 

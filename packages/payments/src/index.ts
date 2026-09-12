@@ -69,3 +69,18 @@ export const PASS_KEY_MESSAGE = [
 export function keyFromSignature(signature: Hex): Uint8Array {
   return hexToBytes(keccak256(signature));
 }
+
+/* ------------------------------------------------------------ pass claim */
+
+/**
+ * Message the paying wallet signs to claim the pass for its own payment.
+ * Binding the secret hash to the transaction proves the caller of
+ * `POST /api/access-passes` controls the address that paid, so nobody can
+ * race a buyer and mint their pass with a foreign secret. Verified server-side
+ * with `verifyMessage`; free, no transaction.
+ */
+export function passClaimMessage(txHash: Hex | string, secretHash: Hex | string): string {
+  return ["APIritivo pass claim v1", "", `Payment: ${txHash.toLowerCase()}`, `Secret hash: ${secretHash.toLowerCase()}`, "", "Sign to receive the API key for this payment."].join(
+    "\n",
+  );
+}

@@ -51,7 +51,7 @@ export function OperationsBuilder({ operations, onChange }: { operations: Operat
             <span className="mb-2 block text-xs text-muted">Input fields</span>
             <div className="space-y-2">
               {op.inputs.map((field) => (
-                <div key={field.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <div key={field.id} className="grid grid-cols-[minmax(0,1fr)_2.75rem] items-stretch gap-2 sm:grid-cols-[minmax(0,1fr)_auto_2.375rem]">
                   <input
                     className={`${inputCls} col-span-2 sm:col-span-1`}
                     aria-label={`Input name for ${op.name || `operation ${index + 1}`}`}
@@ -85,11 +85,13 @@ export function OperationsBuilder({ operations, onChange }: { operations: Operat
                   <button
                     type="button"
                     onClick={() => update(op.id, { inputs: op.inputs.filter((f) => f.id !== field.id) })}
-                    className="flex h-11 w-11 items-center justify-center rounded-control border border-line-strong text-subtle hover:border-danger/40 hover:text-danger"
+                    className="field-control flex items-center justify-center p-0 text-subtle hover:text-danger"
                     aria-label={`Remove ${field.name || "input field"}`}
                     title="Remove field"
                   >
-                    ×
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+                      <path d="m6 6 12 12M18 6 6 18" />
+                    </svg>
                   </button>
                 </div>
               ))}

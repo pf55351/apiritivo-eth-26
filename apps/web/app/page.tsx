@@ -92,12 +92,14 @@ export default function HomePage() {
               </>
             ) : (
               <>
-                Timed access for<span className="block font-bold text-accent-heading">the AI era.</span>
+                Timed access for<span className="block font-semibold text-accent-heading">the AI era.</span>
               </>
             )}
           </h1>
           <p className="mt-6 max-w-sm text-base leading-relaxed text-muted">
-            {isProvider ? "Publish your API, price your access, and earn USDC." : "Discover services. Buy a pass with USDC. Send your task, get the result until the pass expires."}
+            {isProvider
+              ? "Publish your API. Set a price and access duration. Earn USDC when clients buy a pass."
+              : "Choose an API. Buy timed access with USDC. Use your API key until the pass expires."}
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" href={isProvider ? "/provider/new" : "/marketplace"}>

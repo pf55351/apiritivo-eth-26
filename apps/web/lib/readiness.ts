@@ -29,7 +29,7 @@ export type ReadinessCheck = {
 export type ReadinessInput = {
   view: Role;
   wallet: { status: "idle" | "deriving" | "ready" | "error"; balances: { avax: string; usdc: string } | null };
-  writer: { funded?: boolean; balance?: string; faucetUrl?: string } | null | undefined;
+  writer: { funded?: boolean; balance?: string; faucetUrl?: string; ownerMismatch?: boolean } | null | undefined;
   drive: { mode?: "user-stamp" | "subsidised" | "unavailable"; ttlSeconds?: number; label?: string; usable?: boolean; manageUrl: string };
   faucets: { avax: string; usdc: string; glm: string };
 };
@@ -79,6 +79,9 @@ export function glmCheck(input: ReadinessInput): ReadinessCheck {
   const hint = input.view === "client" ? "The app writer mints your pass on Arkiv." : "The app writer publishes your listing on Arkiv.";
   if (input.writer === undefined) return { ...base, state: "loading", hint };
   if (input.writer === null || input.writer.funded === undefined) return { ...base, state: "unknown", hint };
+  if (input.writer.ownerMismatch) {
+    return { ...base, state: "missing", hint: "The writer key does not match the trusted writer address; nothing it writes is listed.", href: undefined, hrefLabel: undefined };
+  }
   const value = input.writer.balance ? amount(input.writer.balance, 3) : undefined;
   return { ...base, state: input.writer.funded ? "ok" : "missing", value, hint };
 }

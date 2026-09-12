@@ -1,14 +1,20 @@
 import { getService } from "@apiritivo/arkiv";
-import { botRequestSchema, manifestFromBytes } from "@apiritivo/shared";
+import { botRequestSchema } from "@apiritivo/shared";
+import { fetchManifestFromGateway, readCapped } from "@apiritivo/swarm/gateway";
 import { NextResponse } from "next/server";
+import { publicEnv } from "@/lib/env";
 import { requireAccessPass, runDemoOperation } from "@/lib/server/access";
+import { jsonError, readJsonBody, shortMessage, withJsonErrors } from "@/lib/server/http";
+import { checkEndpoint } from "@/lib/server/safe-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/** Vercel: on-chain verification plus Arkiv writes can exceed the 10 s default. */
+/** Vercel: the Arkiv pass check, a Swarm fetch and the upstream call can exceed the 10 s default. */
 export const maxDuration = 60;
 
-const GATEWAY = (process.env.NEXT_PUBLIC_SWARM_GATEWAY_URL || "https://api.gateway.ethswarm.org").replace(/\/+$/, "");
+/** Upstream answers are relayed to the caller; anything bigger than this is not an API response. */
+const UPSTREAM_MAX_BYTES = 256 * 1024;
+const UPSTREAM_TIMEOUT_MS = 20_000;
 
 /**
  * Zero-code layer for providers: APIritivo verifies the access pass on
@@ -16,43 +22,40 @@ const GATEWAY = (process.env.NEXT_PUBLIC_SWARM_GATEWAY_URL || "https://api.gatew
  * Swarm manifest. Providers only need to trust the forwarded headers
  * (`x-apiritivo-*`) from this gateway. Without an endpoint the demo bot answers.
  */
-export async function POST(request: Request, context: { params: Promise<{ serviceId: string }> }) {
+export const POST = withJsonErrors("api/gateway", async (request: Request, context: { params: Promise<{ serviceId: string }> }) => {
   const { serviceId } = await context.params;
   const gate = await requireAccessPass(request, serviceId);
   if (gate instanceof NextResponse) return gate;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    body = {};
-  }
-  const parsed = botRequestSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ ok: false, error: "Invalid request: expected { operation, input }." }, { status: 400 });
+  const body = await readJsonBody(request, botRequestSchema, "gateway");
+  if (!body.ok) return body.response;
+  const call = body.data;
 
   const service = await getService(serviceId);
-  if (!service) return NextResponse.json({ ok: false, error: "Service not found on Arkiv." }, { status: 404 });
+  if (!service) return jsonError(404, "Service not found on Arkiv.", undefined, { ok: false });
 
   // Resolve the technical manifest from Swarm to find the provider's endpoint.
   let endpoint: string | undefined;
   try {
-    const res = await fetch(`${GATEWAY}/bytes/${service.manifestRef}`, { cache: "no-store" });
-    if (res.ok) {
-      const manifest = manifestFromBytes(new Uint8Array(await res.arrayBuffer()));
-      if (manifest.ok) endpoint = manifest.manifest.endpoint;
-    }
+    const manifest = await fetchManifestFromGateway(service.manifestRef, { gatewayUrl: publicEnv.swarmGatewayUrl });
+    if (manifest.ok) endpoint = manifest.manifest.endpoint;
   } catch {
     /* fall through to demo bot */
   }
 
   if (!endpoint) {
-    const result = await runDemoOperation(parsed.data.operation, parsed.data.input);
-    return NextResponse.json({ ok: true, operation: parsed.data.operation, result, verification: gate.verification, upstream: "demo-bot" });
+    const result = await runDemoOperation(call.operation, call.input);
+    return NextResponse.json({ ok: true, operation: call.operation, result, verification: gate.verification, upstream: "demo-bot" });
   }
 
+  // The endpoint is provider-controlled: only public https origins are called from the server.
+  const target = await checkEndpoint(endpoint);
+  if (!target.ok) return jsonError(502, "Upstream endpoint refused.", target.reason, { ok: false, verification: gate.verification, upstream: endpoint });
+
   try {
-    const upstream = await fetch(endpoint, {
+    const upstream = await fetch(target.url, {
       method: "POST",
+      redirect: "manual",
       headers: {
         "content-type": "application/json",
         "x-apiritivo-service": serviceId,
@@ -60,21 +63,28 @@ export async function POST(request: Request, context: { params: Promise<{ servic
         "x-apiritivo-buyer": gate.check.pass.buyerId,
         "x-apiritivo-expires-block": gate.check.expiresAtBlock,
       },
-      body: JSON.stringify(parsed.data),
-      signal: AbortSignal.timeout(20_000),
+      body: JSON.stringify(call),
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
-    const text = await upstream.text();
+    if (upstream.status >= 300 && upstream.status < 400) {
+      return jsonError(502, "Upstream endpoint redirected.", "Redirects are not followed; point the manifest endpoint at the final URL.", {
+        ok: false,
+        verification: gate.verification,
+        upstream: endpoint,
+      });
+    }
+    const text = new TextDecoder().decode(await readCapped(upstream, UPSTREAM_MAX_BYTES));
     let result: unknown = text;
     try {
       result = JSON.parse(text);
     } catch {
       /* plain text upstream */
     }
-    return NextResponse.json(
-      { ok: upstream.ok, operation: parsed.data.operation, result, verification: gate.verification, upstream: endpoint },
-      { status: upstream.ok ? 200 : 502 },
-    );
+    if (!upstream.ok) {
+      return jsonError(502, `Upstream endpoint responded ${upstream.status}.`, undefined, { ok: false, verification: gate.verification, upstream: endpoint });
+    }
+    return NextResponse.json({ ok: true, operation: call.operation, result, verification: gate.verification, upstream: endpoint });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: `Upstream call failed: ${(err as Error).message}`, verification: gate.verification, upstream: endpoint }, { status: 502 });
+    return jsonError(502, "Upstream call failed.", shortMessage(err), { ok: false, verification: gate.verification, upstream: endpoint });
   }
-}
+});

@@ -25,12 +25,6 @@ const SECTIONS = [
 const WRITER = "0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C";
 const DATA_EXPLORER = `${ARKIV_DATA_EXPLORER_URL}/?chain=tiramisu`;
 
-/** Native disclosures keep reference material available without a wall of text. */
-function openSection(id: string) {
-  const details = document.getElementById(id)?.querySelector("details");
-  if (details) details.open = true;
-}
-
 /** Deployed origin for copy-ready examples; localhost only until hydration. */
 function useOrigin(): string {
   const [origin, setOrigin] = useState("http://localhost:3000");
@@ -40,23 +34,14 @@ function useOrigin(): string {
   return origin;
 }
 
-function Section({ id, title, lead, children }: { id: string; title: string; lead?: string; children: ReactNode }) {
+function Section({ id, active, title, lead, children }: { id: string; active: boolean; title: string; lead?: string; children: ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-36">
-      <details className="ui-disclosure" open={id === "overview"}>
-        <summary>
-          <h2 id={`${id}-title`} className="text-xl font-medium text-content">
-            {title}
-          </h2>
-          <span className="disclosure-chevron" aria-hidden="true">
-            ⌄
-          </span>
-        </summary>
-        <div className="pb-8 pt-2">
-          {lead ? <p className="max-w-2xl text-sm leading-relaxed text-muted">{lead}</p> : null}
-          <div className="mt-6 space-y-6">{children}</div>
-        </div>
-      </details>
+    <section id={id} hidden={!active} aria-labelledby={`${id}-title`} className="scroll-mt-36 border-t border-line pb-8 pt-4">
+      <h2 id={`${id}-title`} className="text-xl font-medium text-content">
+        {title}
+      </h2>
+      {lead ? <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted">{lead}</p> : null}
+      <div className="mt-6 space-y-6">{children}</div>
     </section>
   );
 }
@@ -119,20 +104,24 @@ function Steps({ items }: { items: { title: string; body: ReactNode; expect?: Re
   );
 }
 
-const SECTION_IDS = SECTIONS.map(([id]) => id);
-
 export default function DocsPage() {
   const contract = paymentsContractAddress();
   const origin = useOrigin();
+  const [activeSection, setActiveSection] = useState<(typeof SECTIONS)[number][0]>("overview");
   useEffect(() => {
     const revealHash = () => {
-      const id = window.location.hash.slice(1);
-      if (SECTION_IDS.includes(id as (typeof SECTION_IDS)[number])) openSection(id);
+      const section = SECTIONS.find(([id]) => id === window.location.hash.slice(1));
+      setActiveSection(section?.[0] ?? "overview");
     };
     revealHash();
     window.addEventListener("hashchange", revealHash);
     return () => window.removeEventListener("hashchange", revealHash);
   }, []);
+  useEffect(() => {
+    if (window.location.hash === `#${activeSection}`) {
+      document.getElementById(activeSection)?.scrollIntoView({ block: "start", behavior: "instant" });
+    }
+  }, [activeSection]);
   const gateway = publicEnv.swarmGatewayUrl.replace(/\/+$/, "");
 
   const layers: { name: string; role: string; link: string; href: string }[] = [
@@ -149,7 +138,7 @@ export default function DocsPage() {
 
   return (
     <div id="top">
-      <SectionTitle title="Documentation" description="Start here. Open a topic for details." right={<Badge tone="accent">Testnet edition</Badge>} />
+      <SectionTitle title="Documentation" description="Choose a topic to get started." right={<Badge tone="accent">Testnet edition</Badge>} />
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-16">
         <aside>
@@ -158,8 +147,9 @@ export default function DocsPage() {
               <a
                 key={id}
                 href={`#${id}`}
-                onClick={() => openSection(id)}
-                className="flex min-h-11 items-center py-2 text-sm text-subtle underline decoration-transparent underline-offset-4 hover:text-content hover:decoration-content"
+                aria-current={activeSection === id ? "location" : undefined}
+                aria-controls={id}
+                className={`flex min-h-11 items-center py-2 text-sm underline underline-offset-4 ${activeSection === id ? "font-medium text-accent-text decoration-current" : "text-subtle decoration-transparent hover:text-content hover:decoration-content"}`}
               >
                 {name}
               </a>
@@ -168,7 +158,12 @@ export default function DocsPage() {
         </aside>
 
         <div className="min-w-0">
-          <Section id="overview" title="Overview" lead="Providers publish APIs. Clients buy timed access with USDC and call APIs using an API key for each pass.">
+          <Section
+            active={activeSection === "overview"}
+            id="overview"
+            title="Overview"
+            lead="Providers publish APIs. Clients buy timed access with USDC and call APIs using an API key for each pass."
+          >
             <div className="grid gap-4 sm:grid-cols-2">
               {layers.map((l) => (
                 <div key={l.name} className="min-w-0 py-3">
@@ -214,7 +209,7 @@ export default function DocsPage() {
             </Disclosure>
           </Section>
 
-          <Section id="flow" title="How it works" lead="Publish a listing, purchase access, then call the API.">
+          <Section active={activeSection === "flow"} id="flow" title="How it works" lead="Publish a listing, purchase access, then call the API.">
             <div className="grid gap-4 lg:grid-cols-3">
               {[
                 {
@@ -266,7 +261,12 @@ export default function DocsPage() {
             </div>
           </Section>
 
-          <Section id="pass" title="Access pass" lead="Your API key combines a public pass ID with a private secret. Access ends when the pass expires.">
+          <Section
+            active={activeSection === "pass"}
+            id="pass"
+            title="Access pass"
+            lead="Your API key combines a public pass ID with a private secret. Access ends when the pass expires."
+          >
             <Table
               head={["Piece", "Where", "Who can read it"]}
               rows={[
@@ -302,7 +302,12 @@ curl -s ${origin}/api/gateway/<serviceId> \\
             />
           </Section>
 
-          <Section id="private" title="Private files" lead="Providers can include one encrypted file, up to 512 KB. Buyers need a separate grant from the provider to download it.">
+          <Section
+            active={activeSection === "private"}
+            id="private"
+            title="Private files"
+            lead="Providers can include one encrypted file, up to 512 KB. Buyers need a separate grant from the provider to download it."
+          >
             <Steps
               items={[
                 {
@@ -343,7 +348,7 @@ curl -s ${origin}/api/gateway/<serviceId> \\
             />
           </Section>
 
-          <Section id="data" title="Data on Arkiv" lead="Listings and receipts are public. Pass secrets and private files stay encrypted.">
+          <Section active={activeSection === "data"} id="data" title="Data on Arkiv" lead="Listings and receipts are public. Pass secrets and private files stay encrypted.">
             <Table
               head={["Entity", "Attributes", "Payload", "Lifetime"]}
               rows={[
@@ -372,7 +377,7 @@ open                ${DATA_EXPLORER}`}
             />
           </Section>
 
-          <Section id="api" title="API" lead="Six endpoints. Payments and pass secrets are verified before access is granted.">
+          <Section active={activeSection === "api"} id="api" title="API" lead="Six endpoints. Payments and pass secrets are verified before access is granted.">
             <Table
               head={["Route", "Does", "Trust"]}
               rows={[
@@ -390,7 +395,7 @@ open                ${DATA_EXPLORER}`}
             />
           </Section>
 
-          <Section id="run" title="Run it" lead="Bun 1.3+, Node.js 20+, and test funds on Avalanche Fuji. Foundry is optional for contract tests.">
+          <Section active={activeSection === "run"} id="run" title="Run it" lead="Bun 1.3+, Node.js 20+, and test funds on Avalanche Fuji. Foundry is optional for contract tests.">
             <CodePanel
               title="run.sh"
               language="BASH"
@@ -432,14 +437,23 @@ bun run build                         # stop bun dev first: both write apps/web/
             />
           </Section>
 
-          <Section id="judge" title="Judge walkthrough" lead="Use separate browser profiles for Provider and Client. Each purchase needs test USDC and AVAX for gas.">
+          <Section
+            active={activeSection === "judge"}
+            id="judge"
+            title="Judge walkthrough"
+            lead="Use separate browser profiles for Provider and Client. Each purchase needs test USDC and AVAX for gas."
+          >
             <Steps
               items={[
                 {
                   title: "Run the app",
                   body: (
                     <>
-                      Commands above. <Mono>bun demo:check</Mono> ends with READY. Open <Mono>http://localhost:3000</Mono>.
+                      Follow the{" "}
+                      <a href="#run" className="underline underline-offset-4">
+                        Run it
+                      </a>{" "}
+                      instructions. <Mono>bun demo:check</Mono> ends with READY. Open <Mono>http://localhost:3000</Mono>.
                     </>
                   ),
                   expect: "home page with Enter with Swarm ID",
@@ -461,8 +475,8 @@ bun run build                         # stop bun dev first: both write apps/web/
                   title: "Publish an API",
                   body: (
                     <>
-                      Publish a service: name, category, price 0.50 USDC, duration 1 hour, one operation <Mono>getQuote(symbol: string)</Mono>. Payout wallet is your Swarm wallet,
-                      fixed. Optionally attach a small private file.
+                      Publish API: name, category, price 0.50 USDC, duration 30 seconds (demo), one operation <Mono>getQuote(symbol: string)</Mono>. Payout wallet is your Swarm
+                      wallet, fixed. Optionally attach a small private file.
                     </>
                   ),
                   expect: "success screen with Swarm gateway, Arkiv entity and transaction links; open both",
@@ -493,7 +507,11 @@ bun run build                         # stop bun dev first: both write apps/web/
                     <>
                       Try API: <Mono>getQuote</Mono>, <Mono>BTC</Mono>. From a terminal:{" "}
                       <Mono>bun call:service &lt;serviceId&gt; &quot;&lt;passKey&gt;.&lt;secret&gt;&quot; getQuote &apos;&#123;&quot;symbol&quot;:&quot;ETH&quot;&#125;&apos;</Mono>
-                      . See Access pass for error responses.
+                      . See{" "}
+                      <a href="#pass" className="underline underline-offset-4">
+                        Access pass
+                      </a>{" "}
+                      for error responses.
                     </>
                   ),
                   expect: "Pass verified on Arkiv with expiry block, a live price, 401/403 on every negative check",
@@ -544,7 +562,7 @@ bun run build                         # stop bun dev first: both write apps/web/
             />
           </Section>
 
-          <Section id="code" title="Code map" lead="SDK integrations live in packages. The web app uses shared types and adapters.">
+          <Section active={activeSection === "code"} id="code" title="Code map" lead="SDK integrations live in packages. The web app uses shared types and adapters.">
             <Table
               head={["Path", "What"]}
               rows={[
@@ -553,7 +571,9 @@ bun run build                         # stop bun dev first: both write apps/web/
                 ["packages/arkiv/src/pass-secret.ts", "pass secret: keccak on-chain, AES-GCM for the buyer, bearer format"],
                 ["packages/arkiv/src/server.ts", "publishService, issueAccessPass, publishGrant: the only writes"],
                 ["packages/payments/src/server.ts", "verifyPayment: Purchased event or USDC Transfer, pure receipt checks"],
-                ["packages/payments/src/browser.ts", "Swarm wallet signer, pay, claim, watchSales live feed"],
+                ["packages/payments/src/browser.ts", "Swarm wallet and browser wallet signers, pass key signature, pay, claim, watchSales live feed"],
+                ["packages/ens/src/index.ts", "read-only ENS: resolve addr, text record and bzz contenthash, verify a linked name"],
+                ["apps/web/lib/injected-wallet.tsx", "client identity: MetaMask / Rabby connection, network switch, pass key sealing"],
                 ["contracts/src/APIritivoPayments.sol", "buy / claim ledger, Foundry tests"],
                 ["apps/web/app/api/*", "services, access-passes, grants, bot, gateway"],
                 ["tools/", "demo-check, call-service"],
@@ -569,7 +589,7 @@ bun run build                         # stop bun dev first: both write apps/web/
               <Button href="/">Open app</Button>
             </div>
           </Section>
-          <Section id="sponsors" title="ETHRome sponsors" lead="Official sponsors of ETHRome 2026, where APIritivo was built.">
+          <Section active={activeSection === "sponsors"} id="sponsors" title="ETHRome sponsors" lead="Official sponsors of ETHRome 2026, where APIritivo was built.">
             <SponsorLogos />
             <p className="text-sm">
               <Ext href={ETHROME_SPONSORS_URL}>ETHRome 2026 ↗</Ext>

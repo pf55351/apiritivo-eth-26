@@ -1,15 +1,11 @@
 import { z } from "zod";
-import { evmAddressSchema } from "./service";
+import { actPublicKeySchema, actRefSchema, arkivStringSchema, entityKeySchema, evmAddressSchema, hex32Schema, txHashSchema } from "./primitives";
+import { priceUsdcSchema } from "./service";
 
 export const ACCESS_PASS_ENTITY_TYPE = "access_pass" as const;
 export const SALE_ENTITY_TYPE = "sale" as const;
 /** Provider → buyer authorisation for a service's private file (Swarm ACT). */
 export const GRANT_ENTITY_TYPE = "grant" as const;
-
-const txHashSchema = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Invalid transaction hash");
-const entityKeySchema = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Invalid Arkiv entity key");
-
-const hex32Schema = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Expected 0x + 64 hex chars");
 
 /**
  * An access pass as read from Arkiv. The API key is `<passKey>.<secret>`:
@@ -28,7 +24,7 @@ export const accessPassSchema = z.object({
   buyerId: z.string(),
   providerId: z.string(),
   txHash: z.string(),
-  paidUsdc: z.string(),
+  paidUsdc: priceUsdcSchema,
   chainId: z.number().int(),
   /** Arkiv block at which the pass expires. */
   expiresAtBlock: z.string(),
@@ -44,16 +40,13 @@ export const saleSchema = z.object({
   providerId: z.string(),
   buyerId: z.string(),
   txHash: z.string(),
-  paidUsdc: z.string(),
+  paidUsdc: priceUsdcSchema,
   chainId: z.number().int(),
   passKey: z.string().optional(),
   buyerPublicKey: z.string().optional(),
   createdAtBlock: z.string().optional(),
 });
 export type Sale = z.infer<typeof saleSchema>;
-
-const actKeySchema = z.string().regex(/^(0x)?[0-9a-fA-F]{66}$/, "Invalid compressed public key");
-const actRefSchema = z.string().regex(/^[0-9a-fA-F]{64}([0-9a-fA-F]{64})?$/, "Invalid Swarm ACT reference");
 
 /**
  * A grant: the provider added a buyer's public key to the ACT of the service's
@@ -76,12 +69,12 @@ export type Grant = z.infer<typeof grantSchema>;
 /** Body of POST /api/grants. `providerId` is the caller's Swarm ID (trusted like elsewhere). */
 export const publishGrantInputSchema = z.object({
   serviceId: z.string().min(2).max(48),
-  providerId: z.string().min(1).max(128),
-  buyerId: z.string().min(1).max(128),
-  buyerPublicKey: actKeySchema,
+  providerId: arkivStringSchema(128).min(1),
+  buyerId: arkivStringSchema(128).min(1),
+  buyerPublicKey: actPublicKeySchema,
   historyRef: actRefSchema,
   encryptedRef: actRefSchema,
-  publisherPubKey: actKeySchema,
+  publisherPubKey: actPublicKeySchema,
 });
 export type PublishGrantInput = z.infer<typeof publishGrantInputSchema>;
 export type PublishGrantResult = { grantKey: string; txHash: string };
@@ -100,7 +93,9 @@ export const issueAccessPassInputSchema = z.object({
     .regex(/^0x[0-9a-fA-F]+$/)
     .max(512),
   /** Buyer's Swarm public key, so the provider can grant private files (optional). */
-  buyerPublicKey: actKeySchema.optional(),
+  buyerPublicKey: actPublicKeySchema.optional(),
+  /** `personal_sign` by `buyerAddress` of the pass claim for `txHash` + `secretHash` (see `passClaimMessage`). */
+  buyerSignature: z.string().regex(/^0x[0-9a-fA-F]{130}$/, "Expected a 65-byte signature"),
 });
 export type IssueAccessPassInput = z.infer<typeof issueAccessPassInputSchema>;
 

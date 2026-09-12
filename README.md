@@ -22,7 +22,8 @@ Built at **ETH Rome 2026** · Swarm ID · Swarm · Arkiv · Avalanche Fuji
 ### Requirements
 
 - **Git, Bun 1.3+ and Node.js 20+.** Foundry is optional, for Solidity development and tests.
-- **Swarm ID** to publish or buy access. Allow its sign-in popup; the app derives your wallet from your identity.
+- **Swarm ID** to publish. Allow its sign-in popup; the app derives the provider's payout wallet from the identity.
+- **A browser wallet** (MetaMask, Rabby or Core) on Avalanche Fuji to buy access. Swarm ID is optional for clients and only needed to open private files.
 - **Test funds:** [GLM on Arkiv Tiramisu](https://hub.arkiv.network/faucet) for the server writer; [AVAX](https://core.app/tools/testnet-faucet/) for wallet gas and [USDC](https://faucet.circle.com/) for purchases on Avalanche Fuji.
 
 ### Quick start
@@ -35,7 +36,7 @@ cp .env.example apps/web/.env.local
 bun dev
 ```
 
-Open **[localhost:3000](http://localhost:3000)**. Choose **Provider** to publish an API or **Client** to browse and buy. Fund the Swarm-derived wallet shown in the app.
+Open **[localhost:3000](http://localhost:3000)**. Choose **Provider** to publish an API or **Client** to browse and buy. Providers fund the Swarm-derived wallet shown in the app; clients fund the wallet they connect.
 
 The example config includes the gateways, deployed payment contract, and a **public testnet demo writer key**. Use it only on testnets. For your own writer, set `ARKIV_WRITER_PRIVATE_KEY` in `apps/web/.env.local` and fund its address with GLM. See [all environment options](.env.example).
 
@@ -101,7 +102,7 @@ prova-api.apiritivo.eth
   contenthash                 bzz://<manifest_ref>   manifest on Swarm    ← checked on the service page
 ```
 
-1. The provider owns a name (free on [sepolia.app.ens.domains](https://sepolia.app.ens.domains)) and sets its ETH address to the Swarm wallet shown in the publish form.
+1. The provider owns a name (free on the Sepolia ENSv2 beta app [app.ens.dev](https://app.ens.dev), paid in mintable MockUSDC plus Sepolia ETH for gas) and sets its ETH address to the Swarm wallet shown in the publish form.
 2. Publishing with the optional **ENS name** field: the server resolves the name and refuses it unless `addr(name)` equals the payout address. The name is stored on Arkiv as `ens_name`.
 3. The service page shows an ENS panel with ✓ / ○ per record; in provider view it lists the exact values to paste into the ENS app. Marketplace cards carry the badge (◐ address verified, ✓ fully resolvable).
 4. Machines resolve the name: `bun tools/call-service.ts prova-api.apiritivo.eth "<key>"` reads the text record (Arkiv `ens_name` as fallback) and calls the gateway.

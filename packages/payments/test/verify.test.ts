@@ -108,3 +108,32 @@ describe("contract mode · verifyContractReceipt", () => {
     expect(r.ok).toBe(false);
   });
 });
+
+describe("contract mode · stricter checks", () => {
+  const params = { provider, serviceId: "market-data-a81f", minUsdc: "1.5" };
+  test("refuses a transaction with two purchases of the same service", () => {
+    const logs = [
+      purchasedLog(contract, { purchaseId: 1n, buyer, provider, serviceId: "market-data-a81f", amount: usdcToUnits("1.5") }),
+      purchasedLog(contract, { purchaseId: 2n, buyer, provider, serviceId: "market-data-a81f", amount: usdcToUnits("1.5") }),
+    ];
+    const r = verifyContractReceipt(receipt(logs), contract, params);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toContain("several purchases");
+  });
+  test("checks the purchased duration against the listing when given", () => {
+    const paid = receipt([purchasedLog(contract, { purchaseId: 1n, buyer, provider, serviceId: "market-data-a81f", amount: usdcToUnits("1.5"), accessSeconds: 3600n })]);
+    expect(verifyContractReceipt(paid, contract, { ...params, accessSeconds: 3600 }).ok).toBe(true);
+    const wrong = verifyContractReceipt(paid, contract, { ...params, accessSeconds: 604800 });
+    expect(wrong.ok).toBe(false);
+    if (!wrong.ok) expect(wrong.reason).toContain("604800");
+  });
+});
+
+describe("direct mode · stricter checks", () => {
+  test("refuses transfers from two different wallets in one transaction", () => {
+    const logs = [transferLog(USDC_ADDRESS, buyer, provider, usdcToUnits("1")), transferLog(USDC_ADDRESS, other, provider, usdcToUnits("1"))];
+    const r = verifyUsdcReceipt(receipt(logs), { to: provider, minUsdc: "1.5" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toContain("several wallets");
+  });
+});

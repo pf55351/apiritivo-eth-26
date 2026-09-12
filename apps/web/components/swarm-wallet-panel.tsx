@@ -7,7 +7,9 @@ import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { copyText } from "@/lib/format";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
+import { RefreshButton } from "./refresh-button";
 import { Button, Disclosure, ErrorNotice } from "./ui";
+import { WalletBalances } from "./wallet-balances";
 
 const fieldCls = "field-control font-mono";
 
@@ -85,16 +87,12 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     <section className="min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-medium">Wallet</h2>
-        <Button
+        <RefreshButton
           variant="subtle"
-          size="sm"
-          onClick={() => {
-            void wallet.refreshBalances();
-            if (contractMode) void loadStats();
+          onClick={async () => {
+            await Promise.all([wallet.refreshBalances(), ...(contractMode ? [loadStats()] : [])]);
           }}
-        >
-          Refresh
-        </Button>
+        />
       </div>
       <p className="mt-1 text-xs text-subtle">{PAYMENT_CHAIN_NAME}</p>
       {wallet.status === "deriving" ? (
@@ -117,15 +115,8 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               {copied === "address" ? "Copied" : "Copy address"}
             </Button>
           </div>
-          <div className="my-5 grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-subtle">Balance</p>
-              <p className="mt-1 text-lg font-medium">{wallet.balances ? formatPriceUsdc(wallet.balances.usdc) : "…"}</p>
-            </div>
-            <div>
-              <p className="text-xs text-subtle">AVAX for gas</p>
-              <p className="mt-1 text-lg font-medium">{wallet.balances ? Number(wallet.balances.avax).toFixed(4) : "…"}</p>
-            </div>
+          <div className="my-5">
+            <WalletBalances balances={wallet.balances} />
           </div>
           {contractMode ? (
             <div className="mb-5 border-t border-line pt-5">

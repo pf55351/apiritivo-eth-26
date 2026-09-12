@@ -42,10 +42,24 @@ function client(): PublicClient {
   return cached;
 }
 
-/** ENS manager app for the configured chain. */
+/**
+ * Sepolia runs the ENSv2 beta. Its UniversalResolverV2 resolves names registered
+ * through the v2 app (app.ens.dev) and falls back to legacy v1 names; viem's
+ * default on Sepolia is the v1 resolver, which does not see v2 names.
+ * Override with NEXT_PUBLIC_ENS_UNIVERSAL_RESOLVER if ENS moves it.
+ */
+const SEPOLIA_UNIVERSAL_RESOLVER_V2: Address = "0x4a1817d13e9cf196f471725176355c1234b63c70";
+function universalResolverAddress(): Address | undefined {
+  const fromEnv = typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_ENS_UNIVERSAL_RESOLVER?.trim() : undefined;
+  if (fromEnv && /^0x[0-9a-fA-F]{40}$/.test(fromEnv)) return fromEnv as Address;
+  return chainName() === "sepolia" ? SEPOLIA_UNIVERSAL_RESOLVER_V2 : undefined;
+}
+
+/** ENS manager app for the configured chain: app.ens.domains on mainnet, the ENSv2 beta app (app.ens.dev) on Sepolia. */
 export function ensAppUrl(name: string): string {
-  const host = chainName() === "mainnet" ? "app.ens.domains" : "sepolia.app.ens.domains";
-  return `https://${host}/${name}`;
+  const fromEnv = typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_ENS_APP_URL?.trim().replace(/\/+$/, "") : undefined;
+  const base = fromEnv || (chainName() === "mainnet" ? "https://app.ens.domains" : "https://app.ens.dev");
+  return `${base}/${name}`;
 }
 
 export function ensChainLabel(): string {
@@ -103,7 +117,7 @@ export type EnsServiceRecords = {
 export async function resolveEnsAddress(name: string): Promise<Address | null> {
   const n = normalizeEnsName(name);
   if (!n) return null;
-  return client().getEnsAddress({ name: n });
+  return client().getEnsAddress({ name: n, universalResolverAddress: universalResolverAddress() });
 }
 
 const contenthashAbi = [
@@ -113,7 +127,7 @@ const contenthashAbi = [
 /** viem has no contenthash action: find the name's resolver and read `contenthash(node)` from it. */
 async function readContenthash(c: PublicClient, name: string): Promise<string | null> {
   try {
-    const resolver = await c.getEnsResolver({ name });
+    const resolver = await c.getEnsResolver({ name, universalResolverAddress: universalResolverAddress() });
     if (!resolver || /^0x0{40}$/.test(resolver)) return null;
     const hash = await c.readContract({ address: resolver, abi: contenthashAbi, functionName: "contenthash", args: [namehash(name)] });
     return hash && hash !== "0x" ? hash : null;
@@ -128,8 +142,8 @@ export async function resolveServiceRecords(name: string): Promise<EnsServiceRec
   if (!n) throw new Error("Invalid ENS name.");
   const c = client();
   const [address, serviceId, contenthash] = await Promise.all([
-    c.getEnsAddress({ name: n }).catch(() => null),
-    c.getEnsText({ name: n, key: ENS_SERVICE_TEXT_KEY }).catch(() => null),
+    c.getEnsAddress({ name: n, universalResolverAddress: universalResolverAddress() }).catch(() => null),
+    c.getEnsText({ name: n, key: ENS_SERVICE_TEXT_KEY, universalResolverAddress: universalResolverAddress() }).catch(() => null),
     readContenthash(c, n),
   ]);
   return { name: n, address, serviceId: serviceId || null, manifestRef: swarmRefFromContenthash(contenthash), contenthash };

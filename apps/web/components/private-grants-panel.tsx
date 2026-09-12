@@ -6,6 +6,7 @@ import { grantPrivateFile } from "@apiritivo/swarm";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type FriendlyError, toFriendlyError } from "@/lib/errors";
 import { useSession } from "@/lib/session";
+import { RefreshButton } from "./refresh-button";
 import { Button, Disclosure, ErrorNotice } from "./ui";
 
 type Row = { service: ArkivService; grants: Grant[] };
@@ -96,9 +97,7 @@ export function PrivateGrantsPanel({ services, sales }: { services: ArkivService
                     {service.privateAttachment!.name} · {grants.length} granted · {rows === null ? "…" : `${pending.length} waiting`}
                   </p>
                 </div>
-                <button type="button" onClick={() => void load()} className="text-xs text-subtle underline hover:text-content-secondary">
-                  refresh
-                </button>
+                <RefreshButton variant="subtle" label="Refresh file access" onClick={load} />
               </div>
               {pending.length > 0 ? (
                 <ul className="mt-3 divide-y divide-line">

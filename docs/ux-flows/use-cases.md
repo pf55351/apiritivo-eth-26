@@ -1,8 +1,10 @@
 # APIritivo — use cases
 
 Extracted from `README.md`, `docs/JUDGE-WALKTHROUGH.txt`, `docs/pitch-3min.md` and `apps/web/README.md`.
-Two actors: **Creator** (publishes and sells an API) and **Buyer** (pays and calls it). Both are Swarm ID identities; a judge can play both with two browser profiles.
-External systems: **Swarm ID** (login), **Swarm** (manifest bytes), **Arkiv** (registry), **Fuji** (USDC + `APIritivoPayments`), **App server** (4 API routes).
+Two actors: **Creator** (publishes and sells an API) and **Buyer** (pays and calls it).
+External systems: **Swarm ID** (provider login), **browser wallet** (buyer identity), **Swarm** (manifest bytes), **Arkiv** (registry), **Fuji** (USDC + `APIritivoPayments`), **App server** (5 API routes).
+
+> **Snapshot note (2026-09-12).** Written when both actors were Swarm ID identities. Today the Buyer is a browser wallet (MetaMask, Rabby, Core): UC-001 applies to the Creator only, UC-003 funds the connected wallet via "Fund wallet", UC-004 has no "Pay with" toggle and adds one `personal_sign` after payment, UC-006 lists the wallet's passes. See [UX-FLOWS.md](UX-FLOWS.md) for the full list of changes.
 
 | ID | Name | Actor | Screens |
 | --- | --- | --- | --- |

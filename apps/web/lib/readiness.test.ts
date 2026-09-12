@@ -100,3 +100,10 @@ describe("provider checks", () => {
 test("state labels are short words", () => {
   expect(["ok", "low", "missing", "info", "loading", "unknown"].map((s) => stateLabel(s as never))).toEqual(["present", "low", "missing", "balance", "checking", "unknown"]);
 });
+
+test("a writer key that does not match the trusted owner blocks, even when funded", () => {
+  const checks = buildChecks(input({ writer: { funded: true, balance: "1", faucetUrl: "https://hub", ownerMismatch: true } }));
+  const glm = checks.find((c) => c.id === "glm");
+  expect(glm?.state).toBe("missing");
+  expect(glm?.hint).toContain("trusted writer address");
+});

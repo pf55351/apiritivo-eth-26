@@ -1,8 +1,8 @@
 "use client";
 
 import { arkivEntityUrl, arkivTxUrl, type BlockTiming, formatPassBearer, generatePassSecret, hashPassSecret, secondsUntilBlock } from "@apiritivo/arkiv";
-import { AVAX_FAUCET_URL, explorerAddressUrl, explorerTxUrl, isContractMode, PAYMENT_CHAIN_NAME, paymentsContractAddress, USDC_FAUCET_URL } from "@apiritivo/payments";
-import { payForAccess, waitForPayment } from "@apiritivo/payments/browser";
+import { explorerTxUrl, isContractMode, PAYMENT_CHAIN_NAME, paymentsContractAddress } from "@apiritivo/payments";
+import { payForAccess, signPassClaim, waitForPayment } from "@apiritivo/payments/browser";
 import type { AccessPass, ArkivService, IssueAccessPassResult } from "@apiritivo/shared";
 import { formatAccessDuration, formatPriceUsdc, formatRemaining } from "@apiritivo/shared";
 import { getGranteeKey } from "@apiritivo/swarm";
@@ -12,17 +12,42 @@ import { useActiveAccount } from "@/lib/identity";
 import { useSession } from "@/lib/session";
 import { ApiKeyBox } from "./api-key-box";
 import { Button, Disclosure, ErrorNotice } from "./ui";
+import { WalletFunding } from "./wallet-funding";
 
 type Step = "idle" | "approving" | "paying" | "confirming" | "issuing" | "done";
 
-function StepRow({ label, state }: { label: string; state: "todo" | "active" | "done" }) {
+function StepRow({ number, label, state }: { number: number; label: string; state: "todo" | "active" | "done" }) {
   const tone = state === "done" ? "text-success" : state === "active" ? "text-accent-text" : "text-subtle";
   return (
-    <li className={`flex items-center gap-3 text-sm ${tone}`}>
-      <span className={`flex h-6 w-6 items-center justify-center rounded-full border border-current font-mono text-xs ${state === "active" ? "animate-pulse" : ""}`}>
-        {state === "done" ? "✓" : state === "active" ? "…" : "○"}
+    <li aria-current={state === "active" ? "step" : undefined} className={`flex items-center gap-3 text-sm ${tone}`}>
+      <span
+        aria-hidden="true"
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full border text-xs tabular-nums ${state === "done" ? "border-success/30 bg-success/10" : "border-current"}`}
+      >
+        {state === "done" ? (
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m5 12 4 4L19 6" />
+          </svg>
+        ) : state === "active" ? (
+          <svg
+            aria-hidden="true"
+            className="motion-safe:animate-spin"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
+            <path d="M12 3a9 9 0 1 1-9 9" />
+          </svg>
+        ) : (
+          String(number).padStart(2, "0")
+        )}
       </span>
       {label}
+      <span className="sr-only">{state === "done" ? "Complete" : state === "active" ? "In progress" : "Pending"}</span>
     </li>
   );
 }
@@ -92,7 +117,10 @@ export function BuyAccess({
       // Proof of ownership: a fresh secret, hashed for Arkiv and encrypted for this account.
       // The server stores both and never sees the secret.
       const secret = generatePassSecret();
-      const [secretHash, encryptedSecret] = [hashPassSecret(secret), await account.sealPassSecret(secret)];
+      const secretHash = hashPassSecret(secret);
+      const encryptedSecret = await account.sealPassSecret(secret);
+      // Claim: the paying wallet signs (tx hash, secret hash) so only it can mint the pass for this payment.
+      const buyerSignature = await signPassClaim(signer, sent.txHash, secretHash);
       const res = await fetch("/api/access-passes", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -103,6 +131,7 @@ export function BuyAccess({
           txHash: sent.txHash,
           secretHash,
           encryptedSecret,
+          buyerSignature,
           // Swarm ID key, when signed in: lets the provider grant the private file to this buyer.
           buyerPublicKey: session.identity ? getGranteeKey() : undefined,
         }),
@@ -166,44 +195,18 @@ export function BuyAccess({
         </div>
       ) : checkoutVisible ? (
         <div className="mt-5 space-y-4">
-          <div className="text-xs text-subtle">
-            <p className="mb-2 text-muted">{walletKind ? "Connected wallet" : "Swarm wallet"}</p>
-            {account.address ? (
-              <>
-                <p>
-                  <span className="font-mono">{account.identity.name}</span> · {account.balances?.usdc ?? "…"} USDC ·{" "}
-                  {account.balances ? Number(account.balances.avax).toFixed(4) : "…"} AVAX
-                </p>
-                <div className="mt-3">
-                  <Disclosure title="Fund wallet">
-                    <a href={explorerAddressUrl(account.address)} target="_blank" rel="noreferrer" className="break-all font-mono text-xs hover:text-content">
-                      {account.address} ↗
-                    </a>
-                    <div className="mt-3 flex flex-wrap items-center gap-3">
-                      <a className="py-2 hover:text-content" href={USDC_FAUCET_URL} target="_blank" rel="noreferrer">
-                        USDC faucet ↗
-                      </a>
-                      <a className="py-2 hover:text-content" href={AVAX_FAUCET_URL} target="_blank" rel="noreferrer">
-                        AVAX faucet ↗
-                      </a>
-                      <Button variant="subtle" size="sm" onClick={() => void account.refreshBalances()}>
-                        Refresh
-                      </Button>
-                    </div>
-                  </Disclosure>
-                </div>
-              </>
-            ) : (
-              <p>{account.status === "deriving" ? "Preparing wallet…" : (account.error?.message ?? "Wallet unavailable.")}</p>
-            )}
-          </div>
+          {account.address ? (
+            <WalletFunding label={walletKind ? "Connected wallet" : "Swarm wallet"} address={account.address} balances={account.balances} onRefresh={account.refreshBalances} />
+          ) : (
+            <p className="text-xs text-subtle">{account.status === "deriving" ? "Preparing wallet…" : (account.error?.message ?? "Wallet unavailable.")}</p>
+          )}
 
           {busy ? (
-            <ul aria-label="Purchase progress" className="space-y-2 py-2">
-              {isContractMode() ? <StepRow label="Approve USDC" state={stateOf(step, "approving")} /> : null}
-              <StepRow label={`Pay ${formatPriceUsdc(service.priceUsdc!)}`} state={stateOf(step, "paying")} />
-              <StepRow label="Confirm payment" state={stateOf(step, "confirming")} />
-              <StepRow label="Create pass" state={stateOf(step, "issuing")} />
+            <ul aria-label="Purchase progress" aria-live="polite" className="space-y-2 py-2">
+              {isContractMode() ? <StepRow number={1} label="Approve USDC" state={stateOf(step, "approving")} /> : null}
+              <StepRow number={isContractMode() ? 2 : 1} label={`Pay ${formatPriceUsdc(service.priceUsdc!)}`} state={stateOf(step, "paying")} />
+              <StepRow number={isContractMode() ? 3 : 2} label="Confirm payment" state={stateOf(step, "confirming")} />
+              <StepRow number={isContractMode() ? 4 : 3} label="Create pass" state={stateOf(step, "issuing")} />
             </ul>
           ) : null}
           <Button size="lg" className="w-full" onClick={buy} disabled={busy || account.status !== "ready" || !account.signer}>
@@ -228,8 +231,9 @@ export function BuyAccess({
           ) : null}
           <p className="text-xs leading-relaxed text-subtle">
             {contract ? "Allow the contract to spend this USDC amount, then pay for access." : "Pay the provider in USDC for access."}
-            <span className="mt-1 block">AVAX pays the network fees separately.{walletKind ? " Your wallet signs each step; one extra signature seals the API key." : ""}</span>
+            <span className="mt-1 block">AVAX pays the network fees separately.</span>
           </p>
+          {walletKind ? <p className="text-xs leading-relaxed text-subtle">Confirm each payment step in your wallet, then sign once to secure your API key.</p> : null}
         </div>
       ) : null}
 

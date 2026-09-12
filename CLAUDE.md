@@ -4,13 +4,13 @@ Read `README.md` first. This file holds the rules that are not obvious from the 
 
 ## What it is
 
-Machine-readable service marketplace. Identity = Swarm ID, technical manifests = Swarm, registry = Arkiv, payments = USDC on Avalanche Fuji (direct transfer today, `contracts/APIritivoPayments.sol` when deployed).
+Machine-readable service marketplace. Provider identity = Swarm ID, client identity = browser wallet, technical manifests = Swarm, registry = Arkiv, payments = USDC on Avalanche Fuji through `contracts/src/APIritivoPayments.sol` (deployed on Fuji; direct transfer only when the contract address is empty).
 
 Monorepo (Bun + Turbo): `apps/web` (Next 15, Tailwind v4), `packages/shared` (Zod schemas), `packages/swarm`, `packages/arkiv`, `packages/payments`, `packages/ens` (read-only ENS), `tools` (demo check), `contracts` (Foundry).
 
 ## Non-negotiable rules
 
-- **Never invent SDK methods.** Inspect `node_modules/.bun/@snaha+swarm-id*` and `@arkiv-network+sdk*` types before touching the adapters.
+- **Never invent SDK methods.** Inspect the `@snaha/swarm-id` and `@arkiv-network/sdk` types in `node_modules` (this checkout uses the pnpm layout, `node_modules/.pnpm/@snaha+swarm-id*` and `@arkiv-network+sdk*`) before touching the adapters.
 - **Vendor SDKs stay inside `packages/*`.** React components only see `ArkivService`, `ServiceManifest`, `AccessPass`, `Sale`, `SwarmConnectionInfo`, `Signer`.
 - **Publish order:** build manifest → upload to Swarm → `manifestRef` → Arkiv entity. Never write Arkiv first.
 - **Arkiv attribute names are snake_case** (`entity_type`, `service_id`, `provider_id`, `manifest_ref`, `price_usdc`, `access_seconds`, `payout_address`, `buyer_id`, `buyer_address`, `tx_hash`, `paid_usdc`, `chain_id`, `pass_key`, `secret_hash`, `ens_name`). The chain rejects uppercase letters even though the SDK's local validator accepts them. Always go through `ATTR` in `packages/arkiv/src/entity.ts`.

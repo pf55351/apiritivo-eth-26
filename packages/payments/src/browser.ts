@@ -10,10 +10,10 @@
  *  - contract: approve + `APIritivoPayments.buy` (when NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS is set)
  *  - direct:   plain USDC `transfer` to the provider's payout address
  */
-import { type Address, createPublicClient, createWalletClient, custom, erc20Abi, formatEther, type Hash, http, toHex, type WalletClient } from "viem";
+import { type Address, createPublicClient, createWalletClient, custom, erc20Abi, formatEther, type Hash, type Hex, http, toHex, type WalletClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { type OnChainPurchase, paymentsAbi, paymentsContractAddress, serviceKey } from "./contract";
-import { keyFromSignature, PASS_KEY_MESSAGE, PAYMENT_CHAIN, USDC_ADDRESS, unitsToUsdc, usdcToUnits } from "./index";
+import { keyFromSignature, PASS_KEY_MESSAGE, PAYMENT_CHAIN, passClaimMessage, USDC_ADDRESS, unitsToUsdc, usdcToUnits } from "./index";
 
 type Eip1193 = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
@@ -147,6 +147,15 @@ export async function signPassKeyMessage(signer: Signer): Promise<Uint8Array> {
   try {
     const signature = await signer.client.signMessage({ account: signer.address, message: PASS_KEY_MESSAGE });
     return keyFromSignature(signature);
+  } catch (err) {
+    throw new WalletError("rejected", "Signature was rejected in the wallet.", err);
+  }
+}
+
+/** Sign the claim for a paid transaction (see `passClaimMessage`); sent to POST /api/access-passes as `buyerSignature`. */
+export async function signPassClaim(signer: Signer, txHash: Hash, secretHash: Hex): Promise<Hex> {
+  try {
+    return await signer.client.signMessage({ account: signer.address, message: passClaimMessage(txHash, secretHash) });
   } catch (err) {
     throw new WalletError("rejected", "Signature was rejected in the wallet.", err);
   }

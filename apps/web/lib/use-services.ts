@@ -3,16 +3,15 @@
 import { getService, listServices, listServicesByProvider } from "@apiritivo/arkiv";
 import type { ArkivService } from "@apiritivo/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type FriendlyError, toFriendlyError } from "./errors";
-
-type State<T> = { data: T | null; loading: boolean; error: FriendlyError | null };
+import { accessQueryState, emptyAccessQuery } from "./access-query-state";
+import { toFriendlyError } from "./errors";
 
 /**
  * Tiny data hook around the Arkiv read adapter. `key` identifies the query;
  * when it changes the query re-runs. `null` key = nothing to load.
  */
 function useArkivQuery<T>(key: string | null, load: (key: string) => Promise<T>, fallback: string) {
-  const [state, setState] = useState<State<T>>({ data: null, loading: key !== null, error: null });
+  const [state, setState] = useState(() => emptyAccessQuery<T>(key));
   const [tick, setTick] = useState(0);
   const loadRef = useRef(load);
   loadRef.current = load;
@@ -20,19 +19,18 @@ function useArkivQuery<T>(key: string | null, load: (key: string) => Promise<T>,
   fallbackRef.current = fallback;
 
   useEffect(() => {
+    setState((current) => accessQueryState(current, { type: "start", key }));
     if (key === null) {
-      setState({ data: null, loading: false, error: null });
       return;
     }
     let cancelled = false;
-    setState((s) => ({ ...s, loading: true, error: null }));
     loadRef
       .current(key)
       .then((data) => {
-        if (!cancelled) setState({ data, loading: false, error: null });
+        if (!cancelled) setState((current) => accessQueryState(current, { type: "success", key, data, timing: null }));
       })
       .catch((err: unknown) => {
-        if (!cancelled) setState({ data: null, loading: false, error: toFriendlyError(err, fallbackRef.current) });
+        if (!cancelled) setState((current) => accessQueryState(current, { type: "failure", key, error: toFriendlyError(err, fallbackRef.current) }));
       });
     return () => {
       cancelled = true;
@@ -40,7 +38,8 @@ function useArkivQuery<T>(key: string | null, load: (key: string) => Promise<T>,
   }, [key, tick]);
 
   const reload = useCallback(() => setTick((n) => n + 1), []);
-  return { ...state, reload };
+  const visible = state.key === key ? state : emptyAccessQuery<T>(key);
+  return { ...visible, initialLoading: visible.loading && visible.data === null, refreshing: visible.loading && visible.data !== null, reload };
 }
 
 const loadAll = () => listServices();

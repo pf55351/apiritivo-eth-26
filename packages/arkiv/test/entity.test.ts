@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { DEFAULT_WRITER_ADDRESS } from "../src/config";
 import { parseAccessPassEntity, parseGrantEntity, parseSaleEntity, parseServiceEntity } from "../src/entity";
+
+// Every fixture is owned by the app writer; entities from any other owner are refused.
+const owner = DEFAULT_WRITER_ADDRESS;
 
 type Attr = { type: string; value: unknown };
 
@@ -29,8 +33,8 @@ const attrs = (over: Record<string, unknown> = {}): Record<string, Attr> => {
 describe("parseServiceEntity", () => {
   test("maps attributes + payload to ArkivService", () => {
     const service = parseServiceEntity({
+      owner,
       key: "0xabc",
-      owner: "0xdef",
       createdAt: 42n,
       attributes: attrs(),
       toJson: () => ({ name: "Market Data API", description: "Prices" }),
@@ -51,11 +55,11 @@ describe("parseServiceEntity", () => {
   });
 
   test("ignores entities from other apps", () => {
-    expect(parseServiceEntity({ attributes: attrs({ app: "other" }), toJson: () => ({ name: "x" }) })).toBeNull();
+    expect(parseServiceEntity({ owner, attributes: attrs({ app: "other" }), toJson: () => ({ name: "x" }) })).toBeNull();
   });
 
   test("ignores entities without a name payload", () => {
-    expect(parseServiceEntity({ attributes: attrs(), toJson: () => ({}) })).toBeNull();
+    expect(parseServiceEntity({ owner, attributes: attrs(), toJson: () => ({}) })).toBeNull();
   });
 });
 
@@ -69,11 +73,19 @@ describe("access pass + sale parsing", () => {
     chain_id: 43113,
   });
   test("parses a pass with its expiry block", () => {
-    const pass = parseAccessPassEntity({ key: key as `0x${string}`, expiresAt: 999n, createdAt: 10n, attributes: passAttrs, toJson: () => ({ serviceName: "Market Data" }) });
+    const pass = parseAccessPassEntity({
+      owner,
+      key: key as `0x${string}`,
+      expiresAt: 999n,
+      createdAt: 10n,
+      attributes: passAttrs,
+      toJson: () => ({ serviceName: "Market Data" }),
+    });
     expect(pass).toMatchObject({ passKey: key, serviceId: "market-data-a81f", buyerId: "buyer-1", chainId: 43113, expiresAtBlock: "999", serviceName: "Market Data" });
   });
   test("reads the ownership fields: secret_hash attribute and encrypted secret in the payload", () => {
     const pass = parseAccessPassEntity({
+      owner,
       key: key as `0x${string}`,
       expiresAt: 999n,
       attributes: attrs({
@@ -89,13 +101,14 @@ describe("access pass + sale parsing", () => {
     expect(pass).toMatchObject({ secretHash: `0x${"c".repeat(64)}`, encryptedSecret: "0x01abcd" });
   });
   test("legacy passes without secret_hash still parse (and are refused at verification)", () => {
-    const pass = parseAccessPassEntity({ key: key as `0x${string}`, expiresAt: 999n, attributes: passAttrs, toJson: () => ({}) });
+    const pass = parseAccessPassEntity({ owner, key: key as `0x${string}`, expiresAt: 999n, attributes: passAttrs, toJson: () => ({}) });
     expect(pass?.secretHash).toBeUndefined();
     expect(pass?.encryptedSecret).toBeUndefined();
   });
   test("carries the buyer's Swarm public key for ACT grants", () => {
     const pk = `02${"ab".repeat(32)}`;
     const pass = parseAccessPassEntity({
+      owner,
       key: key as `0x${string}`,
       expiresAt: 9n,
       attributes: attrs({ ...Object.fromEntries(Object.entries(passAttrs).map(([k, v]) => [k, v.value])), buyer_pubkey: pk }),
@@ -103,6 +116,7 @@ describe("access pass + sale parsing", () => {
     });
     expect(pass?.buyerPublicKey).toBe(pk);
     const sale = parseSaleEntity({
+      owner,
       key: key as `0x${string}`,
       attributes: attrs({ entity_type: "sale", buyer_id: "b", tx_hash: `0x${"3".repeat(64)}`, paid_usdc: { type: "dec", value: "1" }, chain_id: 43113, buyer_pubkey: pk }),
       toJson: () => ({}),
@@ -110,10 +124,11 @@ describe("access pass + sale parsing", () => {
     expect(sale?.buyerPublicKey).toBe(pk);
   });
   test("rejects a service entity as a pass", () => {
-    expect(parseAccessPassEntity({ key: key as `0x${string}`, expiresAt: 1n, attributes: attrs(), toJson: () => ({}) })).toBeNull();
+    expect(parseAccessPassEntity({ owner, key: key as `0x${string}`, expiresAt: 1n, attributes: attrs(), toJson: () => ({}) })).toBeNull();
   });
   test("parses a sale", () => {
     const sale = parseSaleEntity({
+      owner,
       key: key as `0x${string}`,
       attributes: attrs({ entity_type: "sale", buyer_id: "b", tx_hash: `0x${"3".repeat(64)}`, paid_usdc: { type: "dec", value: "1" }, chain_id: 43113, pass_key: key }),
       toJson: () => ({}),
@@ -128,11 +143,12 @@ describe("private files (Swarm ACT)", () => {
   const hist = "f".repeat(64);
   const pub = `03${"12".repeat(32)}`;
   test("a service without private_* attributes has no attachment", () => {
-    const svc = parseServiceEntity({ key: key as `0x${string}`, attributes: attrs(), toJson: () => ({ name: "Market", description: "d" }) });
+    const svc = parseServiceEntity({ owner, key: key as `0x${string}`, attributes: attrs(), toJson: () => ({ name: "Market", description: "d" }) });
     expect(svc?.privateAttachment).toBeUndefined();
   });
   test("a service with a private file exposes name, size, type and ACT refs", () => {
     const svc = parseServiceEntity({
+      owner,
       key: key as `0x${string}`,
       attributes: attrs({
         private_name: "docs.md",
@@ -148,6 +164,7 @@ describe("private files (Swarm ACT)", () => {
   });
   test("a broken private ref drops the whole service (never a half attachment)", () => {
     const svc = parseServiceEntity({
+      owner,
       key: key as `0x${string}`,
       attributes: attrs({ private_enc_ref: "zzz", private_history_ref: hist, private_pubkey: pub }),
       toJson: () => ({ name: "Market", description: "d" }),
@@ -156,6 +173,7 @@ describe("private files (Swarm ACT)", () => {
   });
   test("parses a grant and rejects other entity types", () => {
     const grant = parseGrantEntity({
+      owner,
       key: key as `0x${string}`,
       createdAt: 42n,
       attributes: attrs({ entity_type: "grant", buyer_id: "buyer-1", buyer_pubkey: pub, act_history_ref: hist, act_enc_ref: enc, act_pubkey: pub }),
@@ -172,6 +190,56 @@ describe("private files (Swarm ACT)", () => {
       publisherPubKey: pub,
       createdAtBlock: "42",
     });
-    expect(parseGrantEntity({ key: key as `0x${string}`, attributes: attrs(), toJson: () => ({}) })).toBeNull();
+    expect(parseGrantEntity({ owner, key: key as `0x${string}`, attributes: attrs(), toJson: () => ({}) })).toBeNull();
+  });
+});
+
+describe("owner check", () => {
+  test("entities written by anyone but the app writer are refused, whatever their attributes say", () => {
+    const stranger = "0x000000000000000000000000000000000000dEaD" as const;
+    const key = `0x${"9".repeat(64)}` as `0x${string}`;
+    expect(parseServiceEntity({ owner: stranger, key, attributes: attrs(), toJson: () => ({ name: "Fake", description: "" }) })).toBeNull();
+    expect(parseServiceEntity({ key, attributes: attrs(), toJson: () => ({ name: "No owner", description: "" }) })).toBeNull();
+    const passAttrs = attrs({
+      entity_type: "access_pass",
+      buyer_id: "b",
+      tx_hash: `0x${"2".repeat(64)}`,
+      paid_usdc: { type: "dec", value: "0.5" },
+      chain_id: 43113,
+      secret_hash: `0x${"c".repeat(64)}`,
+    });
+    expect(parseAccessPassEntity({ owner: stranger, key, expiresAt: 999n, attributes: passAttrs, toJson: () => ({}) })).toBeNull();
+    expect(
+      parseSaleEntity({
+        owner: stranger,
+        key,
+        attributes: attrs({ entity_type: "sale", buyer_id: "b", tx_hash: `0x${"3".repeat(64)}`, paid_usdc: { type: "dec", value: "1" }, chain_id: 43113 }),
+        toJson: () => ({}),
+      }),
+    ).toBeNull();
+    expect(
+      parseGrantEntity({
+        owner: stranger,
+        key,
+        attributes: attrs({
+          entity_type: "grant",
+          buyer_id: "b",
+          buyer_pubkey: `02${"ab".repeat(32)}`,
+          act_history_ref: "f".repeat(64),
+          act_enc_ref: "e".repeat(128),
+          act_pubkey: `02${"ab".repeat(32)}`,
+        }),
+        toJson: () => ({}),
+      }),
+    ).toBeNull();
+  });
+  test("the owner comparison is case-insensitive", () => {
+    const svc = parseServiceEntity({
+      owner: DEFAULT_WRITER_ADDRESS.toLowerCase() as `0x${string}`,
+      key: `0x${"9".repeat(64)}`,
+      attributes: attrs(),
+      toJson: () => ({ name: "Ok", description: "" }),
+    });
+    expect(svc?.name).toBe("Ok");
   });
 });

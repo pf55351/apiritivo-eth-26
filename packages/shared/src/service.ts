@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { actPublicKeySchema, actRefSchema, arkivStringSchema, evmAddressSchema, swarmReferenceSchema } from "./primitives";
+
+export { actPublicKeySchema, evmAddressSchema, swarmReferenceSchema } from "./primitives";
 
 export const APP_ID = "apiritivo" as const;
 export const SERVICE_ENTITY_TYPE = "service" as const;
@@ -71,26 +74,15 @@ export function formatPriceUsdc(price: string): string {
   return `${shown} USDC`;
 }
 
-export const evmAddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Invalid EVM address (0x + 40 hex)");
-
 /** Lowercase `.eth` name (a subname is fine). Resolution and ownership are checked by the server. */
-export const ensNameSchema = z
-  .string()
-  .trim()
+export const ensNameSchema = arkivStringSchema(120, "Max 120 characters")
   .toLowerCase()
   .regex(/^(?=.{3,253}$)([a-z0-9-]+\.)+eth$/, "Use a .eth name like myapi.eth");
-
-/** Swarm reference: 64 hex chars (plain) or 128 (encrypted). */
-export const swarmReferenceSchema = z.string().regex(/^[0-9a-fA-F]{64}(?:[0-9a-fA-F]{64})?$/, "Invalid Swarm reference");
 
 /**
  * Normalised service as read from Arkiv. This is OUR shape; vendor entity
  * objects never leave the arkiv adapter.
  */
-/** Swarm ACT reference (encrypted reference or history reference): 64 or 128 hex chars. */
-const actRefSchema = z.string().regex(/^[0-9a-fA-F]{64}([0-9a-fA-F]{64})?$/, "Invalid Swarm ACT reference");
-/** Compressed secp256k1 public key, 33 bytes, as used for ACT grantees. */
-export const actPublicKeySchema = z.string().regex(/^(0x)?[0-9a-fA-F]{66}$/, "Invalid compressed public key");
 
 /**
  * Optional private file of a service, stored on Swarm with ACT (Access Control
@@ -98,9 +90,13 @@ export const actPublicKeySchema = z.string().regex(/^(0x)?[0-9a-fA-F]{66}$/, "In
  * The references are public on Arkiv but useless without being a grantee.
  */
 export const privateAttachmentSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  bytes: z.number().int().positive(),
-  contentType: z.string().max(100).optional(),
+  name: arkivStringSchema(120).min(1),
+  bytes: z
+    .number()
+    .int()
+    .positive()
+    .max(512 * 1024),
+  contentType: arkivStringSchema(100).optional(),
   encryptedRef: actRefSchema,
   /** History reference at upload time (grants produce newer ones, see `grant` entities). */
   historyRef: actRefSchema,
@@ -142,16 +138,19 @@ export type ArkivService = z.infer<typeof arkivServiceSchema>;
 export const publishServiceInputSchema = z.object({
   serviceId: slug,
   category: slug,
-  providerId: z.string().min(1).max(128),
-  providerName: z.string().max(80).optional(),
+  providerId: arkivStringSchema(128).min(1),
+  providerName: arkivStringSchema(80).optional(),
   manifestRef: swarmReferenceSchema,
   name: z.string().trim().min(2, "Min 2 characters").max(80, "Max 80 characters"),
   description: z.string().trim().min(8, "Min 8 characters").max(400, "Max 400 characters"),
   priceUsdc: priceUsdcSchema,
+  // Arkiv converts seconds to 2-second blocks and refuses odd values; catching it here keeps a
+  // buyer from paying for a pass the writer can never mint.
   accessSeconds: z
     .number()
     .int()
     .positive("Pick an access duration")
+    .multipleOf(2, "Access duration must be an even number of seconds")
     .max(10 * 365 * 86400),
   payoutAddress: evmAddressSchema,
   privateAttachment: privateAttachmentSchema.optional(),

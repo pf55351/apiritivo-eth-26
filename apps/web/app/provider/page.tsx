@@ -6,28 +6,19 @@ import { formatAccessDuration, formatPriceUsdc, type Sale, sumUsdc } from "@apir
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AuthGate } from "@/components/auth-gate";
+import { ProviderConnectionDetails, type WriterStatus } from "@/components/connection-details";
 import { ContractPanel } from "@/components/contract-panel";
 import { LiveSales } from "@/components/live-sales";
 import { PrivateGrantsPanel } from "@/components/private-grants-panel";
-import { SwarmDriveChip } from "@/components/swarm-drive-chip";
+import { RefreshButton } from "@/components/refresh-button";
 import { SwarmWalletPanel } from "@/components/swarm-wallet-panel";
-import { Badge, Button, Disclosure, EmptyState, ErrorNotice, SectionTitle, ServiceCardSkeleton } from "@/components/ui";
+import { Button, Disclosure, EmptyState, ErrorNotice, SectionTitle, ServiceCardSkeleton } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
 import { useProviderSales } from "@/lib/use-access";
 import { useProviderServices } from "@/lib/use-services";
 
 const SKELETON_KEYS = ["s1", "s2", "s3"];
-
-type WriterStatus = {
-  writerConfigured: boolean;
-  address?: string;
-  balance?: string;
-  funded?: boolean;
-  explorerUrl?: string;
-  dataExplorerUrl?: string;
-  faucetUrl: string;
-} | null;
 
 function useWriterStatus(): WriterStatus {
   const [status, setStatus] = useState<WriterStatus>(null);
@@ -77,18 +68,15 @@ function Dashboard() {
         title="My APIs"
         right={
           <div className="flex items-center gap-2">
-            <Button
+            <RefreshButton
               variant="subtle"
-              size="sm"
               onClick={() => {
                 reload();
                 sales.reload();
                 setChainTick((value) => value + 1);
               }}
-              disabled={loading}
-            >
-              Refresh
-            </Button>
+              refreshing={loading || sales.loading}
+            />
             <Button href="/provider/new">Publish API</Button>
           </div>
         }
@@ -159,33 +147,7 @@ function Dashboard() {
       <div>
         <SalesList list={salesList} />
         {swarmWallet.address ? <ContractPanel provider={swarmWallet.address} title="Payment activity" refreshKey={chainTick} /> : null}
-        <Disclosure title="Connection details">
-          <div className="space-y-4 text-xs text-subtle">
-            <p className="break-all font-mono">Swarm ID: {identity.id}</p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge tone={session.canUpload ? "neutral" : "warn"}>{session.canUpload ? "Storage ready" : "Storage unavailable"}</Badge>
-              <SwarmDriveChip />
-            </div>
-            {writer ? (
-              <div className="space-y-2">
-                <p className="break-all font-mono">Writer: {writer.address ?? "Not configured"}</p>
-                <p>{writer.balance ?? "…"} GLM</p>
-                <div className="flex flex-wrap gap-4">
-                  {writer.dataExplorerUrl ? (
-                    <a href={writer.dataExplorerUrl} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
-                      Registry ↗
-                    </a>
-                  ) : null}
-                  {writer.explorerUrl ? (
-                    <a href={writer.explorerUrl} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
-                      Writer balance ↗
-                    </a>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </Disclosure>
+        <ProviderConnectionDetails writer={writer} />
       </div>
     </div>
   );

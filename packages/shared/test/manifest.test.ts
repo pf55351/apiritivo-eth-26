@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
+  ACCESS_DURATIONS,
   buildManifest,
+  DEMO_ACCESS_SECONDS,
   formatAccessDuration,
   formatPriceUsdc,
   formatRemaining,
@@ -8,6 +10,7 @@ import {
   manifestFromBytes,
   manifestToBytes,
   priceUsdcSchema,
+  publishServiceInputSchema,
   slugify,
   sumUsdc,
   validateManifest,
@@ -53,6 +56,12 @@ describe("service id", () => {
 });
 
 describe("commercial terms", () => {
+  test("supports the 30-second demo duration through publishing and display", () => {
+    expect(ACCESS_DURATIONS.some((duration) => duration.seconds === DEMO_ACCESS_SECONDS)).toBe(true);
+    expect(publishServiceInputSchema.shape.accessSeconds.parse(DEMO_ACCESS_SECONDS)).toBe(30);
+    expect(formatAccessDuration(DEMO_ACCESS_SECONDS)).toBe("30 seconds");
+  });
+
   test("formats price and duration", () => {
     expect(formatPriceUsdc("0.5")).toBe("0.50 USDC");
     expect(formatPriceUsdc("12")).toBe("12.00 USDC");
@@ -76,6 +85,12 @@ describe("access helpers", () => {
   });
   test("formats remaining time", () => {
     expect(formatRemaining(0)).toBe("expired");
+    expect(formatRemaining(-2)).toBe("expired");
+    expect(formatRemaining(0.2)).toBe("1s");
+    expect(formatRemaining(1)).toBe("1s");
+    expect(formatRemaining(30)).toBe("30s");
+    expect(formatRemaining(59)).toBe("59s");
+    expect(formatRemaining(60)).toBe("1m");
     expect(formatRemaining(90000)).toBe("1d 1h");
     expect(formatRemaining(3660)).toBe("1h 1m");
   });

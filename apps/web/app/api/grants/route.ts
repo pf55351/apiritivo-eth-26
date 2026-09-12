@@ -1,11 +1,13 @@
-import { getService } from "@apiritivo/arkiv";
+import { findSaleForBuyer, getService } from "@apiritivo/arkiv";
 import { isWriterConfigured, publishGrant } from "@apiritivo/arkiv/server";
 import { publishGrantInputSchema } from "@apiritivo/shared";
 import { NextResponse } from "next/server";
+import { clientIp, jsonError, readJsonBody, shortMessage, withJsonErrors } from "@/lib/server/http";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/** Vercel: on-chain verification plus Arkiv writes can exceed the 10 s default. */
+/** Vercel: Arkiv reads and a write can exceed the 10 s default. */
 export const maxDuration = 60;
 
 /**
@@ -13,36 +15,38 @@ export const maxDuration = 60;
  * service's private file (Swarm ACT). The grant itself happened in the
  * provider's browser (`actAddGrantees`, only the publisher can); this entity
  * publishes the new history reference so the buyer can decrypt.
- * `providerId` is trusted from the caller's Swarm ID session (hackathon boundary).
+ * `providerId` is trusted from the caller's Swarm ID session (hackathon
+ * boundary). What is verified: the service has this file, and the buyer
+ * really bought it with the public key being granted.
  */
-export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
-  const parsed = publishGrantInputSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid grant data.", issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) }, { status: 400 });
-  }
-  if (!isWriterConfigured()) return NextResponse.json({ error: "Grant could not be recorded.", reason: "Arkiv writer not configured." }, { status: 503 });
+export const POST = withJsonErrors("api/grants", async (request: Request) => {
+  const limited = checkRateLimit("grant", clientIp(request), RATE_LIMITS.grant);
+  if (!limited.ok) return jsonError(429, "Too many requests. Try again shortly.", undefined, { retryAfterSeconds: limited.retryAfterSeconds });
 
-  const input = parsed.data;
+  const body = await readJsonBody(request, publishGrantInputSchema, "grant");
+  if (!body.ok) return body.response;
+  const input = body.data;
+  if (!isWriterConfigured()) return jsonError(503, "Grant could not be recorded.", "Arkiv writer not configured.");
+
   const service = await getService(input.serviceId);
-  if (!service) return NextResponse.json({ error: "Service not found on Arkiv." }, { status: 404 });
-  if (!service.privateAttachment) return NextResponse.json({ error: "This service has no private file." }, { status: 409 });
-  if (service.providerId !== input.providerId) return NextResponse.json({ error: "Only the provider of this service can grant access." }, { status: 403 });
+  if (!service) return jsonError(404, "Service not found on Arkiv.");
+  if (!service.privateAttachment) return jsonError(409, "This service has no private file.");
+  if (service.providerId !== input.providerId) return jsonError(403, "Only the provider of this service can grant access.");
   if (service.privateAttachment.encryptedRef.toLowerCase() !== input.encryptedRef.toLowerCase()) {
-    return NextResponse.json({ error: "Encrypted reference does not match the service's private file." }, { status: 409 });
+    return jsonError(409, "Encrypted reference does not match the service's private file.");
+  }
+  // A grant is only meaningful for a buyer who paid and registered this key at purchase.
+  const sale = await findSaleForBuyer(input.serviceId, input.buyerId);
+  if (!sale) return jsonError(409, "No purchase from this buyer for this service.");
+  if (!sale.buyerPublicKey || sale.buyerPublicKey.toLowerCase() !== input.buyerPublicKey.toLowerCase()) {
+    return jsonError(409, "The public key does not match the one the buyer registered at purchase.");
   }
 
   try {
     const result = await publishGrant(input);
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    const e = err as Error & { shortMessage?: string };
     console.error("[api/grants] failed:", err);
-    return NextResponse.json({ error: "Grant could not be recorded.", reason: (e.shortMessage ?? e.message ?? String(err)).split("\n")[0] }, { status: 502 });
+    return jsonError(502, "Grant could not be recorded.", shortMessage(err));
   }
-}
+});

@@ -17,20 +17,26 @@ Reference: [Supabase](https://supabase.com/). Keep APIritivo orange.
 * Helper text only when needed. One brief sentence.
 * No nested rectangular panels. Use rows, spacing, dividers.
 * One primary action per section.
+* Page back links sit above the title, aligned to the left content edge. Reuse BackLink or SectionTitle's back prop, with a left arrow and 44px target. Keep that return path in loading, empty, and success states; use the header's right slot for page actions.
 * No dash phrases in visible UI prose. Avoid hyphenated compounds and dash separators.
 * Preserve exact URLs, code, identifiers, negative numbers, and user content.
 * Keep price, network, duration, permissions, and errors explicit.
+* Access duration defaults to 7 days. Offer “30 seconds (demo)” for the hackathon; show “30 seconds” in prices and seconds in countdowns below one minute. Refresh pass status from the chain through expiry.
 * SDK details: development disclosures.
 * Default view: name, state, price or balance, duration, next action.
 * Addresses, receipts, proofs, JSON, and export tools: closed disclosures.
 * API keys: copy action first; reveal on request.
 * One place for each metric. Label recorded sales separately from contract balances.
 * Service page: access box beside the service introduction on desktop and immediately below it on mobile. Operations and tester stay together, with supporting data below. Highlight the access duration in orange.
-* Checkout uses the Swarm wallet. Show its balance and funding controls without a wallet selector.
+* Checkout uses the active account: the connected wallet for Client, Swarm ID for Provider. Show balances and funding controls without a wallet selector. Reuse WalletBalances for separate USDC and AVAX amounts, and WalletFunding for checkout funding and stable refresh feedback.
 * Provider page: API list and wallet first. History and connection details below.
+* Connection details: flat identity, storage, and writer rows. Use compact status dots, a shortened copyable identity reference, Address and Registry links, and three-decimal GLM balances. Keep the full balance and drive reference in tooltips; show drive usage and expiry without a pill.
+* Publishing uses expandable steps: API details, Price and duration, Operations, optional Private file, then Review and publish. Mark valid completed steps green with a check and “Validated.” Advance after leaving a completed field group, never while typing. Keep every step editable, preserve collapsed values, and require a separate final publish action.
 * Prefer borderless sections and simple rows. Use a surface only to focus a decision.
 * Keep actionable errors and disabled action reasons visible outside disclosures.
+* Refresh passes in place: retain loaded rows, credentials, expanded receipts, and the latest expiry clock. Reserve skeletons for the initial load. Animate only the fixed-width Refresh button, respect reduced motion, and retain the last snapshot on refresh failure. Clear the snapshot when the account changes.
 * Account checks: compact rows for resource, value, state, and next action. Omit per-resource explanatory comments; use the shared surface and subtle Refresh button.
+* Every refresh action uses RefreshButton: an icon in a 44px square, with a hover title and screen-reader label. Spin only while its read is pending, disable repeat clicks, and respect reduced motion. Keep text labels for error retry actions.
 
 These writing rules apply to product UI, including page titles. Technical documentation and code syntax keep their normal notation.
 
@@ -51,9 +57,12 @@ These writing rules apply to product UI, including page titles. Technical docume
 The account control uses a plain neutral circle with the user's initials.
 Reuse `ProfileAvatar` in the header and account menu. Keep it free of decorative
 rings and animation.
-The provider account menu shows the name and an "Address" link to the derived
-wallet on the payment-chain explorer. Omit the workspace label and raw identity
-ID; display upload availability as a compact status row.
+Both account menus use AccountPanel with the name and an "Address" link to the
+active wallet on the payment-chain explorer. Omit the workspace label and raw
+identity ID. Display upload availability for Provider and network status for
+Client as compact rows. Keep Client wallet and private-file sign-in actions.
+Marketplace refresh retains results and filters. Use the same fixed-width
+RefreshButton and SVG empty-state icons throughout both workspaces.
 
 Favicon: use the original transparent brand symbol, tightly framed to about 96% of the canvas width. Preserve its proportions and export at 512 × 512. Keep full size brand exports unchanged.
 
@@ -61,21 +70,24 @@ Form fields and code editors may have functional boundaries. Remove extra decora
 
 Marketplace cards lead with a larger semibold API title. Category names stay in
 filters and API details, without a separate category row on each card. Keep the
-price close to the provider and the arrow immediately beside "View API".
+price close to the description and the arrow immediately beside "View API".
+Place provider initials in a neutral circular ProfileAvatar at the top right beside the API title. Remove the separate provider-name row; show the full name on hover, keyboard focus, or tap. Keep ENS and availability metadata when present.
 Descriptions occupy one line and truncate with an ellipsis. Stretch cards within
 each row and align their "View API" actions, including cards with private files.
 Show the access duration in orange.
+Show private-file inclusion with a lock beside the card action. Reveal its explanation on hover, keyboard focus, or tap; keep the icon above the card link and dismiss the tooltip with Escape.
 
 ## Workspaces
 
 * Client: Marketplace, My passes.
 * Provider: My APIs, Publish.
 * Docs and service details: shared. Service actions follow the active view; switching keeps the current API open.
-* Order the right-side controls: Docs, account profile, workspace switch, appearance. On narrow screens, appearance sits beside the primary navigation on the second row.
+* Docs shows only the selected topic. Highlight its navigation link, preserve topic hashes and browser history, and keep secondary reference disclosures inside that topic.
+* The navbar shows the account control followed by the workspace switch. Docs and the inline theme selector live inside AccountPanel in both workspaces. Keep the account dropdown available to guests, with sign-in inside it.
 * Header switch: compact toggle with an orange thumb and an animated role label beside it. Keep keyboard focus and reduced motion support.
 * Navbar: transparent with backdrop blur. Active and hovered links use a thin content-colored underline, never a filled rectangle. Respect reduced transparency preferences.
 * Appearance: Auto follows the computer's light or dark theme, including live changes. Offer saved Light and Dark overrides separately from workspace and identity. Use semantic color tokens throughout; orange button labels stay charcoal in both themes.
-* Appearance control: icons only, with a monitor for Auto, sun for Light, and moon for Dark. Auto is the default. Keep accessible labels, keyboard selection, and 44px targets.
+* Appearance control: a Theme row inside the account dropdown, with monitor, sun, and moon icons for Auto, Light, and Dark. Auto is the default. Keep accessible labels, keyboard selection, and 44px targets. ThemeSync stays mounted so Auto and cross-tab changes keep working when the dropdown is closed.
 * Hide the other view's navigation and actions. Direct links require an explicit switch.
 * Two identities, one per view: the Client identity is the connected wallet (MetaMask, Rabby, Core); the Provider identity is Swarm ID. Swarm ID may stay signed in while a wallet is the client, only to open private files. Save the view per identity; guests use a separate preference.
 * View selection controls the interface, never permissions or payment validation.

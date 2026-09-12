@@ -2,7 +2,7 @@
  * Arkiv read adapter (safe for browser and server).
  * Exposes OUR functions only; the Arkiv SDK never leaks into React.
  */
-import { createPublicClient, type PublicArkivClient } from "@arkiv-network/sdk";
+import { createPublicClient, NoEntityFoundError, type PublicArkivClient } from "@arkiv-network/sdk";
 import { checkPassSecret, parsePassBearer } from "./pass-secret";
 
 export * from "./pass-secret";
@@ -20,11 +20,12 @@ import {
 } from "@apiritivo/shared";
 import { and, eq } from "@arkiv-network/sdk/query";
 import { http } from "viem";
-import { resolveChain, resolveReadRpcUrl } from "./config";
+import { resolveChain, resolveReadRpcUrl, trustedWriterAddress } from "./config";
 import { ATTR, parseAccessPassEntity, parseGrantEntity, parseSaleEntity, parseServiceEntity, type RawServiceEntity } from "./entity";
 
 export type { AccessPass, ArkivService, Grant, Sale } from "@apiritivo/shared";
-export { ATTR, parseAccessPassEntity, parseGrantEntity, parseSaleEntity, parseServiceEntity } from "./entity";
+export { DEFAULT_WRITER_ADDRESS, trustedWriterAddress } from "./config";
+export { ATTR, isTrustedEntity, parseAccessPassEntity, parseGrantEntity, parseSaleEntity, parseServiceEntity } from "./entity";
 
 let cachedClient: PublicArkivClient | undefined;
 
@@ -45,7 +46,13 @@ async function queryServices(extra: ReturnType<typeof eq>[]): Promise<ArkivServi
   const client = readClient();
   const where = and(eq(ATTR.app, APP_ID), eq(ATTR.entityType, SERVICE_ENTITY_TYPE), ...extra);
 
-  let page = await client.select({ key: true, owner: true, createdAt: true, attributes: true, payload: true }).where(where).limit(PAGE_SIZE).fetch();
+  // Only the app writer's entities count (see isTrustedEntity); the parser re-checks per entity.
+  let page = await client
+    .select({ key: true, owner: true, createdAt: true, attributes: true, payload: true })
+    .where(where)
+    .ownedBy(trustedWriterAddress())
+    .limit(PAGE_SIZE)
+    .fetch();
 
   const services: ArkivService[] = [];
   let pages = 0;
@@ -114,6 +121,7 @@ async function queryEntities<T>(entityType: string, extra: ReturnType<typeof eq>
   let page = await client
     .select(PASS_SELECT)
     .where(and(eq(ATTR.app, APP_ID), eq(ATTR.entityType, entityType), ...extra))
+    .ownedBy(trustedWriterAddress())
     .limit(PAGE_SIZE)
     .fetch();
   const out: T[] = [];
@@ -145,14 +153,17 @@ export async function listAccessPassesForService(serviceId: string, buyerId: str
 /**
  * Fetch one pass by its key. Returns null when it does not exist or has
  * expired (Arkiv removes expired entities, so "not found" == "no access").
+ * Any other failure (RPC down, timeout) is thrown: an outage must not read as
+ * "your pass is gone".
  */
 export async function getAccessPass(passKey: string): Promise<AccessPass | null> {
   const client = readClient();
   try {
     const entity = await client.getEntity(passKey as `0x${string}`);
     return parseAccessPassEntity(entity as unknown as RawServiceEntity);
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof NoEntityFoundError) return null;
+    throw err;
   }
 }
 
@@ -172,6 +183,13 @@ export async function findGrant(serviceId: string, buyerId: string): Promise<Gra
   const grants = await queryEntities(GRANT_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerId, buyerId)], parseGrantEntity);
   grants.sort((a, b) => (BigInt(b.createdAtBlock ?? "0") > BigInt(a.createdAtBlock ?? "0") ? 1 : -1));
   return grants[0] ?? null;
+}
+
+/** Newest sale receipt of a buyer for a service (grants are only recorded for real purchases). */
+export async function findSaleForBuyer(serviceId: string, buyerId: string): Promise<Sale | null> {
+  const sales = await queryEntities(SALE_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerId, buyerId)], parseSaleEntity);
+  sales.sort((a, b) => (BigInt(b.createdAtBlock ?? "0") > BigInt(a.createdAtBlock ?? "0") ? 1 : -1));
+  return sales[0] ?? null;
 }
 
 /** Sale receipt for a payment tx (replay protection). */
@@ -197,7 +215,10 @@ export function estimateBlockDate(targetBlock: bigint | string, timing: BlockTim
   return new Date((timing.currentBlockTime + secondsUntilBlock(targetBlock, timing)) * 1000);
 }
 
-export type AccessCheck = { ok: true; pass: AccessPass; expiresAtBlock: string; currentBlock: string; secondsRemaining: number } | { ok: false; status: 401 | 403; error: string };
+export type AccessCheck =
+  | { ok: true; pass: AccessPass; expiresAtBlock: string; currentBlock: string; secondsRemaining: number }
+  /** 401 = no usable credential, 403 = refused, 503 = Arkiv could not be read (retry). */
+  | { ok: false; status: 401 | 403 | 503; error: string };
 
 /**
  * The one check every gated service needs: is `passKey` a live access pass
@@ -209,7 +230,13 @@ export async function verifyAccessPass(authorization: string | null | undefined,
   if (!bearer) {
     return { ok: false, status: 401, error: "Missing access pass. Send `Authorization: Bearer <passKey>.<secret>`." };
   }
-  const [pass, timing] = await Promise.all([getAccessPass(bearer.passKey), getBlockTiming()]);
+  let pass: AccessPass | null;
+  let timing: BlockTiming;
+  try {
+    [pass, timing] = await Promise.all([getAccessPass(bearer.passKey), getBlockTiming()]);
+  } catch (err) {
+    return { ok: false, status: 503, error: `Arkiv could not be reached to check the pass: ${(err as Error).message.split("\n")[0]}` };
+  }
   if (!pass) return { ok: false, status: 403, error: "Access pass not found on Arkiv or expired." };
   if (pass.serviceId !== serviceId) return { ok: false, status: 403, error: "This pass is for a different service." };
   const secondsRemaining = secondsUntilBlock(pass.expiresAtBlock, timing);

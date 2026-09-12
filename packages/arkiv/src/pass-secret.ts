@@ -83,6 +83,14 @@ export function parsePassBearer(header: string | null | undefined): { passKey: H
 export function checkPassSecret(pass: { secretHash?: string }, secret: Hex | null): { ok: true } | { ok: false; status: 401 | 403; error: string } {
   if (!pass.secretHash) return { ok: false, status: 403, error: "This pass was minted without a secret and cannot be used. Buy access again." };
   if (!secret) return { ok: false, status: 401, error: "Missing pass secret. Send `Authorization: Bearer <passKey>.<secret>`." };
-  if (hashPassSecret(secret).toLowerCase() !== pass.secretHash.toLowerCase()) return { ok: false, status: 403, error: "Pass secret does not match this pass." };
+  if (!constantTimeEqual(hashPassSecret(secret).toLowerCase(), pass.secretHash.toLowerCase())) return { ok: false, status: 403, error: "Pass secret does not match this pass." };
   return { ok: true };
+}
+
+/** Length-then-XOR compare so the hash check does not leak matching prefixes through timing. */
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }

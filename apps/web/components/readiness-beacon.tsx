@@ -22,8 +22,8 @@ function useWriter(identityId: string | null, tick: number): Writer {
     let cancelled = false;
     fetch("/api/services", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j: { funded?: boolean; balance?: string; faucetUrl?: string } | null) => {
-        if (!cancelled) setWriter(j ? { funded: j.funded, balance: j.balance, faucetUrl: j.faucetUrl } : null);
+      .then((j: { funded?: boolean; balance?: string; faucetUrl?: string; ownerMismatch?: boolean } | null) => {
+        if (!cancelled) setWriter(j ? { funded: j.funded, balance: j.balance, faucetUrl: j.faucetUrl, ownerMismatch: j.ownerMismatch } : null);
       })
       .catch(() => {
         if (!cancelled) setWriter(null);

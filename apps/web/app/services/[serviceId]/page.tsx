@@ -5,7 +5,6 @@ import { explorerAddressUrl, explorerTokenUrl, paymentsContractAddress, USDC_ADD
 import type { ServiceManifest } from "@apiritivo/shared";
 import { formatAccessDuration, formatPriceUsdc, manifestStats } from "@apiritivo/shared";
 import { downloadServiceManifest, swarmReferenceUrl } from "@apiritivo/swarm";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BotConsole } from "@/components/bot-console";
@@ -15,7 +14,7 @@ import { EnsPanel } from "@/components/ens-panel";
 import { ManifestOperations } from "@/components/manifest-view";
 import { PrivateFilesPanel } from "@/components/private-files-panel";
 import { type ProofLink, ProofPanel } from "@/components/proofs";
-import { Avatar, Button, CategoryPill, EmptyState, ErrorNotice, JsonInspector, Skeleton } from "@/components/ui";
+import { Avatar, BackLink, CategoryPill, EmptyState, ErrorNotice, JsonInspector, Skeleton } from "@/components/ui";
 import { type FriendlyError, toFriendlyError } from "@/lib/errors";
 import { useActiveIdentity } from "@/lib/identity";
 import { useSession } from "@/lib/session";
@@ -69,11 +68,12 @@ export default function ServiceDetailPage() {
     return left === null || left > 0;
   });
   const activeBearer = usePassBearer(activePass);
+  const backLink = <BackLink href={workspaceHref}>{isProviderView ? "My APIs" : "Marketplace"}</BackLink>;
 
   if (loading || !session.roleLoaded) {
     return (
-      <div className="mx-auto max-w-4xl space-y-6">
-        <Skeleton className="h-4 w-32" />
+      <div className="mx-auto max-w-5xl space-y-8">
+        {session.roleLoaded ? backLink : <Skeleton className="h-11 w-32" />}
         <Skeleton className="h-10 w-2/3" />
         <Skeleton className="h-5 w-1/2" />
         <div className="grid gap-4 sm:grid-cols-2">
@@ -86,7 +86,8 @@ export default function ServiceDetailPage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-5xl space-y-8">
+        {backLink}
         <ErrorNotice message={error.message} detail={error.detail} onRetry={reload} />
       </div>
     );
@@ -94,11 +95,10 @@ export default function ServiceDetailPage() {
 
   if (!service) {
     return (
-      <EmptyState
-        title="API not found"
-        description="This listing is unavailable. Return to your workspace."
-        action={<Button href={workspaceHref}>{isProviderView ? "My APIs" : "Marketplace"}</Button>}
-      />
+      <div className="mx-auto max-w-5xl space-y-8">
+        {backLink}
+        <EmptyState title="API not found" description="This listing is unavailable. Return to your workspace." />
+      </div>
     );
   }
 
@@ -108,9 +108,7 @@ export default function ServiceDetailPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
-      <Link href={workspaceHref} className="text-sm text-subtle hover:text-content">
-        ← {isProviderView ? "My APIs" : "Marketplace"}
-      </Link>
+      {backLink}
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:gap-x-12">
         <header className="min-w-0">

@@ -14,8 +14,8 @@ Short path (5 phases, details below)
 ------------------------------------
   SETUP    clone, bun install, copy .env.example, bun demo:check, bun dev              (STEP 0)
   CREATOR  sign in with Swarm ID as Provider, publish a service, open the two proofs    (STEP 1-2)
-  BUYER    second Swarm ID as Client, fund its Swarm wallet from the two faucets, buy,
-           copy the API key from the "Your API key" box, try the bot, call from terminal (STEP 3-5)
+  BUYER    switch to Client, connect MetaMask or Rabby, fund it from the two faucets, buy,
+           copy the API key from the "Your API key" box, Try API, call from terminal    (STEP 3-5)
   VERIFY   creator sees the sale live and opens the receipt in the Arkiv Data Explorer  (STEP 6)
   PAYOUT   claim from the contract to the Swarm wallet, then send USDC anywhere         (STEP 7-8)
 
@@ -25,7 +25,8 @@ Short path (5 phases, details below)
 
 Networks and identities involved
 --------------------------------
-  Swarm ID          login identity (no wallet, no seed phrase). https://swarm-id.snaha.net
+  Swarm ID          provider identity (no wallet, no seed phrase). https://swarm-id.snaha.net
+  Browser wallet    client identity: MetaMask, Rabby or Core on Avalanche Fuji. Pays and signs the pass key
   Swarm             stores the technical manifest (bytes). Public gateway: https://api.gateway.ethswarm.org
   Arkiv (Tiramisu)  registry: service listings, access passes, sale receipts. Explorer: https://data.arkiv.network/?chain=tiramisu
   ENS (Sepolia)     optional: a .eth name that resolves to payout wallet, Arkiv service id and Swarm manifest
@@ -41,9 +42,9 @@ Assets you need (all free, testnet)
   3. Fuji USDC for the buyer           https://faucet.circle.com/  (pick "Avalanche Fuji")
   4. Fuji AVAX (gas) for the creator   only if you want to claim earnings (step 7). Same faucet as 2.
 
-You do NOT need MetaMask. Every Swarm ID gets its own EVM wallet derived from the identity
-("Swarm wallet"). The app shows its address; you send faucet funds to that address.
-MetaMask is optional as an alternative payment method.
+The CREATOR does not need MetaMask: every Swarm ID gets its own EVM wallet derived from the
+identity ("Swarm wallet"). The app shows its address; faucet funds for claims go there.
+The BUYER needs a browser wallet (MetaMask, Rabby or Core). The app switches it to Avalanche Fuji.
 
 
 STEP 0 — Run the app
@@ -61,7 +62,7 @@ STEP 0 — Run the app
   If bun demo:check says "services published 0", that is normal: you will publish the first one.
 
   Optional quality checks:
-    bun typecheck && bun lint && bun test   # TypeScript, ESLint, unit tests
+    bun typecheck && bun lint && bun test   # TypeScript, Biome + ESLint, unit tests
     bun test:contracts                      # 28 Foundry tests for APIritivoPayments
 
 
@@ -74,22 +75,23 @@ STEP 1 — Create the CREATOR identity (Swarm ID)
   3. Back in the app, choose "I'm a Provider". This is only a preference; both areas stay reachable.
      The role screen appears only on the first login of an identity; later logins go straight to the last area.
 
-  You land on /provider. Check the status chips at the top:
+  You land on /provider ("My APIs"). Open "Connection details" at the bottom:
     - Swarm ID: your identity name and id
     - Upload mode: "subsidised" (no postage stamp needed) or your own drive
     - Arkiv writer: green with a GLM balance
-  Under "Your Swarm wallet" you see the creator's EVM address and USDC / AVAX balances (0 is fine for now).
+  The "Wallet" section shows the creator's EVM address and USDC / AVAX balances (0 is fine for now).
+  The readiness pill in the bottom right corner lists what is present and what is missing.
 
 
 STEP 2 — CREATOR publishes an API  (Swarm + Arkiv)
 --------------------------------------------------
-  1. Click "Publish a service" (or open /provider/new).
+  1. Click "Publish API" (or open /provider/new).
   2. Fill in:
        Name          e.g. "Judge test API"
        Description   anything
        Category      Market Data
        Price         0.50 USDC
-       Duration      1 hour       (short, so you can also watch it expire)
+       Duration      30 seconds (demo)   (watch access expire during the presentation)
        Payout wallet fixed: your Swarm wallet address (shown, not editable)
        Operations    add one: name getQuote, input symbol : string
   3. Click "Publish". Watch the steps: manifest -> Swarm upload -> Arkiv entity.
@@ -103,39 +105,47 @@ STEP 2 — CREATOR publishes an API  (Swarm + Arkiv)
   Order matters and is enforced in code: manifest goes to Swarm first, Arkiv gets the Swarm reference.
 
 
-STEP 3 — Create the BUYER identity and fund it
-----------------------------------------------
-  Use a second browser profile or a private window, so both identities stay logged in.
-  (You can also buy with the creator identity; it works, but the demo is clearer with two.)
+STEP 3 — Connect the BUYER wallet and fund it
+---------------------------------------------
+  The buyer is a browser wallet, not a Swarm ID. You can stay in the same browser: the header
+  switch changes the view, and the Client view uses the wallet while Swarm ID stays signed in
+  for the Provider view. A second profile only makes the demo clearer.
 
-  1. Open http://localhost:3000, "Enter with Swarm ID", create a SECOND identity. Choose "I'm a Client".
+  1. Switch the header toggle to Client. Click "Connect wallet" and approve MetaMask or Rabby.
+     If the wallet is on another network the app offers to switch to Avalanche Fuji.
   2. Open /marketplace, click the service you published. The listing is a live Arkiv query.
-  3. In the "Access" card on the right, under "Pay with: Swarm wallet", copy the buyer's wallet address.
+  3. In the access card, open "Fund wallet" and copy the wallet address.
   4. Fund it:
        AVAX  https://core.app/tools/testnet-faucet/   (gas for approve + buy; 0.1 AVAX is plenty)
        USDC  https://faucet.circle.com/               (at least 0.50; the faucet gives 10)
-  5. Click "refresh" next to the balances until both show up (about a minute).
+  5. Click "Refresh" next to the balances until both show up (about a minute).
+     The readiness pill in the bottom right corner turns green when nothing is missing.
 
 
 STEP 4 — BUYER pays and gets an access pass  (Fuji + Arkiv)
 -----------------------------------------------------------
   1. Click "Buy access - 0.50 USDC".
   2. Steps you will see: approve USDC -> buy() on the contract -> confirmation -> mint on Arkiv.
-     Two Fuji transactions signed by the Swarm wallet (no popup, the key is in the browser),
-     then the server verifies the Purchased event and writes two Arkiv entities:
+     Two Fuji transactions signed in your wallet, then one free signature ("APIritivo pass key")
+     that derives the key protecting your API key. The server verifies the Purchased event
+     and writes two Arkiv entities:
        access_pass   expires after the duration; carries secret_hash and the encrypted secret
        sale          permanent receipt: buyer_id, buyer_address, tx_hash, paid_usdc, pass_key
-  3. Success. The green box shows "Unlocked - 59m left" and the pass key.
+  3. Success. The green box shows "Unlocked" with the remaining seconds and the pass key.
+     The 30-second window starts when Arkiv creates the pass, not at the first API call.
+     Receipt creation and network delays use some of that window; call the API promptly.
+     The countdown follows Arkiv blocks and updates automatically until access expires.
      Below it: "Your API key" = <passKey>.<secret>. Click Copy. This is the credential and the ONE place
      to take it from now; "My passes" has the same Copy button for later.
-     The secret was generated in your browser and stored on Arkiv encrypted for your Swarm ID only.
+     The secret was generated in your browser and stored on Arkiv encrypted under a key only your
+     wallet can re-derive (one signature per page load, no transaction).
   4. Proof links: pass on Arkiv, sale receipt on Arkiv, payment tx on Snowtrace.
 
 
 STEP 5 — BUYER calls the API
 ----------------------------
   In the browser:
-    Scroll down to "Try the bot". Operation getQuote, symbol BTC, Run.
+    Scroll down to "Try API". Operation getQuote, symbol BTC, Run request.
     Expect: "Pass verified on Arkiv" with expiry block and seconds left, and a live BTC price.
 
   From a terminal (what a script or an agent would do):
@@ -146,20 +156,22 @@ STEP 5 — BUYER calls the API
     no header                                  -> 401 Missing access pass
     wrong secret (same passKey, other 64 hex)  -> 403 Pass secret does not match
     valid key against another serviceId        -> 403 This pass is for a different service
-    after the 1 hour duration                  -> 403 Access pass not found on Arkiv or expired
+    after the demo pass expires                -> 403 Access pass not found on Arkiv or expired
                                                   (Arkiv deleted the entity; nothing to revoke)
 
-  "My passes" in the nav bar lists every live pass of this identity with a countdown,
-  on any device you log into with the same Swarm ID.
+  "My passes" in the nav bar lists every live pass of the connected wallet with a countdown,
+  on any device where you connect the same wallet. "Show credentials" reveals the API key.
 
 
 STEP 6 — CREATOR sees the sale
 ------------------------------
-  Back in the creator profile, open /provider.
-    - "Live on chain" pill: the dashboard watches Fuji logs; a toast appears when a sale lands.
-    - Earnings: 0.50 USDC, computed from permanent sale receipts on Arkiv.
-    - Recent sales: buyer id, amount, Fuji tx, "Sale receipt on Arkiv" link.
+  Switch back to Provider and open /provider ("My APIs").
+    - The dashboard watches Fuji logs; a toast appears when a sale lands.
+    - Recorded sales and revenue: 0.50 USDC, computed from permanent sale receipts on Arkiv.
+    - "Sales receipts": buyer address, amount, Fuji tx, "Sale receipt on Arkiv" link.
   Open the receipt in the Data Explorer: this is the public proof of who bought what.
+  Optional, if the service has a private file: "File access" lists buyers who signed in with
+  Swarm ID at purchase; "Grant access" lets them decrypt the file on the service page.
 
 
 STEP 7 — CREATOR claims the money  (contract -> Swarm wallet -> anywhere)
@@ -167,10 +179,10 @@ STEP 7 — CREATOR claims the money  (contract -> Swarm wallet -> anywhere)
   The contract holds the USDC and credits the creator's payout address (the Swarm wallet).
   Gas is needed: send a little Fuji AVAX to the creator's Swarm wallet address (faucet in "Assets").
 
-  In "Your Swarm wallet" on /provider:
-    1. "Earnings held by the contract" shows 0.50 claimable. Click "Claim to my Swarm wallet".
+  In the "Wallet" section on /provider:
+    1. Claimable shows 0.50. Click "Claim USDC".
        The Swarm wallet signs claim(); USDC balance goes up. Tx link to Snowtrace appears.
-    2. Optional: "Send USDC from this wallet" to any address (e.g. your MetaMask) to show the funds are yours.
+    2. Optional: "Send USDC" to any address (e.g. your MetaMask) to show the funds are yours.
     3. Optional: "Reveal private key" to import the Swarm wallet into MetaMask.
 
 
@@ -190,7 +202,9 @@ STEP 9 — Optional: give the API an ENS name
 --------------------------------------------
   Free on Sepolia, takes 5 minutes. Import the creator's Swarm wallet into MetaMask first
   (Provider > wallet panel > Reveal private key) and fund it with a little Sepolia ETH.
-  1. https://sepolia.app.ens.domains : register a name (e.g. judgeapi.eth) or a subname of one you own.
+  1. https://app.ens.dev (Sepolia, ENSv2 beta): register a name (e.g. judgeapi.eth). It is paid in MockUSDC,
+     a test token anyone can mint: contract 0x768f42455a2d082e23ceef7d51e5787c82d67a39, mint(yourAddress, 100000000)
+     from Sepolia Etherscan "Write contract" with MetaMask. Gas is Sepolia ETH.
   2. Records > ETH address = the creator's Swarm wallet address.
   3. Publish a new service (STEP 2) with that name in the "ENS name" field. The server refuses names
      whose ETH address is not the payout wallet.
@@ -202,14 +216,16 @@ STEP 9 — Optional: give the API an ENS name
 
 What to look at in the code (5 minutes)
 ---------------------------------------
-  packages/swarm/src/index.ts          Swarm ID login, manifest upload/download, wallet + key derivation
-  packages/arkiv/src/server.ts         publishService, issueAccessPass (the only writes)
+  packages/swarm/src/index.ts          Swarm ID login, manifest upload/download, wallet + key derivation, ACT files
+  packages/arkiv/src/server.ts         publishService, issueAccessPass, publishGrant (the only writes)
   packages/arkiv/src/index.ts          typed Arkiv queries, verifyAccessPass, explorer links
   packages/arkiv/src/pass-secret.ts    pass secret: hash on-chain, secret encrypted for the buyer
+  packages/payments/src/browser.ts     Swarm wallet + injected wallet signers, pay, claim, pass key signature
   packages/payments/src/server.ts      verifyPayment: Purchased event / USDC Transfer check
   packages/ens/src/index.ts            ENS resolution + verification (addr, text record, bzz contenthash)
+  apps/web/lib/injected-wallet.tsx     client identity: MetaMask / Rabby connection and pass key sealing
   contracts/src/APIritivoPayments.sol  buy / claim ledger, 28 tests in contracts/test
-  apps/web/app/api/*                   4 routes: services, access-passes, bot, gateway
+  apps/web/app/api/*                   5 routes: services, access-passes, grants, bot, gateway
 
 
 Troubleshooting
@@ -217,7 +233,9 @@ Troubleshooting
   Popup does not open              allow popups for localhost:3000, click "retry" in the sign-in card
   "Arkiv writer unfunded"          faucet GLM to 0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C, refresh
   "Swarm upload unavailable"       the app falls back to a direct gateway upload automatically
-  Buy button disabled              USDC or AVAX still 0: wait for the faucet, click "refresh"
+  "No wallet found"                install MetaMask, Rabby or Core, reload the page
+  Wrong network                    click "Switch" in the wallet menu or accept the network prompt (Fuji, 43113)
+  Buy button disabled              USDC or AVAX still 0: wait for the faucet, click "Refresh"
   Marketplace empty                Tiramisu is a testnet and may have been reset: publish again
   ENOENT .next/... in bun dev      stop bun dev, delete apps/web/.next, start again
   Changed .env.local               restart bun dev (NEXT_PUBLIC_* values are inlined at start)

@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReadinessCheck, stateLabel } from "@/lib/readiness";
-import { Button } from "./ui";
+import { RefreshButton } from "./refresh-button";
 
 const STATE_TONE: Record<ReadinessCheck["state"], string> = {
   ok: "text-success",
@@ -29,9 +29,7 @@ export function ReadinessPanel({
     <section id={id} aria-label={title} className="max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-panel border border-line bg-surface shadow-lg">
       <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
         <h2 className="text-sm font-medium text-content">{title}</h2>
-        <Button variant="subtle" size="sm" onClick={onRefresh} disabled={refreshing}>
-          {refreshing ? "Refreshing" : "Refresh"}
-        </Button>
+        <RefreshButton variant="subtle" onClick={onRefresh} refreshing={refreshing} />
       </div>
       <ul className="divide-y divide-line px-4">
         {checks.map((check) => {

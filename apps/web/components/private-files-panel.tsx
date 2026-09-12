@@ -8,6 +8,7 @@ import { type FriendlyError, toFriendlyError } from "@/lib/errors";
 import { useActiveIdentity } from "@/lib/identity";
 import { useSession } from "@/lib/session";
 import { CodeBlock } from "./code-panel";
+import { RefreshButton } from "./refresh-button";
 import { Button, Disclosure, ErrorNotice } from "./ui";
 
 function formatBytes(n: number): string {
@@ -94,13 +95,16 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
       <h2 className="mt-2 break-words text-base font-medium">{file.name}</h2>
       <p className="mt-1 text-sm text-muted">{formatBytes(file.bytes)} · Encrypted</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <span className={`inline-flex items-center gap-1.5 text-xs font-normal ${unlocked ? "text-success" : "text-subtle"}`}>{unlocked ? "🔓 unlocked" : "🔒 locked"}</span>
+        <span className={`inline-flex items-center gap-1.5 text-xs font-normal ${unlocked ? "text-success" : "text-subtle"}`}>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="5" y="10" width="14" height="11" rx="2" />
+            <path d={unlocked ? "M8 10V6a4 4 0 0 1 8 0" : "M8 10V6a4 4 0 0 1 8 0v4"} />
+            <path d="M12 14v3" />
+          </svg>
+          {unlocked ? "Unlocked" : "Locked"}
+        </span>
         <span className="text-xs text-muted">{state}</span>
-        {activePass && grant === null && !isProvider ? (
-          <button type="button" onClick={() => void loadGrant()} className="text-xs text-subtle underline hover:text-content-secondary">
-            check again
-          </button>
-        ) : null}
+        {activePass && !grant && !isProvider ? <RefreshButton variant="subtle" label="Refresh file access" refreshing={grant === undefined} onClick={loadGrant} /> : null}
       </div>
       {canRead ? (
         <div className="mt-4">
