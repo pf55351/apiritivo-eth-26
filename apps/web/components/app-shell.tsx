@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ROLE_HOME } from "@apiritivo/shared";
 import { explorerAddressUrl, paymentsContractAddress } from "@apiritivo/payments";
 import { useSession } from "@/lib/session";
-import { Avatar, Badge, BrandMark, Button } from "./ui";
+import { Avatar, BrandMark, Button } from "./ui";
 import { SwarmSignIn } from "./swarm-sign-in";
 
 function NavLink({ href, children }: { href: string; children: ReactNode }) {
@@ -16,8 +16,8 @@ function NavLink({ href, children }: { href: string; children: ReactNode }) {
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`inline-flex min-h-11 items-center border-b-2 px-3 text-[13px] transition-colors ${
-        active ? "border-accent text-content" : "border-transparent text-subtle hover:text-content"
+      className={`inline-flex min-h-9 items-center rounded-control px-3 py-1.5 text-[13px] transition-colors ${
+        active ? "bg-surface-raised text-content" : "text-subtle hover:bg-surface hover:text-content"
       }`}
     >
       {children}
@@ -37,7 +37,6 @@ function ContractLink({ short = false }: { short?: boolean }) {
       title={`APIritivoPayments · ${contract}`}
       className="inline-flex min-h-9 items-center gap-1 rounded-control border border-line px-2.5 py-1 font-mono text-[10px] text-subtle transition hover:border-line-strong hover:text-content"
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {short ? "Contract" : `Contract ${contract.slice(0, 6)}…${contract.slice(-4)}`} ↗
     </a>
   );
@@ -91,7 +90,6 @@ function IdentityMenu() {
       >
         <Avatar name={identity.name} seed={identity.id} src={identity.avatarUrl} size={28} />
         <span className="hidden max-w-[140px] truncate text-sm sm:block">{identity.name}</span>
-        <span className="hidden md:inline-flex">{role ? <Badge tone="accent">{role}</Badge> : <Badge tone="warn">no role</Badge>}</span>
         <span className="text-xs text-ink-400">▾</span>
       </button>
       {open ? (
@@ -100,13 +98,14 @@ function IdentityMenu() {
             <Avatar name={identity.name} seed={identity.id} src={identity.avatarUrl} size={40} />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{identity.name}</p>
+              <p className="text-xs text-subtle">{role ? `${role} account` : "Choose a role"}</p>
               <p className="truncate font-mono text-[11px] text-ink-400" title={identity.id}>
                 {identity.id}
               </p>
             </div>
           </div>
           <div className="mx-2 my-1 border-t border-white/15" />
-          <p className="px-3 pt-1 text-[11px] uppercase tracking-wider text-ink-400">
+          <p className="px-3 pt-1 text-xs text-ink-400">
             Swarm upload: {session.canUpload ? "available" : "unavailable"}
           </p>
           <button
@@ -144,41 +143,41 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="bg-scene flex min-h-dvh flex-col">
       <a href="#main-content" className="skip-link">Skip to content</a>
-      <header className="sticky top-0 z-20 border-b border-line bg-canvas/95 backdrop-blur-md">
-        <div className="mx-auto flex min-h-18 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-20 border-b border-line bg-canvas">
+        <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-6 lg:gap-10">
             <Link href="/" aria-label="APIritivo home" className="flex shrink-0 items-center gap-2.5">
               <BrandMark className="text-accent" />
-              <span className="text-lg font-semibold tracking-[-0.055em]">APIritivo</span>
+              <span className="text-lg font-semibold tracking-tight">APIritivo</span>
             </Link>
             <nav aria-label="Main navigation" className="hidden items-center gap-1 lg:flex">
               <NavLink href="/marketplace">Marketplace</NavLink>
               <NavLink href="/passes">My passes</NavLink>
               <NavLink href="/provider">Provider</NavLink>
+              <NavLink href="/docs">Docs</NavLink>
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            <span className="hidden xl:inline-flex">
-              <ContractLink />
-            </span>
             <IdentityMenu />
           </div>
         </div>
-        <nav aria-label="Mobile navigation" className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 lg:hidden">
+        <nav aria-label="Mobile navigation" className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-2 lg:hidden">
           <NavLink href="/marketplace">Marketplace</NavLink>
           <NavLink href="/passes">My passes</NavLink>
           <NavLink href="/provider">Provider</NavLink>
+          <NavLink href="/docs">Docs</NavLink>
         </nav>
       </header>
       <main id="main-content" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 pb-20 pt-8 sm:px-6 lg:px-8">{children}</main>
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5 px-4 py-7 sm:px-6 lg:px-8">
           <div>
-            <p className="text-sm font-semibold tracking-tight">APIritivo <span className="ml-2 text-xs font-normal text-subtle">An open table for APIs.</span></p>
+            <p className="text-sm font-medium">APIritivo</p>
             <p className="mt-2 text-xs text-subtle">Swarm ID · Swarm · Arkiv · USDC on Avalanche Fuji</p>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-subtle">
             <span className="rounded-md border border-line px-2 py-1">Testnet edition</span>
+            <Link href="/docs" className="py-2 hover:text-content">Docs</Link>
             <Link href="/design-system" className="py-2 hover:text-content">UI library ↗</Link>
             <ContractLink short />
           </div>
