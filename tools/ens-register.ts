@@ -15,11 +15,11 @@
  * Contracts (docs.ens.domains/learn/deployments, "Sepolia ENSv2 Beta"); ABIs recovered from bytecode selectors.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { createPublicClient, createWalletClient, encodeFunctionData, erc20Abi, formatUnits, http, parseAbi, type Address, type Hex } from "viem";
+import { swarmContenthash } from "@apiritivo/ens";
+import { type Address, createPublicClient, createWalletClient, encodeFunctionData, erc20Abi, formatUnits, type Hex, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 import { namehash, normalize } from "viem/ens";
-import { swarmContenthash } from "@apiritivo/ens";
 
 const REGISTRAR: Address = "0xa88553f454b77203b0d036a05c894d555eaaa2cc"; // ETHRegistrar (v2)
 const RESOLVER: Address = "0xe7b9a25607e02da8145e4eb1836ca539e53f11f7"; // PublicResolverV2
@@ -114,17 +114,25 @@ if (cmd === "status" || cmd === "register") {
   ]);
   const total = price[0] + price[1];
   console.log(`${name} · owner-to-be ${account.address} (ENSv2 beta, Sepolia)`);
-  console.log(`  available: ${avail} · price 1y: ${formatUnits(total, 6)} MockUSDC · balances: ${formatUnits(eth, 18)} ETH, ${formatUnits(usdc, 6)} MockUSDC · min commitment age: ${minAge}s`);
+  console.log(
+    `  available: ${avail} · price 1y: ${formatUnits(total, 6)} MockUSDC · balances: ${formatUnits(eth, 18)} ETH, ${formatUnits(usdc, 6)} MockUSDC · min commitment age: ${minAge}s`,
+  );
   if (cmd === "status") process.exit(0);
   if (!avail) throw new Error("name not available");
   if (eth < 5_000_000_000_000_000n) throw new Error("need at least 0.005 Sepolia ETH for gas");
 
   const need = (total * 110n) / 100n;
-  if (usdc < need) await send(`mint ${formatUnits(need, 6)} MockUSDC`, { to: MOCK_USDC, data: encodeFunctionData({ abi: mintAbi, functionName: "mint", args: [account.address, need] }) });
+  if (usdc < need)
+    await send(`mint ${formatUnits(need, 6)} MockUSDC`, { to: MOCK_USDC, data: encodeFunctionData({ abi: mintAbi, functionName: "mint", args: [account.address, need] }) });
   await send("approve registrar", { to: MOCK_USDC, data: encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [REGISTRAR, need] }) });
 
   const secret = `0x${Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
-  const commitment = await pub.readContract({ address: REGISTRAR, abi: registrarAbi, functionName: "makeCommitment", args: [label, account.address, secret, ZERO, RESOLVER, ONE_YEAR, ZERO32] });
+  const commitment = await pub.readContract({
+    address: REGISTRAR,
+    abi: registrarAbi,
+    functionName: "makeCommitment",
+    args: [label, account.address, secret, ZERO, RESOLVER, ONE_YEAR, ZERO32],
+  });
   console.log(`  commitment ${commitment}`);
   await send("commit", { to: REGISTRAR, data: encodeFunctionData({ abi: registrarAbi, functionName: "commit", args: [commitment] }) });
   if (dryRun) {
@@ -144,7 +152,10 @@ if (cmd === "status" || cmd === "register") {
 }
 
 if (cmd === "resolver") {
-  const artifact = JSON.parse(readFileSync(new URL("../contracts/out/APIritivoResolver.sol/APIritivoResolver.json", import.meta.url).pathname, "utf8")) as { abi: unknown[]; bytecode: { object: Hex } };
+  const artifact = JSON.parse(readFileSync(new URL("../contracts/out/APIritivoResolver.sol/APIritivoResolver.json", import.meta.url).pathname, "utf8")) as {
+    abi: unknown[];
+    bytecode: { object: Hex };
+  };
   const tokenId = await pub.readContract({ address: ETH_REGISTRY, abi: registryAbi, functionName: "findTokenId", args: [label] });
   const current = await pub.readContract({ address: ETH_REGISTRY, abi: registryAbi, functionName: "getResolver", args: [label] });
   console.log(`${name} · current resolver ${current}`);
@@ -158,13 +169,17 @@ if (cmd === "resolver") {
   const receipt = await pub.waitForTransactionReceipt({ hash });
   if (receipt.status !== "success" || !receipt.contractAddress) throw new Error("deploy failed");
   console.log(`  ✓ APIritivoResolver at ${receipt.contractAddress} (owner ${account.address})`);
-  await send("setResolver on ETHRegistry", { to: ETH_REGISTRY, data: encodeFunctionData({ abi: registryAbi, functionName: "setResolver", args: [tokenId, receipt.contractAddress] }) });
+  await send("setResolver on ETHRegistry", {
+    to: ETH_REGISTRY,
+    data: encodeFunctionData({ abi: registryAbi, functionName: "setResolver", args: [tokenId, receipt.contractAddress] }),
+  });
   console.log(`  ✓ ${name} now resolves through ${receipt.contractAddress}`);
   process.exit(0);
 }
 
 if (cmd === "records") {
-  const resolverAddr = (flag("--resolver") as Address | undefined) ?? (await pub.readContract({ address: ETH_REGISTRY, abi: registryAbi, functionName: "getResolver", args: [label] }));
+  const resolverAddr =
+    (flag("--resolver") as Address | undefined) ?? (await pub.readContract({ address: ETH_REGISTRY, abi: registryAbi, functionName: "getResolver", args: [label] }));
   if (!resolverAddr || /^0x0{40}$/.test(resolverAddr)) throw new Error("name has no resolver; run `resolver <label>` first");
   const addr = flag("--addr");
   const serviceId = flag("--service");

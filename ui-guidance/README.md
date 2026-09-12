@@ -36,6 +36,7 @@ Reference: [Supabase](https://supabase.com/). Keep APIritivo orange.
 * Keep actionable errors and disabled action reasons visible outside disclosures.
 * Refresh passes in place: retain loaded rows, credentials, expanded receipts, and the latest expiry clock. Reserve skeletons for the initial load. Animate only the fixed-width Refresh button, respect reduced motion, and retain the last snapshot on refresh failure. Clear the snapshot when the account changes.
 * Account checks: compact rows for resource, value, state, and next action. Omit per-resource explanatory comments; use the shared surface and subtle Refresh button.
+* The floating account badge shows only confirmed missing requirements as “1 missing” or the current count. Hide it and close its details when no requirements are missing; keep background checks running. Do not show Ready, Checking, or low-only badges.
 * Every refresh action uses RefreshButton: an icon in a 44px square, with a hover title and screen-reader label. Spin only while its read is pending, disable repeat clicks, and respect reduced motion. Keep text labels for error retry actions.
 
 These writing rules apply to product UI, including page titles. Technical documentation and code syntax keep their normal notation.

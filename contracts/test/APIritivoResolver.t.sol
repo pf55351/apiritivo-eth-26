@@ -47,6 +47,16 @@ contract APIritivoResolverTest is Test {
         assertTrue(r.supportsInterface(0x59d1d43c));
         assertTrue(r.supportsInterface(0xbc1c58d1));
         assertTrue(r.supportsInterface(0xf1cb7e06));
-        assertFalse(r.supportsInterface(0x9061b923));
+        assertTrue(r.supportsInterface(0x9061b923));
+    }
+
+    function test_wildcardResolveDispatchesToGetter() public {
+        bytes32 sub = keccak256("client.apiritivo.eth");
+        vm.prank(owner);
+        r.setAddr(sub, address(0x77));
+        bytes memory out = r.resolve(hex"06636c69656e740961706972697469766f0365746800", abi.encodeWithSignature("addr(bytes32)", sub));
+        assertEq(abi.decode(out, (address)), address(0x77));
+        bytes memory t = r.resolve("", abi.encodeWithSignature("text(bytes32,string)", sub, "k"));
+        assertEq(abi.decode(t, (string)), "");
     }
 }

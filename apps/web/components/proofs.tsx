@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { copyText } from "@/lib/format";
+import { useCopy } from "@/lib/use-copy";
 import { Disclosure } from "./ui";
 
 export type ProofLink = {
@@ -15,7 +14,7 @@ export type ProofLink = {
 };
 
 function ProofRow({ proof }: { proof: ProofLink }) {
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopy();
   return (
     <div className="min-w-0 py-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -26,17 +25,7 @@ function ProofRow({ proof }: { proof: ProofLink }) {
               {proof.hrefLabel ?? "Explorer"} ↗
             </a>
           ) : null}
-          <button
-            type="button"
-            aria-label={`Copy ${proof.label}`}
-            className="min-h-9 hover:text-content"
-            onClick={async () => {
-              if (await copyText(proof.value)) {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1200);
-              }
-            }}
-          >
+          <button type="button" aria-label={`Copy ${proof.label}`} className="min-h-9 hover:text-content" onClick={() => void copy("proof", proof.value)}>
             {copied ? "Copied" : "Copy"}
           </button>
         </div>

@@ -113,6 +113,18 @@ export type EnsServiceRecords = {
   contenthash: string | null;
 };
 
+/**
+ * Reverse lookup: the primary ENS name of an address, or null. viem verifies the
+ * forward record matches, so a returned name is safe to display as the user.
+ */
+export async function resolveEnsName(address: Address): Promise<string | null> {
+  try {
+    return await client().getEnsName({ address, universalResolverAddress: universalResolverAddress() });
+  } catch {
+    return null;
+  }
+}
+
 /** Forward resolution of the address record only (server-side ownership check). */
 export async function resolveEnsAddress(name: string): Promise<Address | null> {
   const n = normalizeEnsName(name);
@@ -175,4 +187,47 @@ export function verifyServiceRecords(records: EnsServiceRecords, service: { serv
   const serviceOk = records.serviceId === service.serviceId;
   const manifestOk = Boolean(records.manifestRef && records.manifestRef === service.manifestRef.toLowerCase());
   return { addressOk, serviceOk, manifestOk, complete: addressOk && serviceOk && manifestOk };
+}
+
+/* ------------------------------------------------------------ primary name (reverse record) */
+
+/**
+ * Where a wallet sets its own primary name. Only the address itself may call it.
+ *  - Sepolia (ENSv2 beta): DefaultReverseRegistrarAdapter.setName(address, string)
+ *  - mainnet: ReverseRegistrar.setName(string)
+ */
+export function primaryNameSetter(): {
+  chainId: number;
+  address: Address;
+  abi: readonly unknown[];
+  functionName: string;
+  args: (owner: Address, name: string) => readonly unknown[];
+} {
+  if (chainName() === "mainnet") {
+    return {
+      chainId: mainnet.id,
+      address: "0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb",
+      abi: [{ type: "function", name: "setName", stateMutability: "nonpayable", inputs: [{ name: "name", type: "string" }], outputs: [{ name: "", type: "bytes32" }] }] as const,
+      functionName: "setName",
+      args: (_owner, name) => [name] as const,
+    };
+  }
+  return {
+    chainId: sepolia.id,
+    address: "0x7a84e241f862d73960d73c26d68c3c8f89f0b18f",
+    abi: [
+      {
+        type: "function",
+        name: "setName",
+        stateMutability: "nonpayable",
+        inputs: [
+          { name: "addr", type: "address" },
+          { name: "name", type: "string" },
+        ],
+        outputs: [],
+      },
+    ] as const,
+    functionName: "setName",
+    args: (owner, name) => [owner, name] as const,
+  };
 }

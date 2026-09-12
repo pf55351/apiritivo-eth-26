@@ -4,9 +4,9 @@ import { arkivEntityUrl } from "@apiritivo/arkiv";
 import { explorerTxUrl } from "@apiritivo/payments";
 import { formatAccessDuration, formatPriceUsdc, type Sale, sumUsdc } from "@apiritivo/shared";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { AuthGate } from "@/components/auth-gate";
-import { ProviderConnectionDetails, type WriterStatus } from "@/components/connection-details";
+import { ProviderConnectionDetails } from "@/components/connection-details";
 import { ContractPanel } from "@/components/contract-panel";
 import { LiveSales } from "@/components/live-sales";
 import { PrivateGrantsPanel } from "@/components/private-grants-panel";
@@ -17,19 +17,9 @@ import { useSession } from "@/lib/session";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
 import { useProviderSales } from "@/lib/use-access";
 import { useProviderServices } from "@/lib/use-services";
+import { useWriterStatus } from "@/lib/use-writer-status";
 
 const SKELETON_KEYS = ["s1", "s2", "s3"];
-
-function useWriterStatus(): WriterStatus {
-  const [status, setStatus] = useState<WriterStatus>(null);
-  useEffect(() => {
-    fetch("/api/services", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => setStatus(j))
-      .catch(() => setStatus(null));
-  }, []);
-  return status;
-}
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -43,24 +33,27 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function Dashboard() {
   const session = useSession();
   const identity = session.identity!;
-  const { data, loading, error, reload } = useProviderServices(identity.id);
+  const services = useProviderServices(identity.id);
   const sales = useProviderSales(identity.id);
-  const writer = useWriterStatus();
+  const [writerTick, setWriterTick] = useState(0);
+  const writer = useWriterStatus(true, writerTick) ?? null;
 
-  const services = data ?? [];
+  const list = services.data ?? [];
   const salesList = sales.data ?? [];
   const revenue = sumUsdc(salesList.map((x) => x.paidUsdc));
   const earnedByService = new Map<string, string>();
-  for (const svc of services) earnedByService.set(svc.serviceId, sumUsdc(salesList.filter((x) => x.serviceId === svc.serviceId).map((x) => x.paidUsdc)));
+  for (const svc of list) earnedByService.set(svc.serviceId, sumUsdc(salesList.filter((x) => x.serviceId === svc.serviceId).map((x) => x.paidUsdc)));
   const swarmWallet = useSwarmWallet();
   const [chainTick, setChainTick] = useState(0);
+  const refreshing = services.refreshing || sales.refreshing;
   // A sale lands on chain first; the server writes the Arkiv receipt right after
   // verifying it, so refresh Arkiv-backed lists a moment later (twice, to be safe).
+  const reloadSales = sales.reload;
   const onChainSale = useCallback(() => {
     setChainTick((n) => n + 1);
-    setTimeout(() => sales.reload(), 4_000);
-    setTimeout(() => sales.reload(), 15_000);
-  }, [sales]);
+    setTimeout(reloadSales, 4_000);
+    setTimeout(reloadSales, 15_000);
+  }, [reloadSales]);
 
   return (
     <div className="space-y-8">
@@ -71,21 +64,32 @@ function Dashboard() {
             <RefreshButton
               variant="subtle"
               onClick={() => {
-                reload();
+                services.reload();
                 sales.reload();
                 setChainTick((value) => value + 1);
+                setWriterTick((value) => value + 1);
               }}
-              refreshing={loading || sales.loading}
+              refreshing={refreshing}
             />
             <Button href="/provider/new">Publish API</Button>
           </div>
         }
       />
+      <span role="status" className="sr-only">
+        {refreshing ? "Refreshing your APIs. The current list stays available." : ""}
+      </span>
       {!session.canUpload ? (
         <ErrorNotice tone="warn" message="Publishing needs Swarm storage. Add a drive or enable the shared gateway." detail={session.uploadUnavailableReason} />
       ) : null}
       {writer && !writer.writerConfigured ? (
         <ErrorNotice tone="warn" message="Publishing is unavailable. Configure the server writer." detail="Set ARKIV_WRITER_PRIVATE_KEY on the server." />
+      ) : null}
+      {writer?.ownerMismatch ? (
+        <ErrorNotice
+          tone="warn"
+          message="Publishing is unavailable. The writer key does not match the trusted writer address."
+          detail={`The server signs as ${writer.address} but reads trust ${writer.trustedOwner}. Set NEXT_PUBLIC_ARKIV_WRITER_ADDRESS to match.`}
+        />
       ) : null}
       {writer?.writerConfigured && writer.funded === false ? (
         <div className="text-sm text-muted">
@@ -97,25 +101,29 @@ function Dashboard() {
         </div>
       ) : null}
       <div className="grid grid-cols-2 gap-6 border-b border-line pb-6 sm:grid-cols-3">
-        <StatCard label="Published APIs" value={loading ? "…" : error ? "Unavailable" : String(services.length)} />
-        <StatCard label="Recorded sales" value={sales.loading ? "…" : sales.error ? "Unavailable" : String(salesList.length)} />
-        <StatCard label="Recorded revenue" value={sales.loading ? "…" : sales.error ? "Unavailable" : formatPriceUsdc(revenue)} />
+        <StatCard label="Published APIs" value={services.initialLoading ? "…" : services.error && !services.data ? "Unavailable" : String(list.length)} />
+        <StatCard label="Recorded sales" value={sales.initialLoading ? "…" : sales.error && !sales.data ? "Unavailable" : String(salesList.length)} />
+        <StatCard label="Recorded revenue" value={sales.initialLoading ? "…" : sales.error && !sales.data ? "Unavailable" : formatPriceUsdc(revenue)} />
       </div>
-      {error ? <ErrorNotice message={error.message} detail={error.detail} onRetry={reload} /> : null}
-      {sales.error ? <ErrorNotice message={sales.error.message} detail={sales.error.detail} onRetry={sales.reload} /> : null}
+      {services.error ? (
+        <ErrorNotice message={services.data ? "Refresh failed. Showing your last loaded APIs." : services.error.message} detail={services.error.detail} onRetry={services.reload} />
+      ) : null}
+      {sales.error ? (
+        <ErrorNotice message={sales.data ? "Refresh failed. Showing your last loaded sales." : sales.error.message} detail={sales.error.detail} onRetry={sales.reload} />
+      ) : null}
       <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12">
         <div className="min-w-0 space-y-8">
-          {loading ? (
+          {services.initialLoading ? (
             <div className="space-y-3">
               {SKELETON_KEYS.map((k) => (
                 <ServiceCardSkeleton key={k} />
               ))}
             </div>
-          ) : !error && services.length === 0 ? (
+          ) : services.data && list.length === 0 ? (
             <EmptyState title="Publish your first API" description="Set your price and start earning." action={<Button href="/provider/new">Publish API</Button>} />
-          ) : (
-            <ul className="divide-y divide-line">
-              {services.map((service) => (
+          ) : services.data ? (
+            <ul className="divide-y divide-line" aria-busy={services.refreshing}>
+              {list.map((service) => (
                 <li key={service.serviceId} className="flex min-w-0 flex-wrap items-center justify-between gap-4 py-5 first:pt-0">
                   <div className="min-w-0 flex-1">
                     <Link href={`/services/${service.serviceId}`} className="break-words text-base font-medium hover:text-accent-text">
@@ -130,14 +138,14 @@ function Dashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-content">{sales.loading || sales.error ? "…" : formatPriceUsdc(earnedByService.get(service.serviceId) ?? "0")}</p>
+                    <p className="text-sm text-content">{sales.data ? formatPriceUsdc(earnedByService.get(service.serviceId) ?? "0") : "…"}</p>
                     <p className="mt-1 text-xs text-subtle">Earned</p>
                   </div>
                 </li>
               ))}
             </ul>
-          )}
-          <PrivateGrantsPanel services={services} sales={salesList} />
+          ) : null}
+          <PrivateGrantsPanel services={list} sales={salesList} />
           {swarmWallet.address ? <LiveSales provider={swarmWallet.address} onSale={onChainSale} /> : null}
         </div>
         <aside className="min-w-0">

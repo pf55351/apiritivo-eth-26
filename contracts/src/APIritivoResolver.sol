@@ -94,8 +94,18 @@ contract APIritivoResolver {
         return _contenthashes[node];
     }
 
+    /// @notice ENSIP-10 wildcard resolution: subnames of the platform name (e.g. client.apiritivo.eth)
+    /// have no registry entry of their own, so the Universal Resolver asks the parent's resolver
+    /// through `resolve`. `data` already carries the subname's node; dispatch it to the plain getter.
+    function resolve(bytes calldata, bytes calldata data) external view returns (bytes memory) {
+        (bool ok, bytes memory ret) = address(this).staticcall(data);
+        require(ok, "resolve failed");
+        return ret;
+    }
+
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
         return interfaceId == 0x01ffc9a7 // ERC-165
+            || interfaceId == 0x9061b923 // resolve(bytes,bytes), ENSIP-10
             || interfaceId == 0x3b3b57de // addr(bytes32)
             || interfaceId == 0xf1cb7e06 // addr(bytes32,uint256)
             || interfaceId == 0x59d1d43c // text(bytes32,string)

@@ -1,14 +1,16 @@
 "use client";
 
 import { PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
-import { useState } from "react";
-import { copyText } from "@/lib/format";
 import { shortAddress } from "@/lib/identity";
 import { useInjectedWallet } from "@/lib/injected-wallet";
 import { useSession } from "@/lib/session";
-import { AccountDropdown, GuestAccountIcon } from "./account-dropdown";
+import { useCopy } from "@/lib/use-copy";
+import { useEnsName } from "@/lib/use-ens";
+import { AccountDropdown } from "./account-dropdown";
 import { AccountPanel } from "./account-panel";
-import { Button, ProfileAvatar } from "./ui";
+import { EnsClaimName } from "./ens-claim-name";
+import { GuestMenu } from "./guest-menu";
+import { Button, ProfileAvatar, StatusDot } from "./ui";
 
 /**
  * Header account control for the Client workspace: the connected wallet is
@@ -17,67 +19,50 @@ import { Button, ProfileAvatar } from "./ui";
 export function WalletMenu() {
   const wallet = useInjectedWallet();
   const session = useSession();
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopy();
+  // ENS primary name of the connected wallet (Sepolia by default): shown instead of the address when set.
+  const ensName = useEnsName(wallet.address);
   if (!wallet.address) {
     return (
-      <AccountDropdown label="Account settings" trigger={<GuestAccountIcon />}>
-        {(close) => (
-          <AccountPanel>
-            <div className="px-3 py-2">
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  close();
-                  void wallet.connect();
-                }}
-                disabled={wallet.available === false || wallet.status === "connecting"}
-              >
-                {wallet.status === "connecting" ? "Confirm in wallet" : "Connect wallet"}
-              </Button>
-            </div>
-          </AccountPanel>
-        )}
-      </AccountDropdown>
+      <GuestMenu
+        action={wallet.status === "connecting" ? "Confirm in wallet" : "Connect wallet"}
+        onAction={() => void wallet.connect()}
+        disabled={wallet.available === false || wallet.status === "connecting"}
+      />
     );
   }
 
   const address = wallet.address;
   const short = shortAddress(address);
+  const display = ensName ?? short;
 
   return (
     <AccountDropdown
-      label={`Wallet ${short}`}
+      label={`Wallet ${display}`}
       trigger={
         <>
-          <ProfileAvatar name="Wallet" size={34} />
-          <span className="hidden font-mono text-sm xl:block">{short}</span>
+          <ProfileAvatar name={ensName ?? "Wallet"} size={34} />
+          <span className={`hidden text-sm xl:block ${ensName ? "" : "font-mono"}`}>{display}</span>
         </>
       }
     >
       {(close) => (
-        <AccountPanel name="Wallet" address={address}>
+        <AccountPanel name={ensName ?? "Wallet"} address={address}>
           <div className="flex flex-wrap gap-x-4 px-3 py-1 text-xs">
-            <button
-              type="button"
-              className="min-h-11 rounded-control text-subtle hover:text-content"
-              onClick={async () => {
-                if (await copyText(address)) {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1200);
-                }
-              }}
-            >
-              {copied ? "Copied" : "Copy address"}
+            <button type="button" className="min-h-11 rounded-control text-subtle hover:text-content" onClick={() => void copy("address", address)}>
+              {copied === "address" ? "Copied" : "Copy address"}
             </button>
           </div>
+          {ensName ? null : (
+            <>
+              <div className="mx-3 my-1 border-t border-line" />
+              <EnsClaimName address={address} />
+            </>
+          )}
           <div className="mx-3 my-1 border-t border-line" />
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 text-xs">
             <span className="text-muted">Network</span>
-            <span className={`inline-flex items-center gap-1.5 ${wallet.onPaymentChain ? "text-success" : "text-warning"}`}>
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
-              {wallet.onPaymentChain ? PAYMENT_CHAIN_NAME : "Wrong network"}
-            </span>
+            <StatusDot tone={wallet.onPaymentChain ? "success" : "warning"}>{wallet.onPaymentChain ? PAYMENT_CHAIN_NAME : "Wrong network"}</StatusDot>
             {!wallet.onPaymentChain ? (
               <Button size="sm" variant="ghost" onClick={() => void wallet.switchChain()}>
                 Switch

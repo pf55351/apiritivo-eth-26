@@ -1,6 +1,5 @@
 "use client";
 
-import { arkivEntityUrl, arkivTxUrl } from "@apiritivo/arkiv";
 import { ensChainLabel } from "@apiritivo/ens";
 import { explorerAddressUrl, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
 import {
@@ -12,16 +11,12 @@ import {
   generateServiceId,
   manifestStats,
   type OperationDraft,
-  type PrivateAttachment,
-  type PublishServiceResult,
   priceUsdcSchema,
   SERVICE_CATEGORIES,
-  type ServiceManifest,
   serializeManifest,
   slugify,
   validateManifest,
 } from "@apiritivo/shared";
-import { swarmReferenceUrl, uploadPrivateFile, uploadServiceManifest } from "@apiritivo/swarm";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { AuthGate } from "@/components/auth-gate";
@@ -29,27 +24,14 @@ import { CodeBlock } from "@/components/code-panel";
 import { FormSteps } from "@/components/form-steps";
 import { ManifestOperations } from "@/components/manifest-view";
 import { emptyOperation, OperationsBuilder } from "@/components/operations-builder";
-import { type ProofLink, ProofPanel } from "@/components/proofs";
+import { PublishedView } from "@/components/published-view";
 import { Button, CategoryPill, Disclosure, ErrorNotice, SectionTitle } from "@/components/ui";
-import { type FriendlyError, toFriendlyError } from "@/lib/errors";
 import { PRIVATE_FILE_MAX_BYTES, publishStepIssues } from "@/lib/publish-validation";
 import { useSession } from "@/lib/session";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
+import { usePublishService } from "@/lib/use-publish-service";
 
 const ENS_CHAIN_LABEL = ensChainLabel();
-
-type Step = "idle" | "uploading" | "uploading-private" | "publishing" | "done";
-
-type Progress = {
-  step: Step;
-  manifestRef?: string;
-  manifestBytes?: number;
-  manifestVia?: "swarm-id" | "gateway";
-  privateFile?: PrivateAttachment;
-  result?: PublishServiceResult;
-  error?: FriendlyError & { at: "swarm" | "arkiv" | "form" };
-};
-
 const fieldCls = "field-control";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -76,6 +58,10 @@ function StepRow({ label, state }: { label: string; state: "todo" | "active" | "
   );
 }
 
+function formatFileSize(size: number): string {
+  return size < 1024 ? `${size} B` : `${Math.round(size / 1024)} KB`;
+}
+
 function PublishForm() {
   const session = useSession();
   const identity = session.identity!;
@@ -93,7 +79,7 @@ function PublishForm() {
   const [operations, setOperations] = useState<OperationDraft[]>([emptyOperation("getQuote")]);
   const [privateFile, setPrivateFile] = useState<File | null>(null);
   const privateFileInput = useRef<HTMLInputElement>(null);
-  const [progress, setProgress] = useState<Progress>({ step: "idle" });
+  const { progress, busy, publish } = usePublishService();
 
   const effectiveCategory = category === "custom" ? slugify(customCategory) : category;
   const manifest = useMemo(() => buildManifest(operations), [operations]);
@@ -101,164 +87,35 @@ function PublishForm() {
   const stats = manifestStats(manifest);
 
   const stepIssues = useMemo(
-    () =>
-      publishStepIssues({
-        name,
-        description,
-        category: effectiveCategory,
-        priceUsdc,
-        accessSeconds,
-        payoutAddress,
-        ensName,
-        operations,
-        privateFile,
-      }),
+    () => publishStepIssues({ name, description, category: effectiveCategory, priceUsdc, accessSeconds, payoutAddress, ensName, operations, privateFile }),
     [name, description, effectiveCategory, priceUsdc, accessSeconds, payoutAddress, ensName, operations, privateFile],
   );
   const formIssues = Object.values(stepIssues).flat();
-
   const canPublish = formIssues.length === 0 && session.canUpload && progress.step === "idle";
-  const busy = progress.step === "uploading" || progress.step === "uploading-private" || progress.step === "publishing";
+  const priceLabel = priceUsdcSchema.safeParse(priceUsdc).success ? formatPriceUsdc(priceUsdc.trim()) : "Set a price";
 
-  async function publish() {
+  function submit() {
     if (!canPublish || !manifestValidation.ok) return;
-    const validManifest: ServiceManifest = manifestValidation.manifest;
-    const serviceId = generateServiceId(name);
-
-    // 1) Upload manifest to Swarm — must succeed before touching Arkiv.
-    setProgress({ step: "uploading" });
-    let manifestRef: string;
-    let manifestBytes: number;
-    let manifestVia: "swarm-id" | "gateway";
-    try {
-      const uploaded = await uploadServiceManifest(validManifest);
-      manifestRef = uploaded.reference;
-      manifestBytes = uploaded.bytes;
-      manifestVia = uploaded.via;
-    } catch (err) {
-      setProgress({ step: "idle", error: { ...toFriendlyError(err, "Manifest upload failed."), at: "swarm" } });
-      return;
-    }
-
-    // 1b) Optional private file: encrypted on Swarm with ACT, nobody can read it yet.
-    let privateAttachment: PrivateAttachment | undefined;
-    if (privateFile) {
-      setProgress({ step: "uploading-private", manifestRef, manifestBytes, manifestVia });
-      try {
-        const bytes = new Uint8Array(await privateFile.arrayBuffer());
-        const uploaded = await uploadPrivateFile(bytes);
-        privateAttachment = {
-          name: privateFile.name,
-          bytes: uploaded.bytes,
-          contentType: privateFile.type || undefined,
-          encryptedRef: uploaded.encryptedRef,
-          historyRef: uploaded.historyRef,
-          publisherPubKey: uploaded.publisherPubKey,
-        };
-      } catch (err) {
-        setProgress({ step: "idle", manifestRef, manifestBytes, manifestVia, error: { ...toFriendlyError(err, "Private file upload failed."), at: "swarm" } });
-        return;
-      }
-    }
-
-    // 2) Publish the service entity to Arkiv via the server writer.
-    setProgress({ step: "publishing", manifestRef, manifestBytes, manifestVia, privateFile: privateAttachment });
-    const body = {
-      serviceId,
-      category: effectiveCategory,
-      providerId: identity.id,
-      providerName: identity.name,
-      manifestRef,
-      name: name.trim(),
-      description: description.trim(),
-      priceUsdc: priceUsdc.trim(),
-      accessSeconds,
-      payoutAddress: payoutAddress.trim(),
-      ensName: ensName.trim() ? ensName.trim().toLowerCase() : undefined,
-      privateAttachment,
-    };
-    try {
-      const res = await fetch("/api/services", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = (await res.json().catch(() => ({}))) as Partial<PublishServiceResult> & {
-        error?: string;
-        reason?: string;
-        detail?: string;
-        issues?: string[];
-      };
-      if (!res.ok || !json.entityKey || !json.txHash) {
-        const detail = [json.reason, json.detail, ...(json.issues ?? [])].filter(Boolean).join("\n");
-        setProgress({
-          step: "idle",
-          manifestRef,
-          manifestBytes,
-          error: { message: json.reason ?? json.error ?? "Arkiv publication failed.", detail: detail || undefined, at: "arkiv" },
-        });
-        return;
-      }
-      setProgress({
-        step: "done",
-        manifestRef,
-        manifestBytes,
-        manifestVia,
-        privateFile: privateAttachment,
-        result: { entityKey: json.entityKey, txHash: json.txHash, serviceId: json.serviceId ?? serviceId },
-      });
-    } catch (err) {
-      setProgress({ step: "idle", manifestRef, manifestBytes, error: { ...toFriendlyError(err, "Arkiv publication failed."), at: "arkiv" } });
-    }
+    void publish(
+      manifestValidation.manifest,
+      {
+        serviceId: generateServiceId(name),
+        category: effectiveCategory,
+        providerId: identity.id,
+        providerName: identity.name,
+        name: name.trim(),
+        description: description.trim(),
+        priceUsdc: priceUsdc.trim(),
+        accessSeconds,
+        payoutAddress: payoutAddress.trim(),
+        ensName: ensName.trim() ? ensName.trim().toLowerCase() : undefined,
+      },
+      privateFile,
+    );
   }
 
   if (progress.step === "done" && progress.result) {
-    return (
-      <div className="mx-auto max-w-2xl space-y-6 animate-fade-up">
-        <div className="py-8 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/15 text-3xl text-success">✓</div>
-          <p className="mt-4 text-xs font-normal text-success">API published</p>
-          <h2 className="mt-1 break-words text-3xl font-medium">{name}</h2>
-          <p className="mt-2 text-sm text-muted">Your API is now in the marketplace.</p>
-          {progress.privateFile ? <p className="mt-2 text-xs text-subtle">Private file encrypted. Grant access after each purchase.</p> : null}
-        </div>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Button href={`/services/${progress.result.serviceId}`}>View API</Button>
-        </div>
-        <ProofPanel
-          columns={2}
-          title="Publication details"
-          proofs={[
-            {
-              network: "Swarm · public gateway",
-              label: `manifestRef · ${progress.manifestBytes ?? 0} bytes · via ${progress.manifestVia === "gateway" ? "public gateway" : "Swarm ID"}`,
-              value: progress.manifestRef ?? "",
-              href: swarmReferenceUrl(progress.manifestRef ?? ""),
-              hrefLabel: "Swarm gateway",
-            },
-            {
-              network: "Arkiv · Tiramisu testnet",
-              label: "entity key",
-              value: progress.result.entityKey,
-              href: arkivEntityUrl(progress.result.entityKey),
-              hrefLabel: "Arkiv explorer",
-            },
-            { network: "Arkiv · Tiramisu testnet", label: "transaction", value: progress.result.txHash, href: arkivTxUrl(progress.result.txHash), hrefLabel: "Transaction" },
-            ...(progress.privateFile
-              ? [
-                  {
-                    network: "Swarm · public gateway",
-                    label: `private file · ${progress.privateFile.name} · ${progress.privateFile.bytes} bytes · ACT encrypted, no public link`,
-                    value: progress.privateFile.encryptedRef,
-                  } satisfies ProofLink,
-                ]
-              : []),
-            { network: "Arkiv · Tiramisu testnet", label: "serviceId", value: progress.result.serviceId },
-            { network: "Arkiv · Tiramisu testnet", label: "access terms", value: `${formatPriceUsdc(priceUsdc.trim())} · ${formatAccessDuration(accessSeconds)}` },
-          ]}
-        />
-      </div>
-    );
+    return <PublishedView name={name} priceUsdc={priceUsdc} accessSeconds={accessSeconds} progress={{ ...progress, result: progress.result }} />;
   }
 
   return (
@@ -286,9 +143,7 @@ function PublishForm() {
         <FormSteps
           id="publish"
           disabled={busy}
-          onSubmit={() => {
-            if (canPublish) void publish();
-          }}
+          onSubmit={submit}
           steps={[
             {
               id: "details",
@@ -336,7 +191,7 @@ function PublishForm() {
             {
               id: "pricing",
               title: "Price and duration",
-              summary: `${priceUsdcSchema.safeParse(priceUsdc).success ? formatPriceUsdc(priceUsdc.trim()) : "Set a price"} · ${formatAccessDuration(accessSeconds)}`,
+              summary: `${priceLabel} · ${formatAccessDuration(accessSeconds)}`,
               issues: stepIssues.pricing,
               children: (
                 <>
@@ -421,23 +276,23 @@ function PublishForm() {
                       className="block w-full text-sm text-muted file:mr-3 file:rounded-control file:border-0 file:bg-surface-raised file:px-3 file:py-2 file:text-xs file:font-medium file:text-content hover:file:bg-surface-active"
                       onChange={(e) => setPrivateFile(e.target.files?.[0] ?? null)}
                     />
-                    {privateFile ? (
-                      <p className="mt-1.5 text-[11px] text-subtle">
-                        {privateFile.name} · {privateFile.size < 1024 ? `${privateFile.size} B` : `${Math.round(privateFile.size / 1024)} KB`} ·{" "}
-                        {privateFile.type || "unknown type"}{" "}
-                        <button
-                          type="button"
-                          className="underline hover:text-content-secondary"
-                          onClick={() => {
-                            setPrivateFile(null);
-                            if (privateFileInput.current) privateFileInput.current.value = "";
-                          }}
-                        >
-                          remove
-                        </button>
-                      </p>
-                    ) : null}
                   </Field>
+                  {privateFile ? (
+                    // Outside the label: a button inside a label is invalid and would toggle the file picker.
+                    <p className="mt-1.5 text-[11px] text-subtle">
+                      {privateFile.name} · {formatFileSize(privateFile.size)} · {privateFile.type || "unknown type"}{" "}
+                      <button
+                        type="button"
+                        className="underline hover:text-content-secondary"
+                        onClick={() => {
+                          setPrivateFile(null);
+                          if (privateFileInput.current) privateFileInput.current.value = "";
+                        }}
+                      >
+                        remove
+                      </button>
+                    </p>
+                  ) : null}
                 </>
               ),
             },
@@ -452,7 +307,7 @@ function PublishForm() {
                     <p className="font-medium">{name.trim() || "Your API name"}</p>
                     <p className="text-muted">{description.trim() || "Add a description."}</p>
                     <p className="text-accent-text">
-                      {priceUsdcSchema.safeParse(priceUsdc).success ? formatPriceUsdc(priceUsdc.trim()) : "Set a price"} · {formatAccessDuration(accessSeconds)}
+                      {priceLabel} · {formatAccessDuration(accessSeconds)}
                     </p>
                     <p className="text-xs text-subtle">
                       {stats.operations} {stats.operations === 1 ? "operation" : "operations"}

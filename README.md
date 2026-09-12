@@ -23,7 +23,7 @@ Built at **ETH Rome 2026** · Swarm ID · Swarm · Arkiv · Avalanche Fuji
 
 - **Git, Bun 1.3+ and Node.js 20+.** Foundry is optional, for Solidity development and tests.
 - **Swarm ID** to publish. Allow its sign-in popup; the app derives the provider's payout wallet from the identity.
-- **A browser wallet** (MetaMask, Rabby or Core) on Avalanche Fuji to buy access. Swarm ID is optional for clients and only needed to open private files.
+- **A browser wallet** (MetaMask, Rabby or Core) on Avalanche Fuji to buy access. Swarm ID is optional for clients and only needed to open private files: at purchase the paying wallet signs which Swarm ID key may receive the file, and only that key is ever granted. The file follows that Swarm ID, not the wallet.
 - **Test funds:** [GLM on Arkiv Tiramisu](https://hub.arkiv.network/faucet) for the server writer; [AVAX](https://core.app/tools/testnet-faucet/) for wallet gas and [USDC](https://faucet.circle.com/) for purchases on Avalanche Fuji.
 
 ### Quick start
@@ -107,7 +107,7 @@ prova-api.apiritivo.eth
 3. The service page shows an ENS panel with ✓ / ○ per record; in provider view it lists the exact values to paste into the ENS app. Marketplace cards carry the badge (◐ address verified, ✓ fully resolvable).
 4. Machines resolve the name: `bun tools/call-service.ts prova-api.apiritivo.eth "<key>"` reads the text record (Arkiv `ens_name` as fallback) and calls the gateway.
 
-The app never writes ENS. Sepolia runs the ENSv2 beta with per-name subname registries; minting `<service-id>.apiritivo.eth` automatically at publish is the next step once that API is documented.
+**The platform name exists:** [`apiritivo.eth`](https://app.ens.dev/apiritivo.eth) is registered on the Sepolia ENSv2 beta by the Arkiv writer, with its own resolver [`APIritivoResolver`](contracts/src/APIritivoResolver.sol) at [`0xe64784509db0ea3d429f782c413ce1c6c0c95a50`](https://sepolia.etherscan.io/address/0xe64784509db0ea3d429f782c413ce1c6c0c95a50) and `addr` → the provider's Swarm wallet. Records are written with `bun tools/ens-register.ts records apiritivo.eth --service <id> --manifest <ref>`; the beta's shared PublicResolverV2 refuses writes even from owners, hence the dedicated resolver. The web app itself never writes ENS. Minting `<service-id>.apiritivo.eth` per service is the next step.
 
 **Demo trust model:** the server owns the Arkiv writer and currently trusts unsigned identity fields. Payments and pass secrets are verified; choosing a workspace is a UI preference. See the [trust boundaries](docs/backend-architecture.md).
 

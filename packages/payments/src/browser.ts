@@ -74,14 +74,15 @@ export async function connectInjectedWallet(): Promise<{ address: Address; chain
   }
 }
 
-export function onWalletChange(handler: () => void): () => void {
+/** Subscribe to wallet changes. Accounts and chain are separate events: a network switch should not cost a new key signature. */
+export function onWalletChange(onAccounts: () => void, onChain: () => void = onAccounts): () => void {
   const eth = (globalThis as { ethereum?: Eip1193 }).ethereum;
   if (!eth?.on) return () => {};
-  eth.on("accountsChanged", handler);
-  eth.on("chainChanged", handler);
+  eth.on("accountsChanged", onAccounts);
+  eth.on("chainChanged", onChain);
   return () => {
-    eth.removeListener?.("accountsChanged", handler);
-    eth.removeListener?.("chainChanged", handler);
+    eth.removeListener?.("accountsChanged", onAccounts);
+    eth.removeListener?.("chainChanged", onChain);
   };
 }
 
@@ -153,9 +154,9 @@ export async function signPassKeyMessage(signer: Signer): Promise<Uint8Array> {
 }
 
 /** Sign the claim for a paid transaction (see `passClaimMessage`); sent to POST /api/access-passes as `buyerSignature`. */
-export async function signPassClaim(signer: Signer, txHash: Hash, secretHash: Hex): Promise<Hex> {
+export async function signPassClaim(signer: Signer, txHash: Hash, secretHash: Hex, fileKey?: string): Promise<Hex> {
   try {
-    return await signer.client.signMessage({ account: signer.address, message: passClaimMessage(txHash, secretHash) });
+    return await signer.client.signMessage({ account: signer.address, message: passClaimMessage(txHash, secretHash, fileKey) });
   } catch (err) {
     throw new WalletError("rejected", "Signature was rejected in the wallet.", err);
   }

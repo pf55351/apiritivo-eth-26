@@ -13,6 +13,7 @@ import { Button, ErrorNotice, Eyebrow } from "@/components/ui";
 import { publicEnv } from "@/lib/env";
 import { useInjectedWallet } from "@/lib/injected-wallet";
 import { useSession } from "@/lib/session";
+import { useView } from "@/lib/view";
 
 const contractAddress = paymentsContractAddress();
 const PILLARS = [
@@ -57,10 +58,10 @@ export default function HomePage() {
   }, [session.connecting, session.identity, session.role, session.roleLoaded, router]);
 
   const loggedIn = Boolean(session.identity);
-  const view = session.role ?? "client";
+  const { view, loaded } = useView();
   const isProvider = view === "provider";
 
-  if (!session.roleLoaded) {
+  if (!loaded) {
     return (
       <p role="status" className="py-16 text-center text-sm text-subtle">
         Loading view…

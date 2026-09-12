@@ -1,10 +1,19 @@
 "use client";
 
-import { explorerAddressUrl, explorerTokenUrl, type OnChainPurchase, PAYMENT_CHAIN_NAME, paymentsContractAddress, serviceKey, USDC_ADDRESS } from "@apiritivo/payments";
+import {
+  type Address,
+  explorerAddressUrl,
+  explorerTokenUrl,
+  type OnChainPurchase,
+  PAYMENT_CHAIN_NAME,
+  paymentsContractAddress,
+  serviceKey,
+  USDC_ADDRESS,
+} from "@apiritivo/payments";
 import { type ProviderStats, readProviderStats, readRecentPurchases, readServiceStats, type ServiceStats } from "@apiritivo/payments/browser";
 import { formatAccessDuration, formatPriceUsdc } from "@apiritivo/shared";
 import { useEffect, useState } from "react";
-import type { Address } from "viem";
+import { invalidateRequest, sharedRequest } from "@/lib/shared-request";
 import { RefreshButton } from "./refresh-button";
 import { Disclosure } from "./ui";
 
@@ -38,7 +47,8 @@ export function ContractPanel({
     (async () => {
       const [s, p, list] = await Promise.all([
         serviceId ? readServiceStats(serviceId).catch(() => null) : Promise.resolve(null),
-        provider ? readProviderStats(provider).catch(() => null) : Promise.resolve(null),
+        // Same read the wallet panel makes on the provider page: one request serves both.
+        provider ? sharedRequest(`provider-stats:${provider.toLowerCase()}`, () => readProviderStats(provider)).catch(() => null) : Promise.resolve(null),
         readRecentPurchases(50).catch(() => null),
       ]);
       if (cancelled) return;
@@ -59,7 +69,14 @@ export function ContractPanel({
     <Disclosure title={title} meta={PAYMENT_CHAIN_NAME}>
       {contract ? (
         <div className="mb-4 flex justify-end">
-          <RefreshButton variant="subtle" refreshing={loading} onClick={() => setTick((n) => n + 1)} />
+          <RefreshButton
+            variant="subtle"
+            refreshing={loading}
+            onClick={() => {
+              invalidateRequest("provider-stats");
+              setTick((n) => n + 1);
+            }}
+          />
         </div>
       ) : null}
       {!contract ? (
@@ -83,12 +100,8 @@ export function ContractPanel({
                 <Stat label="Purchases" value={String(serviceStats.purchases)} />
               </>
             ) : null}
-            {providerStats ? (
-              <>
-                <Stat label="Lifetime earned" value={formatPriceUsdc(providerStats.totalEarnedUsdc)} />
-                <Stat label="Claimable now" value={formatPriceUsdc(providerStats.claimableUsdc)} />
-              </>
-            ) : null}
+            {/* "Ready to claim" lives in the wallet section: one place per metric. */}
+            {providerStats ? <Stat label="Lifetime earned" value={formatPriceUsdc(providerStats.totalEarnedUsdc)} /> : null}
           </div>
           <div>
             <p className="mb-2 text-[11px] uppercase tracking-wider text-subtle">Latest purchases</p>

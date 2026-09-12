@@ -1,10 +1,10 @@
 "use client";
 
 import { decryptPassSecret, encryptPassSecret } from "@apiritivo/arkiv";
+import type { Address, Hex } from "@apiritivo/payments";
 import { type Balances, getBalances, type Signer, secretToPrivateKey, swarmSigner } from "@apiritivo/payments/browser";
 import { derivePassEncryptionKey, deriveWalletSecret } from "@apiritivo/swarm";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { Address, Hex } from "viem";
 import { type FriendlyError, toFriendlyError } from "./errors";
 import { useSession } from "./session";
 

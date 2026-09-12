@@ -198,21 +198,23 @@ STEP 8 — Verify everything without the app
     manifest bytes        https://api.gateway.ethswarm.org/bytes/<manifest_ref>
 
 
-STEP 9 — Optional: give the API an ENS name
---------------------------------------------
-  Free on Sepolia, takes 5 minutes. Import the creator's Swarm wallet into MetaMask first
-  (Provider > wallet panel > Reveal private key) and fund it with a little Sepolia ETH.
-  1. https://app.ens.dev (Sepolia, ENSv2 beta): register a name (e.g. judgeapi.eth). It is paid in MockUSDC,
-     a test token anyone can mint: contract 0x768f42455a2d082e23ceef7d51e5787c82d67a39, mint(yourAddress, 100000000)
-     from Sepolia Etherscan "Write contract" with MetaMask. Gas is Sepolia ETH.
-  2. Records > ETH address = the creator's Swarm wallet address.
-  3. Publish a new service (STEP 2) with that name in the "ENS name" field. The server refuses names
-     whose ETH address is not the payout wallet.
-  4. On the service page, the ENS panel shows: address verified, and the two records still missing.
-     Copy them and set them in the ENS app: text "com.apiritivo.service" = service id,
-     content hash = bzz://<manifest_ref>. Reload: three green checks, "fully resolvable".
-  5. From a terminal:  bun tools/call-service.ts judgeapi.eth "<passKey>.<secret>"
+STEP 9 — Optional: the API under an ENS name
+---------------------------------------------
+  apiritivo.eth is already registered on the Sepolia ENSv2 beta (owner: the Arkiv writer) and its
+  ETH address record is the creator's Swarm wallet 0xE20a...21f8. Check it: https://app.ens.dev/apiritivo.eth
+  1. Publish a new service (STEP 2) with "apiritivo.eth" in the "ENS name" field. The server resolves
+     the name and accepts it because addr(apiritivo.eth) == payout wallet. Try "nick.eth" first to see
+     the refusal: "resolves to 0xb8c2... expected 0xE20a...".
+  2. On the service page the ENS panel shows: address verified, text record and contenthash missing,
+     with the two values to set. The shared Sepolia v2 resolver rejects writes, so set them with the
+     platform tool (writer key, from the repo root):
+       bun tools/ens-register.ts records apiritivo.eth --service <service id> --manifest <manifest ref>
+     Reload after a minute: three green checks, "fully resolvable", green badge in the marketplace.
+  3. From a terminal:  bun tools/call-service.ts apiritivo.eth "<passKey>.<secret>"
      The script resolves the name through ENS and calls the gateway.
+  To register your own name instead (free): Sepolia ETH from a faucet, then
+       bun tools/ens-register.ts register <label> && bun tools/ens-register.ts resolver <label>
+       bun tools/ens-register.ts records <label>.eth --addr <creator Swarm wallet>
 
 What to look at in the code (5 minutes)
 ---------------------------------------

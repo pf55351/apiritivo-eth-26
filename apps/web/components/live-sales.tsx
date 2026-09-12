@@ -1,10 +1,9 @@
 "use client";
 
-import { explorerAddressUrl, explorerTxUrl, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
+import { type Address, explorerAddressUrl, explorerTxUrl, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
 import type { LiveSale } from "@apiritivo/payments/browser";
 import { formatPriceUsdc } from "@apiritivo/shared";
 import { useEffect, useState } from "react";
-import type { Address } from "viem";
 import { useLiveSales } from "@/lib/use-live-sales";
 import { Disclosure } from "./ui";
 

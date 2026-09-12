@@ -1,7 +1,7 @@
 import type { BlockTiming } from "@apiritivo/arkiv";
 import type { FriendlyError } from "./errors";
 
-export type AccessQueryState<T> = {
+export type QueryState<T> = {
   key: string | null;
   data: T | null;
   loading: boolean;
@@ -14,14 +14,14 @@ type Action<T> =
   | { type: "success"; key: string; data: T; timing: BlockTiming | null }
   | { type: "failure"; key: string; error: FriendlyError };
 
-export function emptyAccessQuery<T>(key: string | null): AccessQueryState<T> {
+export function emptyQuery<T>(key: string | null): QueryState<T> {
   return { key, data: null, loading: key !== null, error: null, timing: null };
 }
 
 /** A refresh can retain a snapshot only when it belongs to the same account/query. */
-export function accessQueryState<T>(state: AccessQueryState<T>, action: Action<T>): AccessQueryState<T> {
+export function queryState<T>(state: QueryState<T>, action: Action<T>): QueryState<T> {
   if (action.type === "start") {
-    return action.key !== null && action.key === state.key ? { ...state, loading: true, error: null } : emptyAccessQuery(action.key);
+    return action.key !== null && action.key === state.key ? { ...state, loading: true, error: null } : emptyQuery(action.key);
   }
   if (action.key !== state.key) return state;
   if (action.type === "failure") return { ...state, loading: false, error: action.error };

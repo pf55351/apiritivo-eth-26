@@ -1,38 +1,23 @@
 "use client";
 
-import { getSwarmDrive, type SwarmConnectionInfo, type SwarmDrive } from "@apiritivo/swarm";
-import { type ReactNode, useEffect, useState } from "react";
+import type { SwarmConnectionInfo, SwarmDrive } from "@apiritivo/swarm";
+import type { ReactNode } from "react";
 import { publicEnv } from "@/lib/env";
 import { formatTtl } from "@/lib/format";
 import { DRIVE_WARN_BELOW_SECONDS } from "@/lib/readiness";
 import { useSession } from "@/lib/session";
-import { Disclosure, RefField } from "./ui";
+import { useSwarmDrive } from "@/lib/use-swarm-drive";
+import type { WriterStatus as WriterStatusValue } from "@/lib/use-writer-status";
+import { Disclosure, RefField, StatusDot } from "./ui";
 
-export type WriterStatus = {
-  writerConfigured: boolean;
-  address?: string;
-  balance?: string;
-  funded?: boolean;
-  explorerUrl?: string;
-  dataExplorerUrl?: string;
-  faucetUrl: string;
-} | null;
+/** Writer health as shown here: `null` = unreachable. */
+export type WriterStatus = WriterStatusValue | null;
 
 function ConnectionLink({ href, children, title }: { href: string; children: ReactNode; title?: string }) {
   return (
     <a href={href} target="_blank" rel="noreferrer" title={title} className="inline-flex min-h-11 items-center gap-1 rounded-control text-xs text-accent-text hover:underline">
       {children} <span aria-hidden="true">↗</span>
     </a>
-  );
-}
-
-function ConnectionState({ children, tone }: { children: ReactNode; tone: "success" | "warning" | "subtle" }) {
-  const color = { success: "text-success", warning: "text-warning", subtle: "text-subtle" }[tone];
-  return (
-    <span className={`inline-flex items-center gap-1.5 text-xs ${color}`}>
-      <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
-      {children}
-    </span>
   );
 }
 
@@ -68,7 +53,7 @@ export function ConnectionDetails({
         <div className="grid min-w-0 gap-x-8 gap-y-2 py-4 sm:grid-cols-[160px_minmax(0,1fr)_auto] sm:items-center">
           <p className="text-sm font-medium">Swarm storage</p>
           <div className="min-w-0 space-y-1">
-            <ConnectionState tone={!usable || expiring ? "warning" : "success"}>{!usable ? "Unavailable" : expiring ? "Renew soon" : "Ready"}</ConnectionState>
+            <StatusDot tone={!usable || expiring ? "warning" : "success"}>{!usable ? "Unavailable" : expiring ? "Renew soon" : "Ready"}</StatusDot>
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm tabular-nums text-muted">
               {ownDrive ? (
                 drive ? (
@@ -96,9 +81,9 @@ export function ConnectionDetails({
         <div className="grid min-w-0 gap-x-8 gap-y-2 py-4 sm:grid-cols-[160px_minmax(0,1fr)_auto] sm:items-center">
           <p className="text-sm font-medium">Arkiv writer</p>
           <div className="min-w-0 space-y-1">
-            <ConnectionState tone={!writer ? "subtle" : !writer.writerConfigured || writer.funded === false ? "warning" : writer.funded ? "success" : "subtle"}>
+            <StatusDot tone={!writer ? "subtle" : !writer.writerConfigured || writer.funded === false ? "warning" : writer.funded ? "success" : "subtle"}>
               {!writer ? "Unavailable" : !writer.writerConfigured ? "Not configured" : writer.funded === undefined ? "Balance unavailable" : writer.funded ? "Funded" : "Needs GLM"}
-            </ConnectionState>
+            </StatusDot>
             {balance !== null ? (
               <p className="text-sm font-medium tabular-nums" title={`${writer?.balance} GLM`}>
                 {balance} GLM
@@ -122,28 +107,7 @@ export function ConnectionDetails({
 
 export function ProviderConnectionDetails({ writer }: { writer: WriterStatus }) {
   const session = useSession();
-  const identityId = session.identity?.id ?? null;
-  const ownStamp = session.uploadMode === "user-stamp";
-  const [drive, setDrive] = useState<SwarmDrive | null | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    setDrive(undefined);
-    if (!identityId || !ownStamp) {
-      setDrive(null);
-      return;
-    }
-    getSwarmDrive()
-      .then((value) => {
-        if (!cancelled) setDrive(value);
-      })
-      .catch(() => {
-        if (!cancelled) setDrive(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [identityId, ownStamp]);
+  const drive = useSwarmDrive();
 
   if (!session.identity) return null;
   return (

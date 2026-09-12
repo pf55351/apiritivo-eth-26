@@ -1,12 +1,13 @@
 "use client";
 
+import { type Address, type Hex, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
 import type { Balances, Signer } from "@apiritivo/payments/browser";
-import { useCallback } from "react";
-import type { Address, Hex } from "viem";
+import { useCallback, useMemo } from "react";
 import type { FriendlyError } from "./errors";
 import { useInjectedWallet } from "./injected-wallet";
 import { useSession } from "./session";
 import { useSwarmWallet } from "./swarm-wallet";
+import { useView } from "./view";
 
 /**
  * Who acts in the current workspace. Client = the connected wallet (MetaMask,
@@ -35,7 +36,7 @@ export function passOwner(pass: { buyerId: string }, walletAddress: string | nul
 export function useActiveIdentity(): ActiveIdentity | null {
   const session = useSession();
   const wallet = useInjectedWallet();
-  const view = session.role ?? "client";
+  const { view } = useView();
   if (view === "provider") return session.identity ? { kind: "swarm", id: session.identity.id, name: session.identity.name } : null;
   return wallet.address ? walletIdentity(wallet.address) : null;
 }
@@ -49,7 +50,7 @@ export type ActiveAccount = {
   signer: Signer | null;
   balances: Balances | null;
   error: FriendlyError | null;
-  /** Wallet: switch to Fuji before signing. Swarm: nothing to do. */
+  /** Wallet: switch to Fuji before signing; throws when the wallet stays on another chain. Swarm: nothing to do. */
   ensureReady: () => Promise<void>;
   connect: () => void;
   refreshBalances: () => Promise<void>;
@@ -57,46 +58,50 @@ export type ActiveAccount = {
   openPassSecret: (blob: string) => Promise<Hex>;
 };
 
-/** The paying account of the current workspace, with one shape for both kinds. */
+/** The paying account of the current workspace, with one shape for both kinds. Stable between renders. */
 export function useActiveAccount(): ActiveAccount {
   const session = useSession();
   const swarm = useSwarmWallet();
   const wallet = useInjectedWallet();
-  const view = session.role ?? "client";
+  const { view } = useView();
   const walletConnect = useCallback(() => void wallet.connect(), [wallet]);
   const walletEnsureReady = useCallback(async () => {
-    if (!wallet.onPaymentChain) await wallet.switchChain();
+    if (wallet.onPaymentChain) return;
+    const switched = await wallet.switchChain();
+    if (!switched) throw new Error(`Switch your wallet to ${PAYMENT_CHAIN_NAME} to continue.`);
   }, [wallet]);
   const noop = useCallback(async () => {}, []);
 
-  if (view === "provider") {
+  return useMemo<ActiveAccount>(() => {
+    if (view === "provider") {
+      return {
+        kind: "swarm",
+        identity: session.identity ? { kind: "swarm", id: session.identity.id, name: session.identity.name } : null,
+        status: swarm.status,
+        address: swarm.address,
+        signer: swarm.signer,
+        balances: swarm.balances,
+        error: swarm.error,
+        ensureReady: noop,
+        connect: session.connect,
+        refreshBalances: swarm.refreshBalances,
+        sealPassSecret: swarm.sealPassSecret,
+        openPassSecret: swarm.openPassSecret,
+      };
+    }
     return {
-      kind: "swarm",
-      identity: session.identity ? { kind: "swarm", id: session.identity.id, name: session.identity.name } : null,
-      status: swarm.status,
-      address: swarm.address,
-      signer: swarm.signer,
-      balances: swarm.balances,
-      error: swarm.error,
-      ensureReady: noop,
-      connect: session.connect,
-      refreshBalances: swarm.refreshBalances,
-      sealPassSecret: swarm.sealPassSecret,
-      openPassSecret: swarm.openPassSecret,
+      kind: "wallet",
+      identity: wallet.address ? walletIdentity(wallet.address) : null,
+      status: wallet.status === "connecting" ? "deriving" : wallet.status,
+      address: wallet.address,
+      signer: wallet.signer,
+      balances: wallet.balances,
+      error: wallet.error,
+      ensureReady: walletEnsureReady,
+      connect: walletConnect,
+      refreshBalances: wallet.refreshBalances,
+      sealPassSecret: wallet.sealPassSecret,
+      openPassSecret: wallet.openPassSecret,
     };
-  }
-  return {
-    kind: "wallet",
-    identity: wallet.address ? walletIdentity(wallet.address) : null,
-    status: wallet.status === "connecting" ? "deriving" : wallet.status,
-    address: wallet.address,
-    signer: wallet.signer,
-    balances: wallet.balances,
-    error: wallet.error,
-    ensureReady: walletEnsureReady,
-    connect: walletConnect,
-    refreshBalances: wallet.refreshBalances,
-    sealPassSecret: wallet.sealPassSecret,
-    openPassSecret: wallet.openPassSecret,
-  };
+  }, [view, session.identity, session.connect, swarm, wallet, noop, walletConnect, walletEnsureReady]);
 }

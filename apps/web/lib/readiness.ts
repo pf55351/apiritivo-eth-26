@@ -116,8 +116,8 @@ export type ReadinessSummary = {
 export function summarize(checks: ReadinessCheck[]): ReadinessSummary {
   const missing = checks.filter((c) => c.state === "missing").length;
   const low = checks.filter((c) => c.state === "low").length;
-  if (checks.some((c) => c.state === "loading")) return { tone: "loading", label: "Checking", missing, low };
   if (missing > 0) return { tone: "block", label: `${missing} missing`, missing, low };
+  if (checks.some((c) => c.state === "loading")) return { tone: "loading", label: "Checking", missing, low };
   if (low > 0) return { tone: "warn", label: `${low} low`, missing, low };
   return { tone: "ok", label: "Ready", missing, low };
 }

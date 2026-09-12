@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { copyText } from "@/lib/format";
+import { useCopy } from "@/lib/use-copy";
 import type { PassBearer } from "@/lib/use-pass-bearer";
 import { CodeBlock } from "./code-panel";
 import { Button, Disclosure } from "./ui";
@@ -22,13 +21,7 @@ export function curlForService(serviceId: string, bearer: string, operation = "g
  * is never shown to anyone else, so this is the only place it appears.
  */
 export function ApiKeyBox({ serviceId, bearer, operation, input }: { serviceId: string; bearer: PassBearer; operation?: string; input?: Record<string, unknown> }) {
-  const [copied, setCopied] = useState<"key" | "curl" | null>(null);
-  const copy = async (what: "key" | "curl", text: string) => {
-    if (await copyText(text)) {
-      setCopied(what);
-      setTimeout(() => setCopied(null), 1200);
-    }
-  };
+  const { copied, copy } = useCopy();
 
   if (bearer.status === "loading")
     return (

@@ -1,12 +1,12 @@
 "use client";
 
-import { arkivEntityUrl, findGrant } from "@apiritivo/arkiv";
-import type { AccessPass, ArkivService, Grant } from "@apiritivo/shared";
-import { downloadPrivateFile } from "@apiritivo/swarm";
-import { useCallback, useEffect, useState } from "react";
+import { arkivEntityUrl } from "@apiritivo/arkiv";
+import type { AccessPass, ArkivService } from "@apiritivo/shared";
+import { downloadPrivateFile, getGranteeKey } from "@apiritivo/swarm";
+import { useState } from "react";
 import { type FriendlyError, toFriendlyError } from "@/lib/errors";
-import { useActiveIdentity } from "@/lib/identity";
 import { useSession } from "@/lib/session";
+import { useGrantForKey } from "@/lib/use-access";
 import { CodeBlock } from "./code-panel";
 import { RefreshButton } from "./refresh-button";
 import { Button, Disclosure, ErrorNotice } from "./ui";
@@ -18,32 +18,25 @@ function formatBytes(n: number): string {
 }
 
 /**
- * Buyer side of a service's private file (Swarm ACT). Locked until the buyer
- * holds a pass and the provider has granted their key; then the file is
- * downloaded and decrypted in the browser with the buyer's own Swarm ID.
+ * Buyer side of a service's private file (Swarm ACT). The file is decrypted
+ * by the Swarm ID, never by the paying wallet: at purchase the wallet signed
+ * which Swarm ID key may receive it and the provider granted that key. So the
+ * lock follows the signed-in Swarm ID (is there a grant for its key?); the
+ * wallet's pass only says whether a purchase is waiting for approval.
  */
 export function PrivateFilesPanel({ service, activePass }: { service: ArkivService; activePass: AccessPass | undefined }) {
   const session = useSession();
-  const identity = useActiveIdentity();
   const file = service.privateAttachment;
-  const buyerId = identity?.id ?? null;
-  // Decryption runs inside Swarm ID; a wallet buyer signs in with Swarm ID only for this.
-  const canDecrypt = Boolean(session.identity);
-  const [grant, setGrant] = useState<Grant | null | undefined>(undefined);
+  const swarmKey = session.identity ? (getGranteeKey() ?? null) : null;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const isProvider = session.identity?.id === service.providerId;
-
-  const loadGrant = useCallback(async () => {
-    if (!buyerId || !file) return;
-    setGrant(undefined);
-    setGrant(await findGrant(service.serviceId, buyerId).catch(() => null));
-  }, [buyerId, file, service.serviceId]);
-
-  useEffect(() => {
-    void loadGrant();
-  }, [loadGrant]);
+  const isPublisher = session.identity?.id === service.providerId;
+  const clientView = session.role !== "provider";
+  // Keyed by service + Swarm ID key: a slow answer for another identity can never show here.
+  const grantQuery = useGrantForKey(file ? service.serviceId : null, swarmKey);
+  const grant = grantQuery.loading && grantQuery.data === null ? undefined : grantQuery.data;
+  const loadGrant = grantQuery.reload;
 
   if (!file) return null;
 
@@ -73,21 +66,22 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
     }
   }
 
-  const unlocked = isProvider || (Boolean(activePass) && Boolean(grant));
-  const canRead = unlocked && canDecrypt;
-  const state = isProvider
+  // Publisher or grantee: exactly who Swarm ACT lets decrypt. Both imply a Swarm ID session.
+  const unlocked = isPublisher || Boolean(grant);
+  const swarmName = session.identity?.name ?? "your Swarm ID";
+  const state = isPublisher
     ? "You published this file."
-    : !buyerId
-      ? "Connect and buy access to unlock it."
-      : !activePass
-        ? "Buy access to unlock it."
-        : grant === undefined
-          ? "Checking access…"
-          : grant
-            ? canDecrypt
-              ? "Access granted."
-              : "Access granted. Sign in with Swarm ID to open it."
-            : "Waiting for provider approval.";
+    : !session.identity
+      ? activePass
+        ? "Opens with the Swarm ID that was signed in when you bought. Sign in to check."
+        : "Buy access to unlock it. It opens with the Swarm ID signed in at purchase."
+      : grant === undefined
+        ? "Checking access…"
+        : grant
+          ? `Access granted to ${swarmName}.`
+          : activePass
+            ? "Waiting for provider approval."
+            : `No access for ${swarmName} yet. Buy access while signed in with it.`;
 
   return (
     <section className="min-w-0 border-t border-line pt-5">
@@ -104,15 +98,20 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
           {unlocked ? "Unlocked" : "Locked"}
         </span>
         <span className="text-xs text-muted">{state}</span>
-        {activePass && !grant && !isProvider ? <RefreshButton variant="subtle" label="Refresh file access" refreshing={grant === undefined} onClick={loadGrant} /> : null}
+        {session.identity && !grant && !isPublisher ? <RefreshButton variant="subtle" label="Refresh file access" refreshing={grant === undefined} onClick={loadGrant} /> : null}
       </div>
-      {canRead ? (
+      {isPublisher && clientView ? (
+        <p className="mt-3 text-xs text-warning" role="note">
+          You are signed in as the provider of this API, so the file opens for you whether or not this wallet bought it. To test the paywall, sign in with another Swarm ID.
+        </p>
+      ) : null}
+      {unlocked ? (
         <div className="mt-4">
           <Button onClick={download} disabled={busy}>
             {busy ? "Decrypting…" : "Download file"}
           </Button>
         </div>
-      ) : unlocked ? (
+      ) : !session.identity && activePass ? (
         <div className="mt-4">
           <Button onClick={session.connect} disabled={session.status !== "ready" || session.connecting}>
             Sign in with Swarm ID

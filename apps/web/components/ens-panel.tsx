@@ -2,8 +2,7 @@
 
 import { ENS_SERVICE_TEXT_KEY, ensAppUrl, ensChainLabel, recordsForService } from "@apiritivo/ens";
 import type { ArkivService } from "@apiritivo/shared";
-import { useState } from "react";
-import { copyText } from "@/lib/format";
+import { useCopy } from "@/lib/use-copy";
 import { useEnsService } from "@/lib/use-ens";
 
 /** Small inline badge for cards and headers: the linked ENS name, green once the address record matches. */
@@ -49,15 +48,9 @@ function Row({ label, ok, value }: { label: string; ok: boolean | null; value: s
  */
 export function EnsPanel({ service, isProviderView }: { service: ArkivService; isProviderView: boolean }) {
   const ens = useEnsService(service);
-  const [copied, setCopied] = useState<string | null>(null);
+  const { copied, copy } = useCopy();
   if (ens.status === "none") return null;
 
-  const copy = async (key: string, value: string) => {
-    if (await copyText(value)) {
-      setCopied(key);
-      setTimeout(() => setCopied(null), 1200);
-    }
-  };
   const v = ens.status === "ready" ? ens.verification : null;
   const r = ens.status === "ready" ? ens.records : null;
   const recipe = service.payoutAddress ? recordsForService({ serviceId: service.serviceId, manifestRef: service.manifestRef, payoutAddress: service.payoutAddress }) : [];
@@ -100,7 +93,7 @@ export function EnsPanel({ service, isProviderView }: { service: ArkivService; i
                 </code>
                 <button
                   type="button"
-                  onClick={() => copy(rec.kind, rec.value)}
+                  onClick={() => void copy(rec.kind, rec.value)}
                   className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[11px] text-muted hover:text-content"
                 >
                   {copied === rec.kind ? "Copied ✓" : "Copy"}

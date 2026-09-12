@@ -36,3 +36,9 @@ Put the printed address in `apps/web/.env.local` as `NEXT_PUBLIC_PAYMENTS_CONTRA
 The ledger is keyed by EVM address. `provider` is the listing's `payout_address` on Arkiv, which the app always sets to the wallet derived from the provider's Swarm ID, so the same identity claims from any device. Swarm IDs never appear on-chain.
 
 Invariant: `token.balanceOf(contract) == Σ claimable + feesAccrued`. No pause, no upgrade path. 28 tests: accounting, fees, pagination, fuzzing, `false`-returning and no-return tokens, reentrancy.
+
+## APIritivoResolver
+
+Minimal ENS resolver for the platform name (`contracts/src/APIritivoResolver.sol`): owner-only `setAddr` / `setText` / `setContenthash` (+ `multicall`), public reads, ERC-165 for the four ENS profile interfaces. Needed because the Sepolia ENSv2 beta's shared PublicResolverV2 rejects record writes.
+
+**Deployed on Sepolia:** [`0xe64784509db0ea3d429f782c413ce1c6c0c95a50`](https://sepolia.etherscan.io/address/0xe64784509db0ea3d429f782c413ce1c6c0c95a50), owner = Arkiv writer, set as the resolver of `apiritivo.eth` in the ENSv2 ETHRegistry. Deploy and wire another one with `bun tools/ens-register.ts resolver <label>`. 4 tests in `test/APIritivoResolver.t.sol`.

@@ -29,10 +29,12 @@ function useManifest(reference: string | null, sessionReady: boolean) {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
+    // A new reference means a new API: never show the previous one's operations meanwhile.
+    setManifest(null);
+    setError(null);
     if (!reference || !sessionReady) return;
     let cancelled = false;
     setLoading(true);
-    setError(null);
     downloadServiceManifest(reference)
       .then((m) => {
         if (!cancelled) setManifest(m);

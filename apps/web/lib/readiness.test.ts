@@ -40,6 +40,18 @@ describe("client checks", () => {
     expect(summarize(checks)).toMatchObject({ tone: "block", label: "1 missing", low: 1 });
   });
 
+  test("confirmed missing resources stay visible while another check loads", () => {
+    const checks = buildChecks(input({ wallet: { status: "ready", balances: { avax: "0", usdc: "0" } }, writer: undefined }));
+    expect(summarize(checks)).toMatchObject({ tone: "block", label: "2 missing", missing: 2 });
+  });
+
+  test("the missing count clears when resources are funded, even with a low balance warning", () => {
+    const missing = input({ wallet: { status: "ready", balances: { avax: "0", usdc: "0" } } });
+    expect(summarize(buildChecks(missing)).missing).toBe(2);
+    expect(summarize(buildChecks(input({ wallet: { status: "ready", balances: { avax: "0.001", usdc: "1" } } })))).toMatchObject({ missing: 0, low: 1 });
+    expect(summarize(buildChecks(input())).missing).toBe(0);
+  });
+
   test("unfunded writer blocks the client too", () => {
     const checks = buildChecks(input({ writer: { funded: false, balance: "0", faucetUrl: "https://hub" } }));
     expect(checks.find((c) => c.id === "glm")).toMatchObject({ state: "missing", href: "https://hub", value: "0.000" });

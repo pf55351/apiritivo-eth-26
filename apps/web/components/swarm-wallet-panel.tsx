@@ -1,15 +1,16 @@
 "use client";
 
-import { AVAX_FAUCET_URL, explorerAddressUrl, explorerTokenUrl, explorerTxUrl, isContractMode, PAYMENT_CHAIN_NAME, USDC_FAUCET_URL } from "@apiritivo/payments";
+import { type Address, explorerAddressUrl, explorerTxUrl, isContractMode, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
 import { claimEarnings, type ProviderStats, readProviderStats, transferUsdc } from "@apiritivo/payments/browser";
 import { formatPriceUsdc } from "@apiritivo/shared";
 import { useCallback, useEffect, useState } from "react";
-import type { Address } from "viem";
-import { copyText } from "@/lib/format";
+import { friendlyMessage } from "@/lib/errors";
+import { invalidateRequest, sharedRequest } from "@/lib/shared-request";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
+import { useCopy } from "@/lib/use-copy";
 import { RefreshButton } from "./refresh-button";
 import { Button, Disclosure, ErrorNotice } from "./ui";
-import { WalletBalances } from "./wallet-balances";
+import { WalletFunding } from "./wallet-funding";
 
 const fieldCls = "field-control font-mono";
 
@@ -20,8 +21,8 @@ const fieldCls = "field-control font-mono";
  */
 export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const wallet = useSwarmWallet();
+  const { copied, copy } = useCopy();
   const [revealed, setRevealed] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState<"withdraw" | "claim" | null>(null);
@@ -32,21 +33,20 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [stats, setStats] = useState<ProviderStats | null>(null);
   const contractMode = isContractMode();
 
-  const copy = async (label: string, value: string) => {
-    if (await copyText(value)) {
-      setCopied(label);
-      setTimeout(() => setCopied(null), 1200);
-    }
-  };
-
-  const loadStats = useCallback(async () => {
-    if (!wallet.address) return;
-    setStats(await readProviderStats(wallet.address).catch(() => null));
-  }, [wallet.address]);
+  const address = wallet.address;
+  const loadStats = useCallback(
+    async (fresh = false) => {
+      if (!address) return;
+      if (fresh) invalidateRequest("provider-stats");
+      // Same read the payment activity panel makes: one request serves both.
+      setStats(await sharedRequest(`provider-stats:${address.toLowerCase()}`, () => readProviderStats(address)).catch(() => null));
+    },
+    [address],
+  );
 
   // Contract mode: show what is waiting in the contract as soon as the wallet is known.
   useEffect(() => {
-    if (contractMode) void loadStats();
+    if (contractMode) void loadStats(refreshKey > 0);
   }, [contractMode, loadStats, refreshKey]);
 
   async function withdraw() {
@@ -60,24 +60,24 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
       setAmount("");
       await wallet.refreshBalances();
     } catch (err) {
-      setSendError((err as Error).message);
+      setSendError(friendlyMessage(err, "USDC transfer failed."));
     } finally {
       setBusy(null);
     }
   }
 
   async function claim() {
-    if (!wallet.signer) return;
+    if (!wallet.signer || !address) return;
     setBusy("claim");
     setClaimError(null);
     setClaimTx(null);
     try {
       // Always pull contract earnings into the Swarm wallet; moving them elsewhere is the next step.
-      const hash = await claimEarnings(wallet.signer, wallet.address as Address);
+      const hash = await claimEarnings(wallet.signer, address);
       setClaimTx(hash);
-      await Promise.all([wallet.refreshBalances(), loadStats()]);
+      await Promise.all([wallet.refreshBalances(), loadStats(true)]);
     } catch (err) {
-      setClaimError((err as Error).message);
+      setClaimError(friendlyMessage(err, "Claim failed."));
     } finally {
       setBusy(null);
     }
@@ -90,11 +90,10 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         <RefreshButton
           variant="subtle"
           onClick={async () => {
-            await Promise.all([wallet.refreshBalances(), ...(contractMode ? [loadStats()] : [])]);
+            await Promise.all([wallet.refreshBalances(), ...(contractMode ? [loadStats(true)] : [])]);
           }}
         />
       </div>
-      <p className="mt-1 text-xs text-subtle">{PAYMENT_CHAIN_NAME}</p>
       {wallet.status === "deriving" ? (
         <p role="status" className="mt-4 text-sm text-subtle">
           Preparing wallet…
@@ -105,18 +104,18 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           <ErrorNotice message={wallet.error.message} detail={wallet.error.detail} />
         </div>
       ) : null}
-      {wallet.address ? (
+      {address ? (
         <div className="mt-4">
           <div className="flex flex-wrap items-center gap-2">
-            <a href={explorerAddressUrl(wallet.address)} target="_blank" rel="noreferrer" title={wallet.address} className="font-mono text-xs text-muted hover:text-content">
-              {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)} ↗
+            <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer" title={address} className="font-mono text-xs text-muted hover:text-content">
+              {address.slice(0, 6)}…{address.slice(-4)} ↗
             </a>
-            <Button variant="subtle" size="sm" onClick={() => copy("address", wallet.address!)}>
+            <Button variant="subtle" size="sm" onClick={() => void copy("address", address)}>
               {copied === "address" ? "Copied" : "Copy address"}
             </Button>
           </div>
           <div className="my-5">
-            <WalletBalances balances={wallet.balances} />
+            <WalletFunding label={PAYMENT_CHAIN_NAME} address={address} balances={wallet.balances} onRefresh={wallet.refreshBalances} />
           </div>
           {contractMode ? (
             <div className="mb-5 border-t border-line pt-5">
@@ -175,20 +174,6 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               </p>
             ) : null}
           </Disclosure>
-          <Disclosure title="Add funds">
-            <p className="break-all font-mono text-xs leading-6 text-muted">{wallet.address}</p>
-            <div className="mt-3 flex flex-wrap gap-4 text-xs text-subtle">
-              <a className="py-2 hover:text-content" href={USDC_FAUCET_URL} target="_blank" rel="noreferrer">
-                USDC faucet ↗
-              </a>
-              <a className="py-2 hover:text-content" href={AVAX_FAUCET_URL} target="_blank" rel="noreferrer">
-                AVAX faucet ↗
-              </a>
-              <a className="py-2 hover:text-content" href={explorerTokenUrl()} target="_blank" rel="noreferrer">
-                USDC contract ↗
-              </a>
-            </div>
-          </Disclosure>
           <details
             className="ui-disclosure"
             onToggle={(event) => {
@@ -209,7 +194,7 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               {revealed ? (
                 <div className="mt-3 space-y-2">
                   <code className="block break-all font-mono text-xs text-muted">{revealed}</code>
-                  <Button variant="subtle" size="sm" onClick={() => copy("key", revealed)}>
+                  <Button variant="subtle" size="sm" onClick={() => void copy("key", revealed)}>
                     {copied === "key" ? "Copied" : "Copy key"}
                   </Button>
                 </div>

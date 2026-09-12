@@ -2,14 +2,15 @@
 
 import { type ReadinessCheck, stateLabel } from "@/lib/readiness";
 import { RefreshButton } from "./refresh-button";
+import { StatusDot } from "./ui";
 
-const STATE_TONE: Record<ReadinessCheck["state"], string> = {
-  ok: "text-success",
-  low: "text-warning",
-  missing: "text-danger",
-  info: "text-subtle",
-  loading: "text-subtle",
-  unknown: "text-subtle",
+const STATE_TONE: Record<ReadinessCheck["state"], "success" | "warning" | "danger" | "subtle"> = {
+  ok: "success",
+  low: "warning",
+  missing: "danger",
+  info: "subtle",
+  loading: "subtle",
+  unknown: "subtle",
 };
 
 export function ReadinessPanel({
@@ -38,10 +39,9 @@ export function ReadinessPanel({
             <li key={check.id} className="py-3">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-content">{check.label}</span>
-                <span className={`inline-flex shrink-0 items-center gap-1.5 text-xs ${STATE_TONE[check.state]}`}>
-                  <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+                <StatusDot tone={STATE_TONE[check.state]} className="shrink-0">
                   {stateLabel(check.state)}
-                </span>
+                </StatusDot>
               </div>
               {check.value || showAction ? (
                 <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">

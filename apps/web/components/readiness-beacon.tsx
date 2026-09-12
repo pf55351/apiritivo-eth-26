@@ -1,61 +1,18 @@
 "use client";
 
 import { AVAX_FAUCET_URL, USDC_FAUCET_URL } from "@apiritivo/payments";
-import { getSwarmDrive, type SwarmDrive } from "@apiritivo/swarm";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { publicEnv } from "@/lib/env";
 import { useActiveAccount } from "@/lib/identity";
-import { buildChecks, type ReadinessInput, summarize } from "@/lib/readiness";
+import { buildChecks, summarize } from "@/lib/readiness";
 import { useSession } from "@/lib/session";
+import { useSwarmDrive } from "@/lib/use-swarm-drive";
+import { useWriterStatus } from "@/lib/use-writer-status";
+import { useView } from "@/lib/view";
 import { ReadinessPanel } from "./readiness-panel";
 
 const GLM_FAUCET_URL = "https://hub.arkiv.network/faucet";
 const REFRESH_MS = 30_000;
-
-type Writer = ReadinessInput["writer"];
-
-/** App writer health from GET /api/services (no secrets). undefined = loading, null = unreachable. */
-function useWriter(identityId: string | null, tick: number): Writer {
-  const [writer, setWriter] = useState<Writer>(undefined);
-  useEffect(() => {
-    if (!identityId) return;
-    let cancelled = false;
-    fetch("/api/services", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j: { funded?: boolean; balance?: string; faucetUrl?: string; ownerMismatch?: boolean } | null) => {
-        if (!cancelled) setWriter(j ? { funded: j.funded, balance: j.balance, faucetUrl: j.faucetUrl, ownerMismatch: j.ownerMismatch } : null);
-      })
-      .catch(() => {
-        if (!cancelled) setWriter(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [identityId, tick]);
-  return writer;
-}
-
-function useDrive(identityId: string | null, ownStamp: boolean, tick: number): SwarmDrive | null | undefined {
-  const [drive, setDrive] = useState<SwarmDrive | null | undefined>(undefined);
-  useEffect(() => {
-    if (!identityId || !ownStamp) {
-      setDrive(null);
-      return;
-    }
-    let cancelled = false;
-    getSwarmDrive()
-      .then((d) => {
-        if (!cancelled) setDrive(d);
-      })
-      .catch(() => {
-        if (!cancelled) setDrive(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [identityId, ownStamp, tick]);
-  return drive;
-}
 
 const DOT: Record<ReturnType<typeof summarize>["tone"], string> = {
   ok: "bg-success",
@@ -73,7 +30,7 @@ export function ReadinessBeacon() {
   const session = useSession();
   const account = useActiveAccount();
   const identityId = account.identity?.id ?? null;
-  const view = session.role ?? "client";
+  const { view } = useView();
   const [open, setOpen] = useState(false);
   const [tick, setTick] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -81,15 +38,26 @@ export function ReadinessBeacon() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
 
-  const writer = useWriter(identityId, tick);
-  const drive = useDrive(session.identity?.id ?? null, session.uploadMode === "user-stamp", tick);
+  // Shared with the provider dashboard: one request per page, whoever mounts first.
+  const writerStatus = useWriterStatus(Boolean(identityId), tick);
+  const writer =
+    writerStatus === undefined
+      ? undefined
+      : writerStatus === null
+        ? null
+        : { funded: writerStatus.funded, balance: writerStatus.balance, faucetUrl: writerStatus.faucetUrl, ownerMismatch: writerStatus.ownerMismatch };
+  const drive = useSwarmDrive(tick);
 
+  const refreshBalances = account.refreshBalances;
   const refresh = useCallback(async () => {
     setRefreshing(true);
-    await account.refreshBalances();
-    setTick((t) => t + 1);
-    setRefreshing(false);
-  }, [account]);
+    try {
+      await refreshBalances();
+    } finally {
+      setTick((t) => t + 1);
+      setRefreshing(false);
+    }
+  }, [refreshBalances]);
 
   // Balances change outside the app (faucets, wallet transfers): poll gently.
   useEffect(() => {

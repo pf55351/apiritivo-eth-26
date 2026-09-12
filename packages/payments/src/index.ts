@@ -76,11 +76,18 @@ export function keyFromSignature(signature: Hex): Uint8Array {
  * Message the paying wallet signs to claim the pass for its own payment.
  * Binding the secret hash to the transaction proves the caller of
  * `POST /api/access-passes` controls the address that paid, so nobody can
- * race a buyer and mint their pass with a foreign secret. Verified server-side
- * with `verifyMessage`; free, no transaction.
+ * race a buyer and mint their pass with a foreign secret. When the buyer wants
+ * the service's private file, the Swarm ID key that will decrypt it is part
+ * of the signed text too, so the file can only go where the payer said.
+ * Verified server-side with `verifyMessage`; free, no transaction.
  */
-export function passClaimMessage(txHash: Hex | string, secretHash: Hex | string): string {
-  return ["APIritivo pass claim v1", "", `Payment: ${txHash.toLowerCase()}`, `Secret hash: ${secretHash.toLowerCase()}`, "", "Sign to receive the API key for this payment."].join(
-    "\n",
-  );
+export function passClaimMessage(txHash: Hex | string, secretHash: Hex | string, fileKey?: string): string {
+  const lines = ["APIritivo pass claim v1", "", `Payment: ${txHash.toLowerCase()}`, `Secret hash: ${secretHash.toLowerCase()}`];
+  // Private files: the payer names the Swarm ID key that may decrypt them. Omitted = message unchanged (v1 compatible).
+  if (fileKey) lines.push(`File key: ${fileKey.toLowerCase()}`);
+  lines.push("", "Sign to receive the API key for this payment.");
+  return lines.join("\n");
 }
+
+/** Re-exported so app code can type addresses without importing viem directly. */
+export type { Address, Hex } from "viem";

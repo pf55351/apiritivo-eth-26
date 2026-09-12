@@ -3,6 +3,7 @@
 import type { BotVerification, ServiceManifest } from "@apiritivo/shared";
 import { formatRemaining } from "@apiritivo/shared";
 import { useMemo, useState } from "react";
+import { friendlyMessage } from "@/lib/errors";
 import type { PassBearer } from "@/lib/use-pass-bearer";
 import { ApiKeyBox } from "./api-key-box";
 import { CodeBlock } from "./code-panel";
@@ -52,7 +53,7 @@ export function BotConsole({ serviceId, manifest, bearer }: { serviceId: string;
       setResponse((await res.json()) as BotResponse);
     } catch (err) {
       setStatus(null);
-      setResponse({ ok: false, error: (err as Error).message });
+      setResponse({ ok: false, error: friendlyMessage(err, "The request could not be sent.") });
     } finally {
       setBusy(false);
     }

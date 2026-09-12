@@ -3,9 +3,10 @@
 import { categoryLabel } from "@apiritivo/shared";
 import Image from "next/image";
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import { publicEnv } from "@/lib/env";
-import { copyText, hueFor, initials, shortRef } from "@/lib/format";
+import { hueFor, initials, shortRef } from "@/lib/format";
+import { useCopy } from "@/lib/use-copy";
 import { CodePanel } from "./code-panel";
 
 /* ---------- Buttons ---------- */
@@ -77,6 +78,17 @@ export function ProofChip({ label, ok = true, title, href }: { label: "Arkiv" | 
   return content;
 }
 
+/** One-word state with a coloured dot: "Funded", "Wrong network", "Ready". Colour is never the only signal. */
+export function StatusDot({ children, tone, className = "" }: { children: ReactNode; tone: "success" | "warning" | "danger" | "subtle"; className?: string }) {
+  const color = { success: "text-success", warning: "text-warning", danger: "text-danger", subtle: "text-subtle" }[tone];
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs ${color} ${className}`}>
+      <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-current" />
+      {children}
+    </span>
+  );
+}
+
 export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "accent" | "warn" }) {
   const tones = {
     neutral: "border-line bg-surface-raised text-muted",
@@ -125,7 +137,7 @@ export function Avatar({ name, seed, src, size = 36 }: { name: string; seed?: st
 /* ---------- Copyable reference ---------- */
 
 export function RefField({ label, value, href }: { label: string; value: string; href?: string }) {
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopy();
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs text-subtle">{label}</span>
@@ -141,12 +153,7 @@ export function RefField({ label, value, href }: { label: string; value: string;
         )}
         <button
           type="button"
-          onClick={async () => {
-            if (await copyText(value)) {
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1200);
-            }
-          }}
+          onClick={() => void copy("ref", value)}
           aria-label={`Copy ${label}`}
           className="min-h-8 rounded-md border border-line px-2 text-[11px] text-subtle hover:border-line-strong hover:text-content"
         >

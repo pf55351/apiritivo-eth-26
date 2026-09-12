@@ -2,7 +2,7 @@
 
 import type { AccessPass } from "@apiritivo/shared";
 import { useState } from "react";
-import { useAccessQuery } from "@/lib/use-access";
+import { useQuery } from "@/lib/use-query";
 import { ApiKeyBox } from "./api-key-box";
 import { PassesView } from "./passes-view";
 
@@ -21,7 +21,7 @@ const readExampleTiming = async () => ({ currentBlock: 100n, currentBlockTime: 2
 
 export function PassRefreshExample() {
   const [fail, setFail] = useState(false);
-  const { data, initialLoading, refreshing, error, timing, reload } = useAccessQuery<AccessPass[]>(
+  const { data, initialLoading, refreshing, error, timing, reload } = useQuery<AccessPass[]>(
     "pass-refresh-example",
     async () => {
       await new Promise((resolve) => setTimeout(resolve, 1_800));

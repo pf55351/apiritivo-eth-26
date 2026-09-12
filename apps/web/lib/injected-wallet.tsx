@@ -1,7 +1,7 @@
 "use client";
 
 import { decryptPassSecret, encryptPassSecret } from "@apiritivo/arkiv";
-import { PAYMENT_CHAIN_ID } from "@apiritivo/payments";
+import { type Address, type Hex, PAYMENT_CHAIN_ID } from "@apiritivo/payments";
 import {
   type Balances,
   ensurePaymentChain,
@@ -15,8 +15,7 @@ import {
   walletChainId,
 } from "@apiritivo/payments/browser";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { Address, Hex } from "viem";
-import type { FriendlyError } from "./errors";
+import { type FriendlyError, toFriendlyError } from "./errors";
 
 const REMEMBER_KEY = "apiritivo:wallet";
 
@@ -32,8 +31,8 @@ export type InjectedWallet = {
   error: FriendlyError | null;
   connect: () => Promise<void>;
   disconnect: () => void;
-  /** Switch (or add) Avalanche Fuji in the wallet. */
-  switchChain: () => Promise<void>;
+  /** Switch (or add) Avalanche Fuji in the wallet. Resolves to whether the wallet is on Fuji afterwards. */
+  switchChain: () => Promise<boolean>;
   refreshBalances: () => Promise<void>;
   /** Encrypt a pass secret under a key derived from one wallet signature (asked once per account and session). */
   sealPassSecret: (secret: Hex) => Promise<string>;
@@ -42,12 +41,6 @@ export type InjectedWallet = {
 };
 
 const Ctx = createContext<InjectedWallet | null>(null);
-
-function friendly(err: unknown, fallback: string): FriendlyError {
-  const e = err as { name?: string; message?: string; stack?: string };
-  const message = e?.name === "WalletError" && e.message ? e.message : fallback;
-  return { message, detail: e?.stack ?? String(err) };
-}
 
 function remember(on: boolean) {
   try {
@@ -101,14 +94,18 @@ export function InjectedWalletProvider({ children }: { children: ReactNode }) {
     };
   }, [adopt]);
 
-  // Account or chain changed in the wallet UI.
+  // Account or chain changed in the wallet UI. Only an account change invalidates the
+  // derived keys; a network switch keeps them, so it never costs a new signature.
   useEffect(() => {
     if (!available) return;
-    return onWalletChange(() => {
-      keysRef.current.clear();
+    const readopt = () => {
       if (!remembered()) return;
       void reconnectInjectedWallet().then((s) => adopt(s));
-    });
+    };
+    return onWalletChange(() => {
+      keysRef.current.clear();
+      readopt();
+    }, readopt);
   }, [available, adopt]);
 
   const connect = useCallback(async () => {
@@ -120,7 +117,7 @@ export function InjectedWalletProvider({ children }: { children: ReactNode }) {
       await adopt(next);
     } catch (err) {
       setStatus("error");
-      setError(friendly(err, "Wallet connection failed."));
+      setError(toFriendlyError(err, "Wallet connection failed."));
     }
   }, [adopt]);
 
@@ -137,10 +134,13 @@ export function InjectedWalletProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       await ensurePaymentChain();
-      setChainId(await walletChainId());
     } catch (err) {
-      setError(friendly(err, "Could not switch network."));
+      setError(toFriendlyError(err, "Could not switch network."));
     }
+    // Read the chain back either way: the user may have switched by hand while the prompt was open.
+    const chain = await walletChainId();
+    setChainId(chain);
+    return chain === PAYMENT_CHAIN_ID;
   }, []);
 
   const refreshBalances = useCallback(async () => {

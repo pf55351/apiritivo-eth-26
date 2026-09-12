@@ -4,13 +4,14 @@ import { ROLE_HOME } from "@apiritivo/shared";
 import { usePathname, useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useSession } from "@/lib/session";
+import { useView } from "@/lib/view";
 
 export function WorkspaceSwitch() {
-  const { role, roleLoaded, setRole } = useSession();
+  const { setRole } = useSession();
+  const { view: active, loaded: roleLoaded } = useView();
   const router = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
-  const active = role ?? "client";
   const next = active === "client" ? "provider" : "client";
 
   return (

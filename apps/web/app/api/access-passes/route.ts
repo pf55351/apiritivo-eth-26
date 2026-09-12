@@ -60,14 +60,16 @@ async function mint(input: typeof issueAccessPassInputSchema._output, txHash: st
   const existing = await findSaleByTxHash(txHash);
   if (existing) return jsonError(409, "This payment was already used for an access pass.", undefined, { passKey: existing.passKey });
 
-  // Only the wallet that paid can claim the pass: it signed this tx hash together with its secret hash.
+  // Only the wallet that paid can claim the pass: it signed this tx hash together with its secret hash
+  // and, when it wants the private file, the Swarm ID key allowed to decrypt it.
   const claimed = await verifyPassClaim({
     buyerAddress: input.buyerAddress as `0x${string}`,
     txHash: txHash as `0x${string}`,
     secretHash: input.secretHash as `0x${string}`,
     signature: input.buyerSignature as `0x${string}`,
+    fileKey: input.buyerPublicKey,
   });
-  if (!claimed) return jsonError(403, "Claim signature is not from the paying wallet.", "Sign the pass claim with the wallet that paid.");
+  if (!claimed) return jsonError(403, "Claim signature is not from the paying wallet.", "Sign the pass claim with the wallet that paid, including the file key.");
 
   const verification = await verifyPayment({
     txHash: txHash as `0x${string}`,

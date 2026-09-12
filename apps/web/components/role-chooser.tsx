@@ -4,6 +4,7 @@ import { ROLE_HOME, type Role } from "@apiritivo/shared";
 import { useRouter } from "next/navigation";
 import { startTransition } from "react";
 import { useSession } from "@/lib/session";
+import { useView } from "@/lib/view";
 
 const OPTIONS: { role: Role; title: string; subtitle: string }[] = [
   {
@@ -20,12 +21,13 @@ const OPTIONS: { role: Role; title: string; subtitle: string }[] = [
 
 export function RoleChooser() {
   const session = useSession();
+  const { view } = useView();
   const router = useRouter();
 
   return (
     <div className="divide-y divide-line border-y border-line">
       {OPTIONS.map((opt) => {
-        const active = (session.role ?? "client") === opt.role;
+        const active = view === opt.role;
         return (
           <button
             key={opt.role}

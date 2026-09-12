@@ -185,6 +185,17 @@ export async function findGrant(serviceId: string, buyerId: string): Promise<Gra
   return grants[0] ?? null;
 }
 
+/**
+ * The grant held by a Swarm ID key for a service's private file. Decryption
+ * is done by the Swarm ID (ACT grantee key), not by the paying wallet, so
+ * this is the lookup that tells whether the signed-in identity can open it.
+ */
+export async function findGrantForKey(serviceId: string, buyerPublicKey: string): Promise<Grant | null> {
+  const grants = await queryEntities(GRANT_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerPublicKey, buyerPublicKey)], parseGrantEntity);
+  grants.sort((a, b) => (BigInt(b.createdAtBlock ?? "0") > BigInt(a.createdAtBlock ?? "0") ? 1 : -1));
+  return grants[0] ?? null;
+}
+
 /** Newest sale receipt of a buyer for a service (grants are only recorded for real purchases). */
 export async function findSaleForBuyer(serviceId: string, buyerId: string): Promise<Sale | null> {
   const sales = await queryEntities(SALE_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerId, buyerId)], parseSaleEntity);

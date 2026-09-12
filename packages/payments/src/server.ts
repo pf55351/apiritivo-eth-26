@@ -130,9 +130,9 @@ export async function verifyPayment(params: { txHash: Hash; provider: Address; s
  * Proves the caller controls `buyerAddress`, so a bystander cannot mint a pass
  * for someone else's transaction (EOA signatures; ERC-1271 wallets are not supported).
  */
-export async function verifyPassClaim(params: { buyerAddress: Address; txHash: Hash; secretHash: Hex; signature: Hex }): Promise<boolean> {
+export async function verifyPassClaim(params: { buyerAddress: Address; txHash: Hash; secretHash: Hex; signature: Hex; fileKey?: string }): Promise<boolean> {
   try {
-    return await verifyMessage({ address: params.buyerAddress, message: passClaimMessage(params.txHash, params.secretHash), signature: params.signature });
+    return await verifyMessage({ address: params.buyerAddress, message: passClaimMessage(params.txHash, params.secretHash, params.fileKey), signature: params.signature });
   } catch {
     return false;
   }

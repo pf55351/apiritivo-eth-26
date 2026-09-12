@@ -112,7 +112,7 @@ try {
   const chain = ensChain();
   const eth = createPublicClient({ chain, transport: http(env.ENS_RPC_URL || env.NEXT_PUBLIC_ENS_RPC_URL || undefined) });
   ok("RPC reachable", `${ensChainLabel()} · chain ${await eth.getChainId()}`);
-  const probe = env.ENS_DEMO_NAME || (chain.id === 1 ? "vitalik.eth" : "nick.eth");
+  const probe = env.ENS_DEMO_NAME || (chain.id === 1 ? "vitalik.eth" : "apiritivo.eth");
   const addr = await resolveEnsAddress(probe);
   (addr ? ok : warn)("universal resolver answers", `${probe} → ${addr ?? "no address record"}`);
 } catch (err) {
