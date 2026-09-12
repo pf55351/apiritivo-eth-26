@@ -1,283 +1,39 @@
-# CLAUDE.md — APIperitivo Phase 1
+# CLAUDE.md — APIperitivo (ETH Rome 2026)
 
-You are implementing APIperitivo Phase 1.
+Read `README.md` first. This file holds the rules that are not obvious from the code.
 
-Read `README.md` and `AGENTS.md` completely before editing code.
+## What it is
 
-## Product
+Machine-readable service marketplace. Identity = Swarm ID, technical manifests = Swarm, registry = Arkiv, payments = USDC on Avalanche Fuji (direct transfer today, `contracts/APIperitivoPayments.sol` when deployed).
 
-APIperitivo is a machine-readable service marketplace.
+Monorepo (Bun + Turbo): `apps/web` (Next 15, Tailwind v4), `packages/shared` (Zod schemas), `packages/swarm`, `packages/arkiv`, `packages/payments`, `tools` (demo check), `contracts` (Foundry).
 
-Phase 1 is intentionally limited to:
+## Non-negotiable rules
 
-```text
-Swarm ID login
-→ role selection
-→ client marketplace from Arkiv
-→ provider manifest upload to Swarm
-→ provider service publication to Arkiv
+- **Never invent SDK methods.** Inspect `node_modules/.bun/@snaha+swarm-id*` and `@arkiv-network+sdk*` types before touching the adapters.
+- **Vendor SDKs stay inside `packages/*`.** React components only see `ArkivService`, `ServiceManifest`, `AccessPass`, `Sale`, `SwarmConnectionInfo`, `Signer`.
+- **Publish order:** build manifest → upload to Swarm → `manifestRef` → Arkiv entity. Never write Arkiv first.
+- **Arkiv attribute names are snake_case** (`entity_type`, `service_id`, `provider_id`, `manifest_ref`, `price_usdc`, `access_seconds`, `payout_address`, `buyer_id`, `tx_hash`, `paid_usdc`, `chain_id`, `pass_key`). The chain rejects uppercase letters even though the SDK's local validator accepts them. Always go through `ATTR` in `packages/arkiv/src/entity.ts`.
+- **Service listings are permanent** (`ExpirationTime.permanent()`). Only `access_pass` entities expire; `sale` receipts are permanent so revenue survives.
+- **Swarm manifest = technical only** (`v`, optional `endpoint`, `operations`). Name, description, category, price, duration, payout wallet live on Arkiv.
+- **Swarm uploads:** pass `subsidisedGatewayUrl` (same value the official Swarm ID demo uses) and never `pin: true` (`Swarm-Pin` is not on the gateway's CORS allow-list → "Failed to fetch"). Direct `POST <gateway>/bytes` is the fallback.
+- **Swarm ID iframe** must be mounted in the zero-size `#swarm-id-frame` container, otherwise the SDK shows its own login widget bottom-right.
+- **Server trust boundary:** `POST /api/services` and `POST /api/access-passes` sign with the app-owned Arkiv writer (`ARKIV_WRITER_PRIVATE_KEY`, server only). Payments are verified on-chain (Transfer log or `Purchased` event) before a pass is minted. `providerId`/`buyerId` from the client are trusted (hackathon boundary, documented in README).
+- **Contract is not deployed** unless the user says so. `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS` empty = direct-transfer mode.
+- **Secrets:** `apps/web/.env.local` is gitignored. `.env.example` carries a testnet-only writer key on purpose (user's decision); never put mainnet keys anywhere.
+
+## Quality gate (run before finishing)
+
+```bash
+bun typecheck && bun lint && bun test && bun build
+bun test:contracts      # Foundry
+bun demo:check          # external dependencies
 ```
 
-No payments.
+Playwright is available in the scratchpad for overflow/console checks (see git history for the scripts). Pages that need Swarm ID login cannot be driven headless; ask the user to verify them in the browser.
 
-## Core UX
+## UX rules
 
-### Login
-
-Use Swarm ID.
-
-After successful login:
-
-```text
-Welcome <identity>
-
-How do you want to use APIperitivo?
-
-[ CLIENT ]
-Discover services
-
-[ PROVIDER ]
-Publish services
-```
-
-Persist role in localStorage using Swarm identity id.
-
-### Client
-
-Default route:
-
-```text
-/marketplace
-```
-
-Load real services from Arkiv.
-
-Render polished service cards.
-
-### Provider
-
-Default route:
-
-```text
-/provider
-```
-
-Show own services queried from Arkiv.
-
-CTA:
-
-```text
-+ Publish Service
-```
-
-Publish flow:
-
-```text
-form
-→ build manifest
-→ preview
-→ Swarm upload
-→ returned reference
-→ server Arkiv create
-→ success
-```
-
-## Schemas
-
-Put schemas in `packages/shared`.
-
-### Service manifest
-
-```ts
-type OperationInputType = "string" | "number" | "boolean";
-
-type ServiceManifest = {
-  v: 1;
-  operations: Record<
-    string,
-    {
-      input: Record<string, OperationInputType>;
-    }
-  >;
-};
-```
-
-Validate with Zod.
-
-### Arkiv service
-
-Conceptual:
-
-```ts
-type ArkivService = {
-  serviceId: string;
-  category: string;
-  providerId: string;
-  providerName?: string;
-  available: boolean;
-  version: number;
-  manifestRef: string;
-  name: string;
-  description: string;
-};
-```
-
-## Provider service id
-
-Generate a stable unique id at publish time.
-
-Use a slug + short random id, for example:
-
-```text
-market-data-a81f
-```
-
-Do not rely only on name slug uniqueness.
-
-## Server write route
-
-Recommended:
-
-```text
-POST /api/services
-```
-
-Input:
-
-```json
-{
-  "serviceId": "...",
-  "category": "...",
-  "providerId": "...",
-  "providerName": "...",
-  "manifestRef": "...",
-  "name": "...",
-  "description": "..."
-}
-```
-
-Validate using Zod.
-
-Server writes to Arkiv using server-only credentials.
-
-For the hackathon, provider identity supplied from current Swarm ID session may be treated as a trusted demo boundary.
-
-Clearly document this trust assumption.
-
-## Reads
-
-Prefer direct Arkiv read adapter where supported.
-
-Do not store service copies in a database.
-
-## Swarm adapter
-
-Expose clean functions like:
-
-```ts
-getConnectionInfo()
-connect()
-disconnect()
-uploadServiceManifest(manifest)
-downloadServiceManifest(reference)
-```
-
-These names are OUR adapter names.
-
-Internally use exact current Swarm ID SDK methods after inspecting package types.
-
-If `canUpload === false`:
-- Client can still browse.
-- Provider can view provider dashboard.
-- Publishing CTA should explain upload is unavailable.
-- Do not crash.
-
-## Arkiv adapter
-
-Expose OUR clean functions:
-
-```ts
-listServices()
-getService(serviceId)
-listServicesByProvider(providerId)
-publishService(input)
-```
-
-Internally use exact current Arkiv SDK.
-
-Do not leak vendor-specific response shapes into React components.
-
-## UI
-
-Use Next.js App Router + TypeScript + Tailwind.
-
-Focus on beautiful cards, category pills, provider avatar/initial, search, filter, empty state, loading skeleton, manifest proof chip and Arkiv proof chip.
-
-### Marketplace card
-
-Must show:
-
-```text
-category
-name
-description
-provider
-Arkiv ✓
-Swarm ✓
-View service
-```
-
-### Provider form
-
-Friendly fields first.
-
-Do not make raw JSON mandatory.
-
-Operations builder:
-
-```text
-operation name
-input fields
-```
-
-Allow add/remove operation, add/remove input field and select type.
-
-Generate manifest preview live.
-
-## App shell
-
-Header:
-
-```text
-APIperitivo
-Marketplace
-Provider
-role badge
-Swarm ID identity
-Switch role / logout
-```
-
-Do not hide both modes.
-
-## Error handling
-
-Provide clear errors:
-
-```text
-Swarm ID login failed.
-Swarm upload unavailable for this identity.
-Manifest upload failed.
-Arkiv publication failed.
-Manifest could not be downloaded.
-No services published yet.
-```
-
-Keep raw SDK errors in a collapsible debug area only in development.
-
-## Definition of done
-
-Do not stop at static UI.
-
-P0 must use real Swarm ID auth, real Swarm manifest upload, real Arkiv publish, real Arkiv query and real Swarm manifest download.
-
-If credentials block one integration, isolate it behind the adapter and continue the rest, but clearly report the blocker.
+- Product look, not admin panel: cards, pills, proof chips, skeletons, empty states. JSON only in inspectors.
+- Clear error strings (kept in components): "Swarm ID login failed.", "Swarm upload unavailable for this identity.", "Manifest upload failed.", "Arkiv publication failed.", "Manifest could not be downloaded.", "No services published yet.". Raw SDK errors only in the dev debug `<details>`.
+- Role (client/provider) is a localStorage preference keyed by Swarm identity id, never access control. Both sections stay reachable.

@@ -93,6 +93,20 @@
         "typescript": "^5.9.0",
       },
     },
+    "tools": {
+      "name": "@apiperitivo/tools",
+      "version": "0.0.0",
+      "dependencies": {
+        "@apiperitivo/payments": "workspace:*",
+        "@arkiv-network/sdk": "^0.8.1",
+        "viem": "^2.21.0",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.2.0",
+        "@types/node": "^24.3.0",
+        "typescript": "^5.9.0",
+      },
+    },
   },
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, "sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ=="],
@@ -106,6 +120,8 @@
     "@apiperitivo/shared": ["@apiperitivo/shared@workspace:packages/shared"],
 
     "@apiperitivo/swarm": ["@apiperitivo/swarm@workspace:packages/swarm"],
+
+    "@apiperitivo/tools": ["@apiperitivo/tools@workspace:tools"],
 
     "@apiperitivo/web": ["@apiperitivo/web@workspace:apps/web"],
 
