@@ -1,11 +1,12 @@
 "use client";
 
-import { explorerAddressUrl, paymentsContractAddress } from "@apiritivo/payments";
+import { explorerAddressUrl, PAYMENT_CHAIN_NAME, paymentsContractAddress } from "@apiritivo/payments";
 import type { Role } from "@apiritivo/shared";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useSession } from "@/lib/session";
+import { useSwarmWallet } from "@/lib/swarm-wallet";
 import { SwarmSignIn } from "./swarm-sign-in";
 import { ThemeToggle } from "./theme-toggle";
 import { BrandLogo, BrandMark, Button, ProfileAvatar } from "./ui";
@@ -58,6 +59,7 @@ function ContractLink({ short = false }: { short?: boolean }) {
 
 function IdentityMenu() {
   const session = useSession();
+  const wallet = useSwarmWallet();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -95,7 +97,7 @@ function IdentityMenu() {
     );
   }
 
-  const { identity, role } = session;
+  const { identity } = session;
 
   return (
     <div className="sm:relative" ref={ref}>
@@ -111,19 +113,32 @@ function IdentityMenu() {
         <span className="hidden text-xs text-subtle sm:inline">▾</span>
       </button>
       {open ? (
-        <div className="absolute right-3 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-panel border border-line bg-surface-raised p-2 shadow-xl sm:right-0 sm:top-auto">
+        <div className="absolute right-3 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-panel border border-line bg-surface p-2 shadow-lg sm:right-0 sm:top-auto">
           <div className="flex items-center gap-3 px-3 py-2">
             <ProfileAvatar name={identity.name} size={48} />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{identity.name}</p>
-              <p className="text-xs text-subtle">{role === "provider" ? "Provider view" : "Client view"}</p>
-              <p className="truncate font-mono text-[11px] text-subtle" title={identity.id}>
-                {identity.id}
-              </p>
+              {wallet.address ? (
+                <a
+                  href={explorerAddressUrl(wallet.address)}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`View wallet on ${PAYMENT_CHAIN_NAME}`}
+                  className="inline-flex min-h-8 items-center gap-1 rounded-control text-xs text-accent-text hover:underline"
+                >
+                  Address <span aria-hidden="true">↗</span>
+                </a>
+              ) : null}
             </div>
           </div>
-          <div className="mx-2 my-1 border-t border-line" />
-          <p className="px-3 pt-1 text-xs text-subtle">Swarm upload: {session.canUpload ? "available" : "unavailable"}</p>
+          <div className="mx-3 my-1 border-t border-line" />
+          <div className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+            <span className="text-muted">Swarm upload</span>
+            <span className={`inline-flex items-center gap-1.5 ${session.canUpload ? "text-success" : "text-warning"}`}>
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+              {session.canUpload ? "Available" : "Unavailable"}
+            </span>
+          </div>
           <button
             type="button"
             className="mt-2 min-h-11 w-full rounded-control px-3 py-2 text-left text-sm text-danger hover:bg-danger/10"

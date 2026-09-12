@@ -4,6 +4,7 @@ import { type BlockTiming, getBlockTiming, listAccessPassesByBuyer, listAccessPa
 import type { AccessPass, Sale } from "@apiritivo/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type FriendlyError, toFriendlyError } from "./errors";
+import { watchPassTiming } from "./pass-timing";
 
 type State<T> = { data: T | null; loading: boolean; error: FriendlyError | null; timing: BlockTiming | null };
 
@@ -36,9 +37,15 @@ function useQuery<T>(key: string | null, load: (key: string) => Promise<T>, fall
   return { ...state, reload };
 }
 
+function useLivePassTiming(passes: AccessPass[] | null, initialTiming: BlockTiming | null) {
+  const [live, setLive] = useState<{ passes: AccessPass[] | null; initialTiming: BlockTiming | null; timing: BlockTiming } | null>(null);
+  useEffect(() => watchPassTiming(passes ?? [], initialTiming, (timing) => setLive({ passes, initialTiming, timing })), [passes, initialTiming]);
+  return live?.passes === passes && live.initialTiming === initialTiming ? live.timing : initialTiming;
+}
+
 export function usePassesForService(serviceId: string | null, buyerId: string | null) {
   const key = serviceId && buyerId ? `${serviceId}::${buyerId}` : null;
-  return useQuery<AccessPass[]>(
+  const query = useQuery<AccessPass[]>(
     key,
     (k) => {
       const [s, b] = k.split("::");
@@ -46,10 +53,14 @@ export function usePassesForService(serviceId: string | null, buyerId: string | 
     },
     "Could not load your access passes from Arkiv.",
   );
+  const timing = useLivePassTiming(query.data, query.timing);
+  return { ...query, timing };
 }
 
 export function useMyPasses(buyerId: string | null) {
-  return useQuery<AccessPass[]>(buyerId, listAccessPassesByBuyer, "Could not load your access passes from Arkiv.");
+  const query = useQuery<AccessPass[]>(buyerId, listAccessPassesByBuyer, "Could not load your access passes from Arkiv.");
+  const timing = useLivePassTiming(query.data, query.timing);
+  return { ...query, timing };
 }
 
 export function useProviderSales(providerId: string | null) {

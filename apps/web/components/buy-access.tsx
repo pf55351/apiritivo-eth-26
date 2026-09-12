@@ -58,6 +58,7 @@ export function BuyAccess({
 
   const purchasable = Boolean(service.payoutAddress && service.priceUsdc && service.accessSeconds);
   const activePass = passes.find((p) => (timing ? secondsUntilBlock(p.expiresAtBlock, timing) > 0 : true));
+  const resultExpired = result && timing ? secondsUntilBlock(result.expiresAtBlock, timing) <= 0 : false;
   const busy = step !== "idle" && step !== "done";
   const contract = paymentsContractAddress();
   const walletKind = account.kind === "wallet";
@@ -240,8 +241,8 @@ export function BuyAccess({
       {txHash || result ? (
         <div className="mt-4">
           {result ? (
-            <p role="status" className="mb-3 text-xs text-success">
-              Access ready until {new Date(result.expiresAt).toLocaleString()}.
+            <p role="status" className={`mb-3 text-xs ${resultExpired ? "text-subtle" : "text-success"}`}>
+              {resultExpired ? "Access expired. Buy again to continue." : `Access ready until ${new Date(result.expiresAt).toLocaleString()}.`}
             </p>
           ) : null}
           <Disclosure title="Payment receipt">

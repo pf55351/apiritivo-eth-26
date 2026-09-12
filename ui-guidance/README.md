@@ -30,6 +30,7 @@ Reference: [Supabase](https://supabase.com/). Keep APIritivo orange.
 * Provider page: API list and wallet first. History and connection details below.
 * Prefer borderless sections and simple rows. Use a surface only to focus a decision.
 * Keep actionable errors and disabled action reasons visible outside disclosures.
+* Account checks: compact rows for resource, value, state, and next action. Omit per-resource explanatory comments; use the shared surface and subtle Refresh button.
 
 These writing rules apply to product UI, including page titles. Technical documentation and code syntax keep their normal notation.
 
@@ -50,6 +51,9 @@ These writing rules apply to product UI, including page titles. Technical docume
 The account control uses a plain neutral circle with the user's initials.
 Reuse `ProfileAvatar` in the header and account menu. Keep it free of decorative
 rings and animation.
+The provider account menu shows the name and an "Address" link to the derived
+wallet on the payment-chain explorer. Omit the workspace label and raw identity
+ID; display upload availability as a compact status row.
 
 Favicon: use the original transparent brand symbol, tightly framed to about 96% of the canvas width. Preserve its proportions and export at 512 × 512. Keep full size brand exports unchanged.
 
@@ -58,6 +62,9 @@ Form fields and code editors may have functional boundaries. Remove extra decora
 Marketplace cards lead with a larger semibold API title. Category names stay in
 filters and API details, without a separate category row on each card. Keep the
 price close to the provider and the arrow immediately beside "View API".
+Descriptions occupy one line and truncate with an ellipsis. Stretch cards within
+each row and align their "View API" actions, including cards with private files.
+Show the access duration in orange.
 
 ## Workspaces
 

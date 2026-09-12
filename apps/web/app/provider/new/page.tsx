@@ -6,6 +6,7 @@ import { explorerAddressUrl, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
 import {
   ACCESS_DURATIONS,
   buildManifest,
+  DEMO_ACCESS_SECONDS,
   formatAccessDuration,
   formatPriceUsdc,
   generateServiceId,
@@ -337,7 +338,7 @@ function PublishForm() {
               <select className={fieldCls} value={accessSeconds} onChange={(e) => setAccessSeconds(Number(e.target.value))}>
                 {ACCESS_DURATIONS.map((d) => (
                   <option key={d.seconds} value={d.seconds}>
-                    {d.label}
+                    {d.label}{d.seconds === DEMO_ACCESS_SECONDS ? " (demo)" : ""}
                   </option>
                 ))}
               </select>

@@ -131,7 +131,7 @@ export default function ServiceDetailPage() {
         </header>
         <aside aria-label="Service access" className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           {!isProviderView ? (
-            passesState.loading ? (
+            passesState.loading && !passesState.data ? (
               <Skeleton className="h-48" />
             ) : passesState.error ? (
               <ErrorNotice message={passesState.error.message} detail={passesState.error.detail} onRetry={passesState.reload} />

@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { ApiExample } from "@/components/api-example";
 import { CodePanel } from "@/components/code-panel";
+import { ReadinessPanel } from "@/components/readiness-panel";
 import { Avatar, Badge, BrandLogo, Button, CategoryPill, EmptyState, ErrorNotice, ProfileAvatar, ProofChip, SectionTitle, Skeleton } from "@/components/ui";
+import { buildChecks } from "@/lib/readiness";
 
 const PALETTE = [
   { name: "Canvas", token: "bg-canvas", dark: "#121311", light: "#F7F7F2", style: "bg-canvas" },
@@ -31,6 +33,14 @@ const SECTIONS = [
 export default function DesignSystemPage() {
   const [exampleName, setExampleName] = useState("");
   const [exampleCategory, setExampleCategory] = useState("market-data");
+  const [exampleChecksReady, setExampleChecksReady] = useState(false);
+  const exampleChecks = buildChecks({
+    view: "provider",
+    wallet: { status: "ready", balances: { avax: "0.3", usdc: "0" } },
+    writer: { funded: true, balance: "0.099" },
+    drive: { mode: "user-stamp", ttlSeconds: (exampleChecksReady ? 30 : 3) * 86_400, usable: true, manageUrl: "#states" },
+    faucets: { avax: "#states", usdc: "#states", glm: "#states" },
+  });
 
   return (
     <div>
@@ -165,6 +175,10 @@ export default function DesignSystemPage() {
               Loading, empty, and error
             </h2>
             <div className="mt-6 space-y-5">
+              <div className="max-w-80">
+                <p className="mb-3 text-xs text-subtle">Example balances. Refresh changes the drive status.</p>
+                <ReadinessPanel title="Example provider checks" checks={exampleChecks} onRefresh={() => setExampleChecksReady((value) => !value)} />
+              </div>
               <section aria-label="Loading state example" className="space-y-3 border-t border-line py-5">
                 <Skeleton className="h-5 w-1/3" />
                 <Skeleton className="h-3 w-3/4" />

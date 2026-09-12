@@ -147,6 +147,7 @@ export function sumUsdc(values: readonly string[]): string {
 /** Human "expires in" from seconds. */
 export function formatRemaining(seconds: number): string {
   if (seconds <= 0) return "expired";
+  if (seconds < 60) return `${Math.ceil(seconds)}s`;
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);

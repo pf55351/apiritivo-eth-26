@@ -38,7 +38,17 @@ function PassesList() {
           <Skeleton className="h-24" />
         </div>
       ) : !error && passes.length === 0 ? (
-        <EmptyState icon="◎" title="No active passes" description="Choose an API to get access." action={<Button href="/marketplace">Explore APIs</Button>} />
+        <EmptyState
+          icon={
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 5h16a1 1 0 0 1 1 1v3a3 3 0 0 0 0 6v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a3 3 0 0 0 0-6V6a1 1 0 0 1 1-1Z" />
+              <path d="M15 5v14" strokeDasharray="2 3" />
+            </svg>
+          }
+          title="No active passes"
+          description="Choose an API to get access."
+          action={<Button href="/marketplace">Explore APIs</Button>}
+        />
       ) : !error ? (
         <ul className="divide-y divide-line">
           {passes.map((p) => {

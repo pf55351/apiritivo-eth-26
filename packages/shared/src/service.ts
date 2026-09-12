@@ -37,7 +37,10 @@ const slug = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, digits and dashes");
 
 /** Access durations a provider can sell. Seconds are what is stored on Arkiv. */
+export const DEMO_ACCESS_SECONDS = 30;
+
 export const ACCESS_DURATIONS = [
+  { seconds: DEMO_ACCESS_SECONDS, label: "30 seconds" },
   { seconds: 3600, label: "1 hour" },
   { seconds: 6 * 3600, label: "6 hours" },
   { seconds: 86400, label: "1 day" },

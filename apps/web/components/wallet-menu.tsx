@@ -6,7 +6,7 @@ import { copyText } from "@/lib/format";
 import { shortAddress } from "@/lib/identity";
 import { useInjectedWallet } from "@/lib/injected-wallet";
 import { useSession } from "@/lib/session";
-import { Avatar, Button } from "./ui";
+import { Button, ProfileAvatar } from "./ui";
 
 /**
  * Header account control for the Client workspace: the connected wallet is
@@ -66,14 +66,14 @@ export function WalletMenu() {
         onClick={() => setOpen((v) => !v)}
         className="flex min-h-11 w-11 items-center justify-center gap-2 rounded-full border border-transparent p-1 transition-colors hover:border-line hover:bg-surface sm:w-auto sm:justify-start sm:pr-3"
       >
-        <Avatar name="Wallet" seed={address.toLowerCase()} size={34} />
+        <ProfileAvatar name="Wallet" size={34} />
         <span className="hidden font-mono text-sm xl:block">{short}</span>
         <span className="hidden text-xs text-subtle sm:inline">▾</span>
       </button>
       {open ? (
         <div className="absolute right-3 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-panel border border-line bg-surface-raised p-2 shadow-xl sm:right-0 sm:top-auto">
           <div className="flex items-center gap-3 px-3 py-2">
-            <Avatar name="Wallet" seed={address.toLowerCase()} size={48} />
+            <ProfileAvatar name="Wallet" size={48} />
             <div className="min-w-0">
               <p className="text-sm font-semibold">Wallet</p>
               <p className="text-xs text-subtle">Client view</p>

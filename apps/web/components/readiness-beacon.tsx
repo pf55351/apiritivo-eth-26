@@ -5,8 +5,9 @@ import { getSwarmDrive, type SwarmDrive } from "@apiritivo/swarm";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { publicEnv } from "@/lib/env";
 import { useActiveAccount } from "@/lib/identity";
-import { buildChecks, type ReadinessCheck, type ReadinessInput, stateLabel, summarize } from "@/lib/readiness";
+import { buildChecks, type ReadinessInput, summarize } from "@/lib/readiness";
 import { useSession } from "@/lib/session";
+import { ReadinessPanel } from "./readiness-panel";
 
 const GLM_FAUCET_URL = "https://hub.arkiv.network/faucet";
 const REFRESH_MS = 30_000;
@@ -61,24 +62,6 @@ const DOT: Record<ReturnType<typeof summarize>["tone"], string> = {
   warn: "bg-warning",
   block: "bg-danger",
   loading: "bg-subtle",
-};
-
-const STATE_TONE: Record<ReadinessCheck["state"], string> = {
-  ok: "text-success",
-  low: "text-warning",
-  missing: "text-danger",
-  info: "text-subtle",
-  loading: "text-subtle",
-  unknown: "text-subtle",
-};
-
-const STATE_MARK: Record<ReadinessCheck["state"], string> = {
-  ok: "✓",
-  low: "!",
-  missing: "✕",
-  info: "·",
-  loading: "…",
-  unknown: "?",
 };
 
 /**
@@ -155,47 +138,9 @@ export function ReadinessBeacon() {
   return (
     <div ref={rootRef} className="fixed bottom-4 right-4 z-30 sm:bottom-6 sm:right-6">
       {open ? (
-        <section
-          id={panelId}
-          aria-label={title}
-          className="absolute bottom-full right-0 mb-2 w-80 max-w-[calc(100vw-2rem)] animate-fade-up rounded-panel border border-line bg-surface-raised shadow-xl"
-        >
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <h2 className="text-sm font-medium">{title}</h2>
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              disabled={refreshing}
-              className="min-h-8 rounded-control border border-line px-2 text-[11px] text-subtle hover:border-line-strong hover:text-content disabled:opacity-50"
-            >
-              {refreshing ? "Refreshing" : "Refresh"}
-            </button>
-          </div>
-          <ul className="divide-y divide-line border-t border-line">
-            {checks.map((check) => (
-              <li key={check.id} className="px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm">{check.label}</span>
-                  <span className={`inline-flex items-center gap-1.5 text-xs ${STATE_TONE[check.state]}`}>
-                    <span aria-hidden="true" className="font-mono">
-                      {STATE_MARK[check.state]}
-                    </span>
-                    {stateLabel(check.state)}
-                  </span>
-                </div>
-                <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-subtle">
-                  <span>{check.value ? <span className="font-mono text-muted">{check.value}</span> : check.hint}</span>
-                  {check.href && check.state !== "ok" && check.state !== "info" ? (
-                    <a href={check.href} target="_blank" rel="noreferrer" className="py-1 text-accent-text hover:underline">
-                      {check.hrefLabel} ↗
-                    </a>
-                  ) : null}
-                </div>
-                {check.value ? <p className="mt-0.5 text-xs text-subtle">{check.hint}</p> : null}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <div className="absolute bottom-full right-0 mb-2 w-80 max-w-[calc(100vw-2rem)] animate-fade-up">
+          <ReadinessPanel id={panelId} title={title} checks={checks} refreshing={refreshing} onRefresh={() => void refresh()} />
+        </div>
       ) : null}
       <button
         ref={buttonRef}
@@ -204,7 +149,7 @@ export function ReadinessBeacon() {
         aria-controls={open ? panelId : undefined}
         aria-label={`Account readiness: ${summary.label}`}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex min-h-11 items-center gap-2 rounded-control border border-line bg-surface-raised px-3 text-[13px] shadow-xl transition-colors hover:border-line-strong"
+        className="inline-flex min-h-11 items-center gap-2 rounded-control border border-line bg-surface px-3 text-sm shadow-sm transition-colors hover:border-line-strong"
       >
         <span aria-hidden="true" className={`h-2 w-2 rounded-full ${DOT[summary.tone]}`} />
         <span aria-live="polite">{summary.label}</span>
