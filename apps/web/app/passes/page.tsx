@@ -1,16 +1,16 @@
 "use client";
 
-import Link from "next/link";
-import { formatRemaining } from "@apiritivo/shared";
 import { arkivEntityUrl } from "@apiritivo/arkiv";
 import { explorerTxUrl } from "@apiritivo/payments";
+import type { AccessPass } from "@apiritivo/shared";
+import { formatRemaining } from "@apiritivo/shared";
+import Link from "next/link";
+import { ApiKeyBox } from "@/components/api-key-box";
+import { AuthGate } from "@/components/auth-gate";
+import { Button, Disclosure, EmptyState, ErrorNotice, SectionTitle, Skeleton } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { remainingSeconds, useMyPasses } from "@/lib/use-access";
-import { AuthGate } from "@/components/auth-gate";
-import { Button, EmptyState, ErrorNotice, SectionTitle, Skeleton } from "@/components/ui";
 import { usePassBearer } from "@/lib/use-pass-bearer";
-import { ApiKeyBox } from "@/components/api-key-box";
-import type { AccessPass } from "@apiritivo/shared";
 
 function PassApiKey({ pass }: { pass: AccessPass }) {
   const bearer = usePassBearer(pass);
@@ -24,9 +24,7 @@ function PassesList() {
   return (
     <div className="space-y-8">
       <SectionTitle
-        eyebrow="Client"
-        title="My access passes"
-        description="Live passes on Arkiv. Your API key is passKey.secret: the secret is decrypted here with your Swarm ID, only its hash is on-chain. When a pass expires, Arkiv removes it and the bot stops answering."
+        title="My passes"
         right={
           <Button variant="ghost" size="sm" onClick={reload} disabled={loading}>
             Refresh
@@ -39,50 +37,54 @@ function PassesList() {
           <Skeleton className="h-24" />
           <Skeleton className="h-24" />
         </div>
-      ) : passes.length === 0 ? (
-        <EmptyState icon="◎" title="No active passes." description="Buy access to a service from the marketplace." action={<Button href="/marketplace">Open marketplace</Button>} />
-      ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
+      ) : !error && passes.length === 0 ? (
+        <EmptyState icon="◎" title="No active passes" description="Choose an API to get access." action={<Button href="/marketplace">Explore APIs</Button>} />
+      ) : !error ? (
+        <ul className="divide-y divide-line">
           {passes.map((p) => {
             const left = remainingSeconds(p, timing);
             return (
-              <li key={p.passKey} className="card min-w-0 rounded-2xl p-5">
+              <li key={p.passKey} className="min-w-0 py-6 first:pt-0">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Link href={`/services/${p.serviceId}`} className="text-lg font-semibold hover:text-spritz-300">
+                  <Link href={`/services/${p.serviceId}`} className="break-words text-lg font-medium hover:text-accent-text">
                     {p.serviceName ?? p.serviceId}
                   </Link>
                   <span className={`text-xs font-semibold ${left !== null && left > 0 ? "text-olive-400" : "text-ink-400"}`}>
-                    {left === null ? "…" : formatRemaining(left) + " left"}
+                    {left === null ? "Checking expiry…" : left <= 0 ? "Expired" : `${formatRemaining(left)} left`}
                   </span>
                 </div>
-                <p className="mt-1 font-mono text-[11px] text-ink-400">{p.serviceId} · paid {p.paidUsdc} USDC</p>
-                <p className="mt-3 break-all font-mono text-[11px] text-ink-400">pass {p.passKey}</p>
-                <div className="mt-3">
-                  <PassApiKey pass={p} />
+                <p className="mt-1 text-xs text-subtle">Paid {p.paidUsdc} USDC · Avalanche Fuji</p>
+                <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <PassApiKey pass={p} />
+                  </div>
+                  <Button href={`/services/${p.serviceId}`}>Use API</Button>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-                  <a href={arkivEntityUrl(p.passKey)} target="_blank" rel="noreferrer" className="rounded-full border border-white/15 px-2.5 py-0.5 text-ink-300 hover:text-ink-100">
-                    Arkiv explorer ↗
-                  </a>
-                  <a href={explorerTxUrl(p.txHash)} target="_blank" rel="noreferrer" className="rounded-full border border-white/15 px-2.5 py-0.5 text-ink-300 hover:text-ink-100">
-                    payment tx ↗
-                  </a>
-                  <Link href={`/services/${p.serviceId}`} className="rounded-full bg-spritz-500 px-2.5 py-0.5 font-semibold text-ink-950 hover:bg-spritz-400">
-                    Use it →
-                  </Link>
+                <div className="mt-3">
+                  <Disclosure title="Receipt">
+                    <p className="break-all font-mono text-xs text-subtle">{p.passKey}</p>
+                    <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted">
+                      <a href={arkivEntityUrl(p.passKey)} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
+                        Pass ↗
+                      </a>
+                      <a href={explorerTxUrl(p.txHash)} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
+                        Payment ↗
+                      </a>
+                    </div>
+                  </Disclosure>
                 </div>
               </li>
             );
           })}
         </ul>
-      )}
+      ) : null}
     </div>
   );
 }
 
 export default function PassesPage() {
   return (
-    <AuthGate title="Sign in to see your access passes">
+    <AuthGate title="Sign in for your passes">
       <PassesList />
     </AuthGate>
   );

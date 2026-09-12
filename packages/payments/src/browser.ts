@@ -10,21 +10,10 @@
  *  - contract: approve + `APIritivoPayments.buy` (when NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS is set)
  *  - direct:   plain USDC `transfer` to the provider's payout address
  */
-import {
-  createPublicClient,
-  createWalletClient,
-  custom,
-  erc20Abi,
-  formatEther,
-  http,
-  toHex,
-  type Address,
-  type Hash,
-  type WalletClient,
-} from "viem";
+import { type Address, createPublicClient, createWalletClient, custom, erc20Abi, formatEther, type Hash, http, toHex, type WalletClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { type OnChainPurchase, paymentsAbi, paymentsContractAddress, serviceKey } from "./contract";
 import { PAYMENT_CHAIN, USDC_ADDRESS, unitsToUsdc, usdcToUnits } from "./index";
-import { paymentsAbi, paymentsContractAddress, serviceKey, type OnChainPurchase } from "./contract";
 
 type Eip1193 = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
@@ -189,8 +178,9 @@ export async function readRecentPurchases(limit = 20): Promise<OnChainPurchase[]
 
 /* ------------------------------------------------------------------ live */
 
-import { saleFromPurchasedLog, saleFromTransferLog, type LiveSale } from "./live";
-export { liveSaleKey, saleFromPurchasedLog, saleFromTransferLog, type LiveSale } from "./live";
+import { type LiveSale, saleFromPurchasedLog, saleFromTransferLog } from "./live";
+
+export { type LiveSale, liveSaleKey, saleFromPurchasedLog, saleFromTransferLog } from "./live";
 
 /**
  * Listen for new sales as they land on Avalanche Fuji. The public RPC has no
@@ -287,7 +277,14 @@ export async function payForAccess(params: {
     if (allowance < units) {
       params.onStep?.("approving");
       try {
-        approveTxHash = await signer.client.writeContract({ account, chain: PAYMENT_CHAIN, address: USDC_ADDRESS, abi: erc20Abi, functionName: "approve", args: [contract, units] });
+        approveTxHash = await signer.client.writeContract({
+          account,
+          chain: PAYMENT_CHAIN,
+          address: USDC_ADDRESS,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [contract, units],
+        });
       } catch (err) {
         rethrow(err, "USDC approval");
       }
@@ -311,7 +308,14 @@ export async function payForAccess(params: {
 
   params.onStep?.("paying");
   try {
-    const txHash = await signer.client.writeContract({ account, chain: PAYMENT_CHAIN, address: USDC_ADDRESS, abi: erc20Abi, functionName: "transfer", args: [params.provider, units] });
+    const txHash = await signer.client.writeContract({
+      account,
+      chain: PAYMENT_CHAIN,
+      address: USDC_ADDRESS,
+      abi: erc20Abi,
+      functionName: "transfer",
+      args: [params.provider, units],
+    });
     return { txHash, from: signer.address, to: params.provider, amountUsdc: params.priceUsdc, mode: "direct" };
   } catch (err) {
     rethrow(err, "USDC transfer");

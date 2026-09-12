@@ -1,17 +1,17 @@
 import {
   ACCESS_PASS_ENTITY_TYPE,
+  type AccessPass,
   APP_ID,
-  GRANT_ENTITY_TYPE,
-  SALE_ENTITY_TYPE,
-  SERVICE_ENTITY_TYPE,
+  type ArkivService,
   accessPassSchema,
   arkivServiceSchema,
-  grantSchema,
-  saleSchema,
-  type AccessPass,
-  type ArkivService,
+  GRANT_ENTITY_TYPE,
   type Grant,
+  grantSchema,
+  SALE_ENTITY_TYPE,
   type Sale,
+  SERVICE_ENTITY_TYPE,
+  saleSchema,
 } from "@apiritivo/shared";
 
 /**

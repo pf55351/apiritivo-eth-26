@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { encodeAbiParameters, encodeEventTopics, erc20Abi, type Address, type Hex, type Log } from "viem";
+import { type Address, encodeAbiParameters, encodeEventTopics, erc20Abi, type Hex, type Log } from "viem";
 import { USDC_ADDRESS, usdcToUnits } from "../src";
 import { paymentsAbi, serviceKey } from "../src/contract";
-import { verifyContractReceipt, verifyUsdcReceipt, type ReceiptLike } from "../src/server";
+import { type ReceiptLike, verifyContractReceipt, verifyUsdcReceipt } from "../src/server";
 
 const contract = "0x4e98f464dc8c667e3b0fd3092e0f2d4585702fa3" as const;
 const provider = "0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C" as const;
@@ -17,7 +17,10 @@ function transferLog(token: Address, from: Address, to: Address, value: bigint):
   const topics = encodeEventTopics({ abi: erc20Abi, eventName: "Transfer", args: { from, to } }) as Hex[];
   return log(token, topics, encodeAbiParameters([{ type: "uint256" }], [value]));
 }
-function purchasedLog(emitter: Address, args: { purchaseId: bigint; buyer: Address; provider: Address; serviceId: string; amount: bigint; fee?: bigint; accessSeconds?: bigint }): Log {
+function purchasedLog(
+  emitter: Address,
+  args: { purchaseId: bigint; buyer: Address; provider: Address; serviceId: string; amount: bigint; fee?: bigint; accessSeconds?: bigint },
+): Log {
   const topics = encodeEventTopics({ abi: paymentsAbi, eventName: "Purchased", args: { purchaseId: args.purchaseId, buyer: args.buyer, provider: args.provider } }) as Hex[];
   const data = encodeAbiParameters(
     [{ type: "bytes32" }, { type: "uint256" }, { type: "uint256" }, { type: "uint64" }],
@@ -33,7 +36,10 @@ describe("direct mode · verifyUsdcReceipt", () => {
     expect(r).toEqual({ ok: true, mode: "direct", from: buyer, to: provider, amountUsdc: "1.5", blockNumber: 100n });
   });
   test("sums several transfers in one tx", () => {
-    const r = verifyUsdcReceipt(receipt([transferLog(USDC_ADDRESS, buyer, provider, 600_000n), transferLog(USDC_ADDRESS, buyer, provider, 400_000n)]), { to: provider, minUsdc: "1" });
+    const r = verifyUsdcReceipt(receipt([transferLog(USDC_ADDRESS, buyer, provider, 600_000n), transferLog(USDC_ADDRESS, buyer, provider, 400_000n)]), {
+      to: provider,
+      minUsdc: "1",
+    });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.amountUsdc).toBe("1");
   });
@@ -62,19 +68,39 @@ describe("direct mode · verifyUsdcReceipt", () => {
 describe("contract mode · verifyContractReceipt", () => {
   const params = { provider, serviceId: "market-data-a81f", minUsdc: "1.5" };
   test("accepts a Purchased event from our contract for this provider and service", () => {
-    const r = verifyContractReceipt(receipt([purchasedLog(contract, { purchaseId: 3n, buyer, provider, serviceId: "market-data-a81f", amount: usdcToUnits("1.5") })]), contract, params);
+    const r = verifyContractReceipt(
+      receipt([purchasedLog(contract, { purchaseId: 3n, buyer, provider, serviceId: "market-data-a81f", amount: usdcToUnits("1.5") })]),
+      contract,
+      params,
+    );
     expect(r).toEqual({ ok: true, mode: "contract", from: buyer, to: contract, amountUsdc: "1.5", blockNumber: 100n, purchaseId: 3 });
   });
   test("rejects the same event emitted by a look-alike contract", () => {
-    const r = verifyContractReceipt(receipt([purchasedLog(other, { purchaseId: 3n, buyer, provider, serviceId: "market-data-a81f", amount: usdcToUnits("1.5") })]), contract, params);
+    const r = verifyContractReceipt(
+      receipt([purchasedLog(other, { purchaseId: 3n, buyer, provider, serviceId: "market-data-a81f", amount: usdcToUnits("1.5") })]),
+      contract,
+      params,
+    );
     expect(r.ok).toBe(false);
   });
   test("rejects a purchase of a different service or for a different provider", () => {
-    expect(verifyContractReceipt(receipt([purchasedLog(contract, { purchaseId: 1n, buyer, provider, serviceId: "other-service", amount: usdcToUnits("9") })]), contract, params).ok).toBe(false);
-    expect(verifyContractReceipt(receipt([purchasedLog(contract, { purchaseId: 1n, buyer, provider: other, serviceId: "market-data-a81f", amount: usdcToUnits("9") })]), contract, params).ok).toBe(false);
+    expect(
+      verifyContractReceipt(receipt([purchasedLog(contract, { purchaseId: 1n, buyer, provider, serviceId: "other-service", amount: usdcToUnits("9") })]), contract, params).ok,
+    ).toBe(false);
+    expect(
+      verifyContractReceipt(
+        receipt([purchasedLog(contract, { purchaseId: 1n, buyer, provider: other, serviceId: "market-data-a81f", amount: usdcToUnits("9") })]),
+        contract,
+        params,
+      ).ok,
+    ).toBe(false);
   });
   test("rejects underpayment", () => {
-    const r = verifyContractReceipt(receipt([purchasedLog(contract, { purchaseId: 1n, buyer, provider, serviceId: "market-data-a81f", amount: usdcToUnits("1.49") })]), contract, params);
+    const r = verifyContractReceipt(
+      receipt([purchasedLog(contract, { purchaseId: 1n, buyer, provider, serviceId: "market-data-a81f", amount: usdcToUnits("1.49") })]),
+      contract,
+      params,
+    );
     expect(r).toEqual({ ok: false, reason: "Paid 1.49 USDC, but the service costs 1.5 USDC." });
   });
   test("ignores plain USDC transfers in contract mode (must go through buy())", () => {

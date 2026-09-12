@@ -1,22 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useSession } from "@/lib/session";
-import { useProviderServices } from "@/lib/use-services";
-import { useProviderSales } from "@/lib/use-access";
-import { formatPriceUsdc, sumUsdc } from "@apiritivo/shared";
-import Link from "next/link";
 import { arkivEntityUrl } from "@apiritivo/arkiv";
 import { explorerTxUrl } from "@apiritivo/payments";
-import { SwarmWalletPanel } from "@/components/swarm-wallet-panel";
-import { SwarmDriveChip } from "@/components/swarm-drive-chip";
+import { formatAccessDuration, formatPriceUsdc, type Sale, sumUsdc } from "@apiritivo/shared";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { AuthGate } from "@/components/auth-gate";
+import { ContractPanel } from "@/components/contract-panel";
 import { LiveSales } from "@/components/live-sales";
 import { PrivateGrantsPanel } from "@/components/private-grants-panel";
-import { ContractPanel } from "@/components/contract-panel";
+import { SwarmDriveChip } from "@/components/swarm-drive-chip";
+import { SwarmWalletPanel } from "@/components/swarm-wallet-panel";
+import { Badge, Button, Disclosure, EmptyState, ErrorNotice, SectionTitle, ServiceCardSkeleton } from "@/components/ui";
+import { useSession } from "@/lib/session";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
-import { AuthGate } from "@/components/auth-gate";
-import { ServiceCard } from "@/components/service-card";
-import { Avatar, Badge, Button, EmptyState, ErrorNotice, SectionTitle, ServiceCardSkeleton } from "@/components/ui";
+import { useProviderSales } from "@/lib/use-access";
+import { useProviderServices } from "@/lib/use-services";
+
+const SKELETON_KEYS = ["s1", "s2", "s3"];
 
 type WriterStatus = {
   writerConfigured: boolean;
@@ -39,15 +40,11 @@ function useWriterStatus(): WriterStatus {
   return status;
 }
 
-function StatCard({ label, value, hint, badge }: { label: string; value: string; hint?: string; badge?: string }) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card rounded-2xl p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-400">{label}</p>
-        {badge ? <Badge tone="warn">{badge}</Badge> : null}
-      </div>
-      <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-ink-400">{hint}</p> : null}
+    <div>
+      <p className="text-xs text-subtle">{label}</p>
+      <p className="mt-2 text-2xl font-medium">{value}</p>
     </div>
   );
 }
@@ -60,7 +57,6 @@ function Dashboard() {
   const writer = useWriterStatus();
 
   const services = data ?? [];
-  const available = services.filter((s) => s.available).length;
   const salesList = sales.data ?? [];
   const revenue = sumUsdc(salesList.map((x) => x.paidUsdc));
   const earnedByService = new Map<string, string>();
@@ -78,148 +74,130 @@ function Dashboard() {
   return (
     <div className="space-y-8">
       <SectionTitle
-        eyebrow="Provider"
-        title="Your services"
-        description={loading ? "Loading your services from Arkiv…" : `${services.length} published ${services.length === 1 ? "service" : "services"}`}
+        title="My APIs"
         right={
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={reload} disabled={loading}>
+            <Button
+              variant="subtle"
+              size="sm"
+              onClick={() => {
+                reload();
+                sales.reload();
+                setChainTick((value) => value + 1);
+              }}
+              disabled={loading}
+            >
               Refresh
             </Button>
-            <Button href="/provider/new">+ Publish Service</Button>
+            <Button href="/provider/new">Publish API</Button>
           </div>
         }
       />
-
-      <div className="glass flex flex-wrap items-center gap-4 rounded-2xl p-4">
-        <Avatar name={identity.name} seed={identity.id} src={identity.avatarUrl} size={44} />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{identity.name}</p>
-          <p className="break-all font-mono text-[11px] text-ink-400">providerId · {identity.id}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge tone="accent">Swarm ID ✓</Badge>
-          <Badge tone={session.canUpload ? "accent" : "warn"}>
-            {session.canUpload ? `Swarm upload ✓${session.uploadMode === "subsidised" ? " · subsidised" : session.uploadMode === "user-stamp" ? " · own stamp" : ""}` : "Swarm upload unavailable"}
-          </Badge>
-          <SwarmDriveChip />
-          {writer ? (
-            <Badge tone={writer.writerConfigured && writer.funded !== false ? "accent" : "warn"}>
-              {!writer.writerConfigured ? "Arkiv writer not configured" : writer.funded === false ? "Arkiv writer unfunded" : "Arkiv writer ✓"}
-            </Badge>
-          ) : null}
-        </div>
-      </div>
-
       {!session.canUpload ? (
-        <ErrorNotice
-          tone="warn"
-          message="Swarm upload unavailable for this identity. You can browse and view your dashboard, but publishing requires Swarm upload capability: add a drive in Swarm ID (Storage → Add drive, or import an existing batch), or configure the subsidised gateway in NEXT_PUBLIC_SWARM_SUBSIDISED_GATEWAY_URL."
-          detail={session.uploadUnavailableReason ? `uploadMode=${session.uploadMode ?? "?"} reason=${session.uploadUnavailableReason}` : undefined}
-        />
+        <ErrorNotice tone="warn" message="Publishing needs Swarm storage. Add a drive or enable the shared gateway." detail={session.uploadUnavailableReason} />
       ) : null}
       {writer && !writer.writerConfigured ? (
-        <ErrorNotice tone="warn" message="Arkiv writer not configured on the server. Set ARKIV_WRITER_PRIVATE_KEY to enable publishing." />
+        <ErrorNotice tone="warn" message="Publishing is unavailable. Configure the server writer." detail="Set ARKIV_WRITER_PRIVATE_KEY on the server." />
       ) : null}
-      {writer && writer.writerConfigured && writer.funded === false ? (
-        <div className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
-          <p className="font-medium">Arkiv writer has 0 GLM on Tiramisu, so publishing will fail until it is funded.</p>
-          <p className="mt-1 break-all font-mono text-xs text-amber-200/90">{writer.address}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <a href={writer.faucetUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded-full bg-amber-300 px-3 text-xs font-semibold text-ink-950 hover:bg-amber-200">
-              Get testnet GLM at the Arkiv faucet ↗
-            </a>
-            {writer.explorerUrl ? (
-              <a href={writer.explorerUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded-full border border-amber-300/40 px-3 text-xs text-amber-100 hover:bg-amber-300/10">
-                Balance on Tiramisu explorer ↗
-              </a>
-            ) : null}
-            {writer.dataExplorerUrl ? (
-              <a href={writer.dataExplorerUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded-full border border-amber-300/40 px-3 text-xs text-amber-100 hover:bg-amber-300/10">
-                Entities on Arkiv Data Explorer ↗
-              </a>
+      {writer?.writerConfigured && writer.funded === false ? (
+        <div className="text-sm text-muted">
+          <p>Publishing needs GLM on Tiramisu.</p>
+          <a href={writer.faucetUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-9 items-center text-accent-text">
+            Fund writer ↗
+          </a>
+          <p className="break-all font-mono text-xs text-subtle">{writer.address}</p>
+        </div>
+      ) : null}
+      <div className="grid grid-cols-2 gap-6 border-b border-line pb-6 sm:grid-cols-3">
+        <StatCard label="Published APIs" value={loading ? "…" : error ? "Unavailable" : String(services.length)} />
+        <StatCard label="Recorded sales" value={sales.loading ? "…" : sales.error ? "Unavailable" : String(salesList.length)} />
+        <StatCard label="Recorded revenue" value={sales.loading ? "…" : sales.error ? "Unavailable" : formatPriceUsdc(revenue)} />
+      </div>
+      {error ? <ErrorNotice message={error.message} detail={error.detail} onRetry={reload} /> : null}
+      {sales.error ? <ErrorNotice message={sales.error.message} detail={sales.error.detail} onRetry={sales.reload} /> : null}
+      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12">
+        <div className="min-w-0 space-y-8">
+          {loading ? (
+            <div className="space-y-3">
+              {SKELETON_KEYS.map((k) => (
+                <ServiceCardSkeleton key={k} />
+              ))}
+            </div>
+          ) : !error && services.length === 0 ? (
+            <EmptyState title="Publish your first API" description="Set your price and start earning." action={<Button href="/provider/new">Publish API</Button>} />
+          ) : (
+            <ul className="divide-y divide-line">
+              {services.map((service) => (
+                <li key={service.serviceId} className="flex min-w-0 flex-wrap items-center justify-between gap-4 py-5 first:pt-0">
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/services/${service.serviceId}`} className="break-words text-base font-medium hover:text-accent-text">
+                      {service.name} <span aria-hidden="true">↗</span>
+                    </Link>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                      <p className="text-subtle">
+                        {service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}
+                        {service.accessSeconds ? ` / ${formatAccessDuration(service.accessSeconds)}` : ""}
+                      </p>
+                      <span className={service.available ? "text-olive-400" : "text-subtle"}>{service.available ? "Available" : "Unavailable"}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-content">{sales.loading || sales.error ? "…" : formatPriceUsdc(earnedByService.get(service.serviceId) ?? "0")}</p>
+                    <p className="mt-1 text-xs text-subtle">Earned</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <PrivateGrantsPanel services={services} sales={salesList} />
+          {swarmWallet.address ? <LiveSales provider={swarmWallet.address} onSale={onChainSale} /> : null}
+        </div>
+        <aside className="min-w-0">
+          <SwarmWalletPanel refreshKey={chainTick} />
+        </aside>
+      </div>
+      <div>
+        <SalesList list={salesList} />
+        {swarmWallet.address ? <ContractPanel provider={swarmWallet.address} title="Payment activity" refreshKey={chainTick} /> : null}
+        <Disclosure title="Connection details">
+          <div className="space-y-4 text-xs text-subtle">
+            <p className="break-all font-mono">Swarm ID: {identity.id}</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge tone={session.canUpload ? "neutral" : "warn"}>{session.canUpload ? "Storage ready" : "Storage unavailable"}</Badge>
+              <SwarmDriveChip />
+            </div>
+            {writer ? (
+              <div className="space-y-2">
+                <p className="break-all font-mono">Writer: {writer.address ?? "Not configured"}</p>
+                <p>{writer.balance ?? "…"} GLM</p>
+                <div className="flex flex-wrap gap-4">
+                  {writer.dataExplorerUrl ? (
+                    <a href={writer.dataExplorerUrl} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
+                      Registry ↗
+                    </a>
+                  ) : null}
+                  {writer.explorerUrl ? (
+                    <a href={writer.explorerUrl} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
+                      Writer balance ↗
+                    </a>
+                  ) : null}
+                </div>
+              </div>
             ) : null}
           </div>
-        </div>
-      ) : null}
-      {writer && writer.writerConfigured && writer.funded ? (
-        <p className="text-xs text-ink-400">
-          Arkiv writer <span className="break-all font-mono text-ink-300">{writer.address}</span> · {Number(writer.balance).toFixed(4)} GLM ·{" "}
-          {writer.dataExplorerUrl ? (
-            <a href={writer.dataExplorerUrl} target="_blank" rel="noreferrer" className="text-spritz-300 hover:underline">
-              entities on Arkiv Data Explorer ↗
-            </a>
-          ) : null}
-          {writer.explorerUrl ? (
-            <>
-              {" · "}
-              <a href={writer.explorerUrl} target="_blank" rel="noreferrer" className="text-spritz-300 hover:underline">
-                balance on Tiramisu explorer ↗
-              </a>
-            </>
-          ) : null}
-        </p>
-      ) : null}
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Published" value={loading ? "…" : String(services.length)} hint="Service entities on Arkiv" />
-        <StatCard label="Available" value={loading ? "…" : String(available)} hint="Visible in the marketplace" />
-        <StatCard
-          label="Earnings"
-          value={sales.loading ? "…" : formatPriceUsdc(revenue)}
-          hint={`${salesList.length} ${salesList.length === 1 ? "sale" : "sales"} · USDC on Avalanche Fuji, paid to your payout wallet`}
-        />
+        </Disclosure>
       </div>
-
-      {error ? <ErrorNotice message={error.message} detail={error.detail} onRetry={reload} /> : null}
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <SwarmWalletPanel />
-        <ContractPanel provider={swarmWallet.address ?? undefined} title="Your on-chain revenue" refreshKey={chainTick} />
-      </div>
-      <LiveSales provider={swarmWallet.address ?? undefined} onSale={onChainSale} />
-      <PrivateGrantsPanel services={services} sales={salesList} />
-
-      {loading ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <ServiceCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : !error && services.length === 0 ? (
-        <EmptyState
-          icon="◈"
-          title="No services published yet."
-          description="Publish your first service: the manifest goes to Swarm, the registry entry to Arkiv."
-          action={<Button href="/provider/new">+ Publish Service</Button>}
-        />
-      ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((s) => (
-            <div key={s.serviceId} className="relative">
-              <ServiceCard service={s} showAvailability />
-              <div className="pointer-events-none absolute right-5 top-14 font-mono text-[10px] text-olive-400">
-                earned · {formatPriceUsdc(earnedByService.get(s.serviceId) ?? "0")}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <SalesList providerId={identity.id} />
     </div>
   );
 }
 
-function SalesList({ providerId }: { providerId: string }) {
-  const sales = useProviderSales(providerId);
-  const list = sales.data ?? [];
-  if (sales.loading || list.length === 0) return null;
+function SalesList({ list }: { list: Sale[] }) {
+  if (list.length === 0) return null;
   return (
-    <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Recent sales</h2>
-      <ul className="divide-y divide-white/10 rounded-2xl border border-white/15 bg-ink-900/40">
+    <Disclosure title="Sales receipts" meta={list.length}>
+      <ul className="divide-y divide-line">
         {list.slice(0, 20).map((x) => (
-          <li key={x.saleKey} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+          <li key={x.saleKey} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
             <Link href={`/services/${x.serviceId}`} className="font-mono text-xs text-ink-300 hover:text-spritz-300">
               {x.serviceId}
             </Link>
@@ -240,13 +218,13 @@ function SalesList({ providerId }: { providerId: string }) {
           </li>
         ))}
       </ul>
-    </section>
+    </Disclosure>
   );
 }
 
 export default function ProviderPage() {
   return (
-    <AuthGate title="Sign in to open your provider dashboard">
+    <AuthGate title="Sign in to manage APIs">
       <Dashboard />
     </AuthGate>
   );

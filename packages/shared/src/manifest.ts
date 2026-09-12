@@ -57,15 +57,13 @@ export function buildManifest(operations: OperationDraft[], endpoint?: string): 
   return trimmed ? { v: 1, endpoint: trimmed, operations: ops } : { v: 1, operations: ops };
 }
 
-export type ManifestValidation =
-  | { ok: true; manifest: ServiceManifest }
-  | { ok: false; errors: string[] };
+export type ManifestValidation = { ok: true; manifest: ServiceManifest } | { ok: false; errors: string[] };
 
 export function validateManifest(value: unknown): ManifestValidation {
   const parsed = serviceManifestSchema.safeParse(value);
   if (parsed.success) return { ok: true, manifest: parsed.data };
   const errors = parsed.error.issues.map((issue) => {
-    const path = issue.path.length ? issue.path.join(".") + ": " : "";
+    const path = issue.path.length ? `${issue.path.join(".")}: ` : "";
     return `${path}${issue.message}`;
   });
   return { ok: false, errors: Array.from(new Set(errors)) };

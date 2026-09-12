@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { ArkivService, Grant, Sale } from "@apiritivo/shared";
 import { arkivEntityUrl, listGrantsForService } from "@apiritivo/arkiv";
+import type { ArkivService, Grant, Sale } from "@apiritivo/shared";
 import { grantPrivateFile } from "@apiritivo/swarm";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { type FriendlyError, toFriendlyError } from "@/lib/errors";
 import { useSession } from "@/lib/session";
-import { toFriendlyError, type FriendlyError } from "@/lib/errors";
-import { Button, ErrorNotice } from "./ui";
+import { Button, Disclosure, ErrorNotice } from "./ui";
 
 type Row = { service: ArkivService; grants: Grant[] };
 
@@ -23,11 +23,17 @@ export function PrivateGrantsPanel({ services, sales }: { services: ArkivService
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<FriendlyError | null>(null);
 
+  const serviceIds = withFiles.map((s) => s.serviceId).join(",");
+  const withFilesRef = useRef(withFiles);
+  withFilesRef.current = withFiles;
   const load = useCallback(async () => {
-    const next = await Promise.all(withFiles.map(async (service) => ({ service, grants: await listGrantsForService(service.serviceId).catch(() => []) })));
+    if (!serviceIds) {
+      setRows([]);
+      return;
+    }
+    const next = await Promise.all(withFilesRef.current.map(async (service) => ({ service, grants: await listGrantsForService(service.serviceId).catch(() => []) })));
     setRows(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [withFiles.map((s) => s.serviceId).join(",")]);
+  }, [serviceIds]);
 
   useEffect(() => {
     void load();
@@ -67,13 +73,14 @@ export function PrivateGrantsPanel({ services, sales }: { services: ArkivService
   }
 
   return (
-    <section className="card rounded-3xl p-6">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-olive-400">Private files · Swarm ACT</p>
-      <h2 className="mt-1 text-xl font-semibold">Who can read your private files</h2>
-      <p className="mt-1 text-sm text-ink-300">
-        Each buyer&apos;s Swarm key is added to the file&apos;s access list from this browser, because only you, the publisher, can. The new access list is recorded on Arkiv so the buyer can decrypt.
-      </p>
-      {error ? <div className="mt-3"><ErrorNotice message={error.message} detail={error.detail} /></div> : null}
+    <section className="min-w-0">
+      <h2 className="text-xl font-medium">File access</h2>
+      <p className="mt-1 text-sm text-ink-300">Grant buyers access to their purchased files.</p>
+      {error ? (
+        <div className="mt-3">
+          <ErrorNotice message={error.message} detail={error.detail} />
+        </div>
+      ) : null}
       <div className="mt-4 space-y-4">
         {(rows ?? withFiles.map((service) => ({ service, grants: [] as Grant[] }))).map(({ service, grants }) => {
           const buyers = new Map<string, Sale>();
@@ -81,7 +88,7 @@ export function PrivateGrantsPanel({ services, sales }: { services: ArkivService
           const granted = new Set(grants.map((g) => g.buyerId));
           const pending = Array.from(buyers.values()).filter((s) => !granted.has(s.buyerId));
           return (
-            <div key={service.serviceId} className="rounded-2xl border border-white/15 bg-ink-900/40 p-4">
+            <div key={service.serviceId} className="border-t border-line py-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold">{service.name}</p>
@@ -89,13 +96,15 @@ export function PrivateGrantsPanel({ services, sales }: { services: ArkivService
                     {service.privateAttachment!.name} · {grants.length} granted · {rows === null ? "…" : `${pending.length} waiting`}
                   </p>
                 </div>
-                <button type="button" onClick={() => void load()} className="text-xs text-ink-400 underline hover:text-ink-200">refresh</button>
+                <button type="button" onClick={() => void load()} className="text-xs text-ink-400 underline hover:text-ink-200">
+                  refresh
+                </button>
               </div>
               {pending.length > 0 ? (
                 <ul className="mt-3 divide-y divide-white/10">
                   {pending.map((sale) => (
                     <li key={sale.saleKey} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
-                      <span className="font-mono text-ink-300">buyer {sale.buyerId.slice(0, 10)}… · key {sale.buyerPublicKey!.slice(0, 10)}…</span>
+                      <span className="font-mono text-ink-300">Buyer {sale.buyerId.slice(0, 10)}…</span>
                       <Button size="sm" onClick={() => grant(service, sale, grants)} disabled={busy !== null}>
                         {busy === sale.saleKey ? "Granting…" : "Grant access"}
                       </Button>
@@ -104,16 +113,18 @@ export function PrivateGrantsPanel({ services, sales }: { services: ArkivService
                 </ul>
               ) : null}
               {grants.length > 0 ? (
-                <ul className="mt-3 space-y-1 text-[11px] text-ink-400">
-                  {grants.map((g) => (
-                    <li key={g.grantKey}>
-                      ✓ buyer {g.buyerId.slice(0, 10)}… ·{" "}
-                      <a href={arkivEntityUrl(g.grantKey)} target="_blank" rel="noreferrer" className="font-mono hover:text-ink-200">
-                        grant {g.grantKey.slice(0, 10)}… ↗
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                <Disclosure title="Granted buyers" meta={grants.length}>
+                  <ul className="space-y-2 text-xs text-subtle">
+                    {grants.map((g) => (
+                      <li key={g.grantKey}>
+                        ✓ buyer {g.buyerId.slice(0, 10)}… ·{" "}
+                        <a href={arkivEntityUrl(g.grantKey)} target="_blank" rel="noreferrer" className="font-mono hover:text-ink-200">
+                          grant {g.grantKey.slice(0, 10)}… ↗
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </Disclosure>
               ) : null}
               {rows !== null && pending.length === 0 && grants.length === 0 ? <p className="mt-2 text-xs text-ink-400">No buyers yet.</p> : null}
             </div>

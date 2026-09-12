@@ -1,12 +1,14 @@
-import { NextResponse } from "next/server";
-import { issueAccessPassInputSchema } from "@apiritivo/shared";
 import { findSaleByTxHash, getService } from "@apiritivo/arkiv";
 import { issueAccessPass, isWriterConfigured } from "@apiritivo/arkiv/server";
 import { PAYMENT_CHAIN_ID } from "@apiritivo/payments";
 import { verifyPayment } from "@apiritivo/payments/server";
+import { issueAccessPassInputSchema } from "@apiritivo/shared";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Vercel: on-chain verification plus Arkiv writes can exceed the 10 s default. */
+export const maxDuration = 60;
 
 /**
  * POST /api/access-passes — mint an access pass after a verified USDC payment.
@@ -75,9 +77,6 @@ export async function POST(request: Request) {
   } catch (err) {
     const e = err as Error & { shortMessage?: string };
     console.error("[api/access-passes] failed:", err);
-    return NextResponse.json(
-      { error: "Access pass could not be issued.", reason: (e.shortMessage ?? e.message ?? String(err)).split("\n")[0] },
-      { status: 502 },
-    );
+    return NextResponse.json({ error: "Access pass could not be issued.", reason: (e.shortMessage ?? e.message ?? String(err)).split("\n")[0] }, { status: 502 });
   }
 }

@@ -1,5 +1,19 @@
 import { describe, expect, test } from "bun:test";
-import { DISCONNECTED, SwarmError, downloadPrivateFile, downloadServiceManifest, driveFromBatch, getConnectionInfo, getGranteeKey, getSwarmDrive, grantPrivateFile, isSwarmReady, swarmReferenceUrl, uploadPrivateFile, uploadServiceManifest } from "../src";
+import {
+  DISCONNECTED,
+  downloadPrivateFile,
+  downloadServiceManifest,
+  driveFromBatch,
+  getConnectionInfo,
+  getGranteeKey,
+  getSwarmDrive,
+  grantPrivateFile,
+  isSwarmReady,
+  SwarmError,
+  swarmReferenceUrl,
+  uploadPrivateFile,
+  uploadServiceManifest,
+} from "../src";
 
 describe("swarm adapter (not initialised)", () => {
   test("reports a disconnected session", () => {
@@ -47,7 +61,9 @@ describe("private files (ACT) · not initialised", () => {
   });
   test("upload, grant and download fail with not-initialized", async () => {
     await expect(uploadPrivateFile(new Uint8Array([1]))).rejects.toMatchObject({ code: "not-initialized" });
-    await expect(grantPrivateFile("a".repeat(64), "02" + "b".repeat(64))).rejects.toMatchObject({ code: "not-initialized" });
-    await expect(downloadPrivateFile({ encryptedRef: "a".repeat(128), historyRef: "a".repeat(64), publisherPubKey: "02" + "b".repeat(64) })).rejects.toMatchObject({ code: "not-initialized" });
+    await expect(grantPrivateFile("a".repeat(64), `02${"b".repeat(64)}`)).rejects.toMatchObject({ code: "not-initialized" });
+    await expect(downloadPrivateFile({ encryptedRef: "a".repeat(128), historyRef: "a".repeat(64), publisherPubKey: `02${"b".repeat(64)}` })).rejects.toMatchObject({
+      code: "not-initialized",
+    });
   });
 });

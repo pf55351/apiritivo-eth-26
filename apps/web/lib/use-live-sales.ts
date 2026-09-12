@@ -1,8 +1,8 @@
 "use client";
 
+import { type LiveSale, liveSaleKey, watchSales } from "@apiritivo/payments/browser";
 import { useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
-import { liveSaleKey, watchSales, type LiveSale } from "@apiritivo/payments/browser";
 
 export type LiveSalesState = {
   /** The chain watcher is running (polling the Fuji RPC). */

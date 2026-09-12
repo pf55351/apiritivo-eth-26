@@ -4,9 +4,21 @@
  */
 import { createPublicClient, type PublicArkivClient } from "@arkiv-network/sdk";
 import { checkPassSecret, parsePassBearer } from "./pass-secret";
+
 export * from "./pass-secret";
+
+import {
+  ACCESS_PASS_ENTITY_TYPE,
+  type AccessPass,
+  APP_ID,
+  type ArkivService,
+  GRANT_ENTITY_TYPE,
+  type Grant,
+  SALE_ENTITY_TYPE,
+  type Sale,
+  SERVICE_ENTITY_TYPE,
+} from "@apiritivo/shared";
 import { and, eq } from "@arkiv-network/sdk/query";
-import { ACCESS_PASS_ENTITY_TYPE, APP_ID, GRANT_ENTITY_TYPE, SALE_ENTITY_TYPE, SERVICE_ENTITY_TYPE, type AccessPass, type ArkivService, type Grant, type Sale } from "@apiritivo/shared";
 import { http } from "viem";
 import { resolveChain, resolveReadRpcUrl } from "./config";
 import { ATTR, parseAccessPassEntity, parseGrantEntity, parseSaleEntity, parseServiceEntity, type RawServiceEntity } from "./entity";
@@ -33,11 +45,7 @@ async function queryServices(extra: ReturnType<typeof eq>[]): Promise<ArkivServi
   const client = readClient();
   const where = and(eq(ATTR.app, APP_ID), eq(ATTR.entityType, SERVICE_ENTITY_TYPE), ...extra);
 
-  let page = await client
-    .select({ key: true, owner: true, createdAt: true, attributes: true, payload: true })
-    .where(where)
-    .limit(PAGE_SIZE)
-    .fetch();
+  let page = await client.select({ key: true, owner: true, createdAt: true, attributes: true, payload: true }).where(where).limit(PAGE_SIZE).fetch();
 
   const services: ArkivService[] = [];
   let pages = 0;
@@ -95,11 +103,7 @@ export const ARKIV_CHAIN_SLUG = "tiramisu";
 
 const PASS_SELECT = { key: true, owner: true, createdAt: true, expiresAt: true, attributes: true, payload: true } as const;
 
-async function queryEntities<T>(
-  entityType: string,
-  extra: ReturnType<typeof eq>[],
-  parse: (raw: RawServiceEntity) => T | null,
-): Promise<T[]> {
+async function queryEntities<T>(entityType: string, extra: ReturnType<typeof eq>[], parse: (raw: RawServiceEntity) => T | null): Promise<T[]> {
   const client = readClient();
   let page = await client
     .select(PASS_SELECT)
@@ -128,11 +132,7 @@ export async function listAccessPassesByBuyer(buyerId: string): Promise<AccessPa
 
 /** Live passes of one buyer for one service. */
 export async function listAccessPassesForService(serviceId: string, buyerId: string): Promise<AccessPass[]> {
-  const passes = await queryEntities(
-    ACCESS_PASS_ENTITY_TYPE,
-    [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerId, buyerId)],
-    parseAccessPassEntity,
-  );
+  const passes = await queryEntities(ACCESS_PASS_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerId, buyerId)], parseAccessPassEntity);
   return passes.sort((a, b) => (BigInt(b.expiresAtBlock) > BigInt(a.expiresAtBlock) ? 1 : -1));
 }
 
@@ -191,9 +191,7 @@ export function estimateBlockDate(targetBlock: bigint | string, timing: BlockTim
   return new Date((timing.currentBlockTime + secondsUntilBlock(targetBlock, timing)) * 1000);
 }
 
-export type AccessCheck =
-  | { ok: true; pass: AccessPass; expiresAtBlock: string; currentBlock: string; secondsRemaining: number }
-  | { ok: false; status: 401 | 403; error: string };
+export type AccessCheck = { ok: true; pass: AccessPass; expiresAtBlock: string; currentBlock: string; secondsRemaining: number } | { ok: false; status: 401 | 403; error: string };
 
 /**
  * The one check every gated service needs: is `passKey` a live access pass

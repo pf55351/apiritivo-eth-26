@@ -95,7 +95,10 @@ export const issueAccessPassInputSchema = z.object({
   /** keccak256 of the secret the buyer generated; stored in clear on the pass. */
   secretHash: hex32Schema,
   /** The secret encrypted with a key only the buyer can derive; stored in the pass payload. */
-  encryptedSecret: z.string().regex(/^0x[0-9a-fA-F]+$/).max(512),
+  encryptedSecret: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]+$/)
+    .max(512),
   /** Buyer's Swarm public key, so the provider can grant private files (optional). */
   buyerPublicKey: actKeySchema.optional(),
 });
@@ -133,7 +136,7 @@ export function sumUsdc(values: readonly string[]): string {
   let total = 0n;
   for (const v of values) {
     const [int = "0", frac = ""] = v.trim().split(".");
-    const micro = BigInt(int) * 1_000_000n + BigInt((frac + "000000").slice(0, 6));
+    const micro = BigInt(int) * 1_000_000n + BigInt(`${frac}000000`.slice(0, 6));
     total += micro;
   }
   const int = total / 1_000_000n;

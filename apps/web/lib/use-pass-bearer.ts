@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { AccessPass } from "@apiritivo/shared";
 import { formatPassBearer } from "@apiritivo/arkiv";
+import type { AccessPass } from "@apiritivo/shared";
+import { useEffect, useState } from "react";
 import { useSwarmWallet } from "./swarm-wallet";
 
-export type PassBearer =
-  | { status: "loading" }
-  | { status: "ready"; bearer: string }
-  | { status: "legacy" }
-  | { status: "locked"; error: string };
+export type PassBearer = { status: "loading" } | { status: "ready"; bearer: string } | { status: "legacy" } | { status: "locked"; error: string };
 
 /**
  * The API key for a pass: `<passKey>.<secret>`. The secret is decrypted from

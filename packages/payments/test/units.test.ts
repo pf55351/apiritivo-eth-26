@@ -13,7 +13,8 @@ describe("payments units", () => {
   });
 });
 
-import { serviceKey, paymentsContractAddress } from "../src/contract";
+import { paymentsContractAddress, serviceKey } from "../src/contract";
+
 describe("contract helpers", () => {
   test("serviceKey is keccak256 of the utf-8 id (matches Solidity serviceKey)", () => {
     // keccak256("market-data-a81f") computed with forge: cast keccak "market-data-a81f"

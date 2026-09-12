@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { liveSaleKey, saleFromPurchasedLog, saleFromTransferLog } from "../src/live";
 import { serviceKey } from "../src/contract";
+import { liveSaleKey, saleFromPurchasedLog, saleFromTransferLog } from "../src/live";
 
 const tx = "0x39122be542379825ac8e14e3cbc759230ae094822125927b9da219f70ae14307" as const;
 const buyer = "0x1111111111111111111111111111111111111111" as const;
@@ -48,7 +48,8 @@ describe("live sales · dedup key", () => {
     expect(liveSaleKey(a)).toBe(liveSaleKey(b));
   });
   test("two purchases in one tx stay distinct", () => {
-    const mk = (id: bigint) => saleFromPurchasedLog({ transactionHash: tx, blockNumber: 1n, args: { purchaseId: id, buyer, provider, amount: 1n, serviceId: serviceKey("x"), accessSeconds: 1n } })!;
+    const mk = (id: bigint) =>
+      saleFromPurchasedLog({ transactionHash: tx, blockNumber: 1n, args: { purchaseId: id, buyer, provider, amount: 1n, serviceId: serviceKey("x"), accessSeconds: 1n } })!;
     expect(liveSaleKey(mk(1n))).not.toBe(liveSaleKey(mk(2n)));
   });
 });

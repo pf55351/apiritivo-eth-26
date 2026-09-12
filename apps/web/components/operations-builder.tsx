@@ -13,22 +13,15 @@ export function emptyOperation(name = ""): OperationDraft {
 
 const inputCls = "field-control font-mono";
 
-export function OperationsBuilder({
-  operations,
-  onChange,
-}: {
-  operations: OperationDraft[];
-  onChange: (next: OperationDraft[]) => void;
-}) {
-  const update = (id: string, patch: Partial<OperationDraft>) =>
-    onChange(operations.map((op) => (op.id === id ? { ...op, ...patch } : op)));
+export function OperationsBuilder({ operations, onChange }: { operations: OperationDraft[]; onChange: (next: OperationDraft[]) => void }) {
+  const update = (id: string, patch: Partial<OperationDraft>) => onChange(operations.map((op) => (op.id === id ? { ...op, ...patch } : op)));
 
   return (
     <div className="space-y-4">
       {operations.map((op, index) => (
-        <div key={op.id} className="rounded-2xl border border-white/15 bg-white/[0.02] p-4">
+        <div key={op.id} className="border-b border-line pb-5 last:border-0">
           <div className="flex items-center gap-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Operation {index + 1}</span>
+            <span className="text-xs font-normal text-ink-400">Operation {index + 1}</span>
             <div className="ml-auto">
               <Button
                 variant="subtle"
@@ -79,9 +72,7 @@ export function OperationsBuilder({
                     value={field.type}
                     onChange={(e) =>
                       update(op.id, {
-                        inputs: op.inputs.map((f) =>
-                          f.id === field.id ? { ...f, type: e.target.value as OperationInputType } : f,
-                        ),
+                        inputs: op.inputs.map((f) => (f.id === field.id ? { ...f, type: e.target.value as OperationInputType } : f)),
                       })
                     }
                   >
@@ -104,11 +95,7 @@ export function OperationsBuilder({
               ))}
             </div>
             <div className="mt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => update(op.id, { inputs: [...op.inputs, { id: newId(), name: "", type: "string" }] })}
-              >
+              <Button variant="ghost" size="sm" onClick={() => update(op.id, { inputs: [...op.inputs, { id: newId(), name: "", type: "string" }] })}>
                 + Add input field
               </Button>
             </div>

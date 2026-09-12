@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AVAX_FAUCET_URL, USDC_FAUCET_URL } from "@apiritivo/payments";
 import { getSwarmDrive, type SwarmDrive } from "@apiritivo/swarm";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { publicEnv } from "@/lib/env";
+import { buildChecks, type ReadinessCheck, type ReadinessInput, stateLabel, summarize } from "@/lib/readiness";
 import { useSession } from "@/lib/session";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
-import { buildChecks, stateLabel, summarize, type ReadinessCheck, type ReadinessInput } from "@/lib/readiness";
 
 const GLM_FAUCET_URL = "https://hub.arkiv.network/faucet";
 const REFRESH_MS = 30_000;
@@ -145,7 +145,7 @@ export function ReadinessBeacon() {
       ttlSeconds: drive?.ttlSeconds,
       label: drive?.label,
       usable: drive?.usable,
-      manageUrl: publicEnv.swarmIframeOrigin.replace(/\/+$/, "") + "/",
+      manageUrl: `${publicEnv.swarmIframeOrigin.replace(/\/+$/, "")}/`,
     },
     faucets: { avax: AVAX_FAUCET_URL, usdc: USDC_FAUCET_URL, glm: GLM_FAUCET_URL },
   });
@@ -177,7 +177,9 @@ export function ReadinessBeacon() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm">{check.label}</span>
                   <span className={`inline-flex items-center gap-1.5 text-xs ${STATE_TONE[check.state]}`}>
-                    <span aria-hidden="true" className="font-mono">{STATE_MARK[check.state]}</span>
+                    <span aria-hidden="true" className="font-mono">
+                      {STATE_MARK[check.state]}
+                    </span>
                     {stateLabel(check.state)}
                   </span>
                 </div>

@@ -37,7 +37,7 @@ describe("pass secret · encryption for the buyer", () => {
     await expect(decryptPassSecret(blob, otherKey)).rejects.toThrow();
     const tampered = blob.slice(0, -2) + (blob.endsWith("00") ? "01" : "00");
     await expect(decryptPassSecret(tampered, key)).rejects.toThrow();
-    await expect(decryptPassSecret("0x02" + blob.slice(4), key)).rejects.toThrow("Unsupported");
+    await expect(decryptPassSecret(`0x02${blob.slice(4)}`, key)).rejects.toThrow("Unsupported");
   });
   test("refuses keys that are not 32 bytes", async () => {
     await expect(encryptPassSecret(generatePassSecret(), new Uint8Array(16))).rejects.toThrow("32 bytes");

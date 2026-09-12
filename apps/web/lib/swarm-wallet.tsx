@@ -1,13 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Address } from "viem";
-import { derivePassEncryptionKey, deriveWalletSecret } from "@apiritivo/swarm";
 import { decryptPassSecret, encryptPassSecret } from "@apiritivo/arkiv";
-import type { Hex } from "viem";
-import { getBalances, secretToPrivateKey, swarmSigner, type Balances, type Signer } from "@apiritivo/payments/browser";
+import { type Balances, getBalances, type Signer, secretToPrivateKey, swarmSigner } from "@apiritivo/payments/browser";
+import { derivePassEncryptionKey, deriveWalletSecret } from "@apiritivo/swarm";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { Address, Hex } from "viem";
+import { type FriendlyError, toFriendlyError } from "./errors";
 import { useSession } from "./session";
-import { toFriendlyError, type FriendlyError } from "./errors";
 
 export type SwarmWallet = {
   status: "idle" | "deriving" | "ready" | "error";

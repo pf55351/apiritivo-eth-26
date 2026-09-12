@@ -1,149 +1,164 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { ROLE_HOME } from "@apiritivo/shared";
-import { useSession } from "@/lib/session";
-import { Button, ErrorNotice, Eyebrow } from "@/components/ui";
-import { ApiExample } from "@/components/api-example";
-import { RoleChooser } from "@/components/role-chooser";
 import { arkivDataExplorerUrl } from "@apiritivo/arkiv";
 import { explorerAddressUrl, explorerTokenUrl, paymentsContractAddress } from "@apiritivo/payments";
+import { ROLE_HOME } from "@apiritivo/shared";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { ApiExample } from "@/components/api-example";
+import { Button, ErrorNotice, Eyebrow } from "@/components/ui";
 import { publicEnv } from "@/lib/env";
+import { useSession } from "@/lib/session";
 
 const contractAddress = paymentsContractAddress();
 const PILLARS = [
-  { name: "Swarm ID", text: "One identity for discovery, publishing, and access.", href: publicEnv.swarmIframeOrigin, link: "swarm-id.snaha.net" },
-  { name: "Swarm", text: "Immutable technical manifests: how a machine calls you.", href: publicEnv.swarmGatewayUrl, link: "public gateway" },
-  { name: "Arkiv", text: "Live, queryable registry of every published service.", href: arkivDataExplorerUrl(), link: "Arkiv Data Explorer · Tiramisu" },
+  { name: "Swarm ID", href: publicEnv.swarmIframeOrigin, link: "Identity" },
+  { name: "Swarm", href: publicEnv.swarmGatewayUrl, link: "API manifests" },
+  { name: "Arkiv", href: arkivDataExplorerUrl(), link: "API registry" },
   {
     name: "Avalanche",
-    text: contractAddress ? "USDC access passes settled by the APIritivoPayments contract on Fuji." : "USDC access passes paid on Fuji, straight to the provider wallet.",
     href: contractAddress ? explorerAddressUrl(contractAddress) : explorerTokenUrl(),
     link: contractAddress ? "contract on SnowTrace" : "USDC on SnowTrace",
   },
 ];
 
+const JOURNEYS = {
+  client: [
+    ["Choose an API", "Review operations, price, and duration."],
+    ["Get an access pass", "Pay in USDC on Avalanche Fuji."],
+    ["Make your request", "Use your API key in any client."],
+  ],
+  provider: [
+    ["Define operations", "Name each operation and its inputs."],
+    ["Set your access", "Choose a USDC price and duration."],
+    ["Publish your API", contractAddress ? "Claim earnings to your Swarm wallet." : "Receive USDC in your Swarm wallet."],
+  ],
+};
+
 export default function HomePage() {
   const session = useSession();
   const router = useRouter();
-  const hadIdentity = useRef<boolean>(false);
-  const wasConnecting = useRef<boolean>(false);
+  const pendingLogin = useRef(false);
 
-  // Only right after a login started on this page (not on a restored session):
-  // jump straight into the saved role. Declared before the ref-sync effect so
-  // it still sees the previous commit's `connecting` value.
+  // Wait for this identity's saved view before completing a login from home.
   useEffect(() => {
-    const has = Boolean(session.identity);
-    if (has && !hadIdentity.current && wasConnecting.current && session.roleLoaded && session.role) {
-      router.push(ROLE_HOME[session.role]);
+    if (session.connecting) pendingLogin.current = true;
+    if (pendingLogin.current && session.identity && session.roleLoaded) {
+      pendingLogin.current = false;
+      router.push(ROLE_HOME[session.role ?? "client"]);
+    } else if (!session.connecting && !session.identity) {
+      pendingLogin.current = false;
     }
-    hadIdentity.current = has;
-  }, [session.identity, session.role, session.roleLoaded, router]);
-
-  useEffect(() => {
-    wasConnecting.current = session.connecting;
-  }, [session.connecting]);
+  }, [session.connecting, session.identity, session.role, session.roleLoaded, router]);
 
   const loggedIn = Boolean(session.identity);
+  const view = session.role ?? "client";
+  const isProvider = view === "provider";
+
+  if (!session.roleLoaded) {
+    return (
+      <p role="status" className="py-16 text-center text-sm text-subtle">
+        Loading view…
+      </p>
+    );
+  }
 
   return (
     <div>
-      <section className="grid items-center gap-12 pb-14 pt-6 sm:pb-20 sm:pt-12 lg:grid-cols-[1.12fr_1fr] lg:gap-14 lg:pt-16">
-        <div className="min-w-0 animate-fade-up">
-          <Eyebrow>Open infrastructure. Real connections.</Eyebrow>
-          <h1 className="hero-title mt-7">
-            APIs for the<br /><span className="text-accent">agent era.</span>
+      <section className="grid items-center gap-8 pb-10 pt-4 sm:pb-16 sm:pt-8 lg:grid-cols-[1.05fr_1fr] lg:gap-6 lg:pb-20 lg:pt-10">
+        <div className="min-w-0">
+          <Eyebrow>{isProvider ? "Publish on APIritivo" : "The API marketplace"}</Eyebrow>
+          <h1 className="landing-title mt-5">
+            {isProvider ? (
+              <>
+                Your APIs.<span className="block text-accent">Ready to earn.</span>
+              </>
+            ) : (
+              <>
+                APIs for the<span className="block text-accent">agent era.</span>
+              </>
+            )}
           </h1>
-          <p className="mt-7 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
-            Discover services. Read their manifests. Get access with USDC.
-            An open marketplace for people and the agents they build.
+          <p className="mt-6 max-w-sm text-base leading-relaxed text-muted">
+            {isProvider ? "Publish your API, price your access, and earn USDC." : "Discover APIs. Buy access with USDC. Build with a single key."}
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button size="lg" href="/marketplace">Explore the marketplace <span aria-hidden="true">↗</span></Button>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Button size="lg" href={isProvider ? "/provider/new" : "/marketplace"}>
+              {isProvider ? "Publish API" : "Explore APIs"}
+              <span aria-hidden="true">↗</span>
+            </Button>
             {!loggedIn ? (
               <Button size="lg" variant="ghost" onClick={session.connect} disabled={session.status !== "ready" || session.connecting}>
-                {session.status !== "ready" ? "Connecting to Swarm ID…" : session.connecting ? "Complete sign-in" : "Enter with Swarm ID"}
+                {session.status !== "ready" ? "Connecting…" : session.connecting ? "Complete sign in" : "Sign in"}
               </Button>
             ) : (
-              <Button size="lg" variant="ghost" href="/provider">Provider dashboard</Button>
+              <Button size="lg" variant="subtle" href={isProvider ? "/provider" : "/passes"}>
+                {isProvider ? "My APIs" : "My passes"}
+              </Button>
             )}
           </div>
-          <p className="mt-4 text-xs leading-relaxed text-subtle">
-            {loggedIn ? "Your identity is connected. Choose your workspace below." : "Browse freely. Connect with Swarm ID when you’re ready."}
-          </p>
           {session.status === "error" || session.error ? (
             <div className="mt-5">
               <ErrorNotice message={session.error ?? "Swarm ID login failed."} detail={session.errorDetail} onRetry={session.retry} />
             </div>
           ) : null}
-          <div className="mt-10 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-5 text-xs text-subtle">
-            <span>Machine-readable manifests</span>
-            <span>Inspectable on-chain</span>
-            <span>Testnet edition</span>
-          </div>
         </div>
-        <div className="min-w-0 animate-fade-up" style={{ animationDelay: "100ms" }}>
-          <ApiExample />
+        <div className="landing-art relative min-w-0 overflow-hidden" aria-hidden="true">
+          <Image
+            src="/images/api-connection.png"
+            alt=""
+            width={1536}
+            height={1024}
+            priority
+            sizes="(min-width: 1280px) 580px, (min-width: 1024px) 48vw, 100vw"
+            className="h-auto w-full"
+          />
         </div>
       </section>
 
-      {loggedIn ? (
-        <section className="mb-14 border-t border-line pt-8">
-          <Eyebrow>Your workspace</Eyebrow>
-          <h2 className="mt-3 text-2xl font-medium tracking-tight">Welcome back, {session.identity?.name}.</h2>
-          <div className="mt-6"><RoleChooser /></div>
-        </section>
-      ) : null}
-
-      <section aria-labelledby="infrastructure-title" className="border-y border-line py-7">
-        <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
-          <h2 id="infrastructure-title" className="text-xs font-medium text-subtle">Built on open infrastructure</h2>
-          <span className="font-mono text-[10px] text-subtle">IDENTITY / STORAGE / REGISTRY / PAYMENTS</span>
-        </div>
-        <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-labelledby="infrastructure-title" className="flex flex-col gap-5 border-y border-line py-6 sm:flex-row sm:items-center sm:justify-between">
+        <h2 id="infrastructure-title" className="text-sm font-normal text-subtle">
+          Open infrastructure
+        </h2>
+        <div className="flex flex-wrap gap-x-7 gap-y-3 lg:gap-x-10">
           {PILLARS.map((pillar) => (
-            <div key={pillar.name}>
-              <a href={pillar.href} title={pillar.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 text-lg font-semibold tracking-tight hover:text-accent-text">
-                {pillar.name} <span aria-hidden="true" className="text-sm text-subtle">↗</span>
-              </a>
-              <p className="mt-2 max-w-xs text-xs leading-relaxed text-subtle">{pillar.text}</p>
-            </div>
+            <a
+              key={pillar.name}
+              href={pillar.href}
+              title={pillar.link}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-9 items-center gap-2 text-sm font-medium text-muted hover:text-content"
+            >
+              {pillar.name}{" "}
+              <span aria-hidden="true" className="text-sm text-subtle">
+                ↗
+              </span>
+            </a>
           ))}
         </div>
       </section>
 
-      <section className="grid gap-10 py-16 sm:py-20 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
-        <div>
-          <Eyebrow>From discovery to your first call</Eyebrow>
-          <h2 className="section-heading mt-5">Understand an API.<br />Then put it to work.</h2>
-          <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted">The service, its specification, and your access pass. Everything you need to make the next connection.</p>
-          <div className="mt-6"><Button variant="ghost" href="/marketplace">Find your next API <span aria-hidden="true">→</span></Button></div>
+      <section className="grid gap-10 pt-12 sm:pt-16 lg:grid-cols-[0.8fr_1fr] lg:gap-20" aria-labelledby="workflow-title">
+        <div className="min-w-0">
+          <h2 id="workflow-title" className="max-w-sm text-2xl font-medium sm:text-3xl">
+            {isProvider ? "Make your API discoverable." : "From discovery to request."}
+          </h2>
+          <ol className="mt-8 space-y-6">
+            {JOURNEYS[view].map(([title, description]) => (
+              <li key={title}>
+                <h3 className="text-sm font-medium">{title}</h3>
+                <p className="mt-1 text-sm text-subtle">{description}</p>
+              </li>
+            ))}
+          </ol>
+          <Link href="/docs" className="mt-7 inline-flex min-h-11 items-center gap-2 text-sm text-muted underline decoration-line-strong underline-offset-4 hover:text-content">
+            Read the docs <span aria-hidden="true">↗</span>
+          </Link>
         </div>
-        <ol className="divide-y divide-line border-y border-line">
-          {[
-            { title: "Discover a service", text: "Search the marketplace by category, provider, or the problem you’re solving." },
-            { title: "Inspect the manifest", text: "Read the operations and input types before you integrate. Follow the Swarm reference to inspect the source." },
-            { title: "Get access. Make the call.", text: "Connect your identity, purchase access with USDC on Fuji, and call the API with your pass." },
-          ].map((step, index) => (
-            <li key={step.title} className="flex gap-6 py-6">
-              <span className="pt-1 font-mono text-xs text-accent-text">0{index + 1}</span>
-              <div>
-                <h3 className="text-base font-semibold">{step.title}</h3>
-                <p className="mt-2 max-w-md text-sm leading-relaxed text-subtle">{step.text}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="flex flex-col items-start justify-between gap-8 rounded-panel border border-line bg-surface px-6 py-9 sm:px-10 md:flex-row md:items-center">
-        <div>
-          <Eyebrow>For providers</Eyebrow>
-          <h2 className="mt-4 text-2xl font-medium tracking-tight sm:text-3xl">Bring your API to the table.</h2>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">Define your operations, set your price, and publish. Give people and agents a clear way to discover what you’ve built.</p>
-        </div>
-        <Button size="lg" href="/provider/new" className="shrink-0">Publish a service <span aria-hidden="true">↗</span></Button>
+        <ApiExample key={view} initialFormat={isProvider ? "manifest" : "request"} />
       </section>
     </div>
   );

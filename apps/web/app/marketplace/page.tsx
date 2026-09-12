@@ -1,15 +1,15 @@
 "use client";
 
+import { categoryLabel, SERVICE_CATEGORIES } from "@apiritivo/shared";
 import { useMemo, useState } from "react";
-import { SERVICE_CATEGORIES, categoryLabel } from "@apiritivo/shared";
-import { useMarketplace } from "@/lib/use-services";
-import { useSession } from "@/lib/session";
 import { ServiceCard } from "@/components/service-card";
 import { Button, EmptyState, ErrorNotice, SectionTitle, ServiceCardSkeleton } from "@/components/ui";
+import { useMarketplace } from "@/lib/use-services";
+
+const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5", "s6"];
 
 export default function MarketplacePage() {
   const { data, loading, error, reload } = useMarketplace();
-  const session = useSession();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("all");
 
@@ -38,12 +38,9 @@ export default function MarketplacePage() {
   return (
     <div className="space-y-8">
       <SectionTitle
-        eyebrow="Marketplace"
-        title="Find your next connection."
-        description="Discover APIs, inspect their manifests, and choose the access that fits your next build."
+        title="Explore APIs"
         right={
           <div className="flex items-center gap-2 text-xs text-ink-400">
-            {data ? <span>{data.length} services</span> : null}
             <Button variant="ghost" size="sm" onClick={reload} disabled={loading}>
               Refresh
             </Button>
@@ -54,19 +51,9 @@ export default function MarketplacePage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="relative flex-1">
           <span className="sr-only">Search services, providers, or categories</span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search services, providers, categories…"
-            className="field-control"
-          />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search APIs or providers" className="field-control" />
         </label>
-        <select
-          aria-label="Filter by category"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="field-control sm:w-56"
-        >
+        <select aria-label="Filter by category" value={category} onChange={(e) => setCategory(e.target.value)} className="field-control sm:w-56">
           <option value="all">All categories</option>
           {categories.map((slug) => (
             <option key={slug} value={slug}>
@@ -76,50 +63,37 @@ export default function MarketplacePage() {
         </select>
       </div>
 
-      {categories.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setCategory("all")}
-            aria-pressed={category === "all"}
-            className={`min-h-9 rounded-control border px-3 py-1 text-xs transition-colors ${category === "all" ? "border-spritz-400/60 bg-spritz-500/10 text-spritz-300" : "border-line text-muted hover:border-line-strong"}`}
-          >
-            All
-          </button>
-          {categories.map((slug) => (
-            <button
-              key={slug}
-              type="button"
-              onClick={() => setCategory(slug === category ? "all" : slug)}
-              aria-pressed={category === slug}
-              className={`min-h-9 rounded-control border px-3 py-1 text-xs transition-colors ${category === slug ? "border-spritz-400/60 bg-spritz-500/10 text-spritz-300" : "border-line text-muted hover:border-line-strong"}`}
-            >
-              {categoryLabel(slug)}
-            </button>
-          ))}
-        </div>
+      {!loading && !error ? (
+        <p role="status" className="text-xs text-subtle">
+          {filtered.length} {filtered.length === 1 ? "API" : "APIs"}
+          {query || category !== "all" ? " found" : " available"}
+        </p>
       ) : null}
 
       {error ? <ErrorNotice message={error.message} detail={error.detail} onRetry={reload} /> : null}
 
       {loading ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <ServiceCardSkeleton key={i} />
+        <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+          {SKELETON_KEYS.map((k) => (
+            <ServiceCardSkeleton key={k} />
           ))}
         </div>
       ) : !error && (data?.length ?? 0) === 0 ? (
         <EmptyState
           icon="◌"
-          title="No services published yet."
-          description="Be the first provider: describe your API, upload the manifest to Swarm and publish it on Arkiv."
-          action={<Button href={session.identity ? "/provider/new" : "/provider"}>Publish a service</Button>}
+          title="No APIs yet"
+          description="Published APIs will appear here."
+          action={
+            <Button variant="ghost" onClick={reload}>
+              Refresh
+            </Button>
+          }
         />
       ) : !error && filtered.length === 0 ? (
         <EmptyState
           icon="⌕"
-          title="Nothing matches your search."
-          description="Try another keyword or clear the category filter."
+          title="No matching APIs"
+          description="Try another search or clear filters."
           action={
             <Button
               variant="ghost"
@@ -133,7 +107,7 @@ export default function MarketplacePage() {
           }
         />
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((s) => (
             <ServiceCard key={s.serviceId} service={s} />
           ))}

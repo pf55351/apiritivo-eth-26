@@ -3,7 +3,7 @@
  * The address comes from NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS; when unset the app
  * falls back to direct USDC transfers.
  */
-import { keccak256, parseAbi, toBytes, type Address, type Hex } from "viem";
+import { type Address, type Hex, keccak256, parseAbi, toBytes } from "viem";
 
 export const paymentsAbi = parseAbi([
   "function buy(address provider, bytes32 serviceId, uint256 amount, uint64 accessSeconds) returns (uint256 purchaseId)",

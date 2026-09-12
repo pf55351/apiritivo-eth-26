@@ -1,36 +1,37 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { arkivEntityUrl, arkivTxUrl } from "@apiritivo/arkiv";
+import { explorerAddressUrl, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
 import {
   ACCESS_DURATIONS,
-  SERVICE_CATEGORIES,
   buildManifest,
   formatAccessDuration,
   formatPriceUsdc,
   generateServiceId,
   manifestStats,
+  type OperationDraft,
+  type PrivateAttachment,
+  type PublishServiceResult,
   priceUsdcSchema,
   publishServiceInputSchema,
+  SERVICE_CATEGORIES,
+  type ServiceManifest,
   serializeManifest,
   slugify,
   validateManifest,
-  type OperationDraft,
-  type PublishServiceResult,
-  type PrivateAttachment,
-  type ServiceManifest,
 } from "@apiritivo/shared";
 import { swarmReferenceUrl, uploadPrivateFile, uploadServiceManifest } from "@apiritivo/swarm";
-import { arkivEntityUrl, arkivTxUrl } from "@apiritivo/arkiv";
-import { PAYMENT_CHAIN_NAME, explorerAddressUrl } from "@apiritivo/payments";
-import { useSwarmWallet } from "@/lib/swarm-wallet";
-import { ProofPanel, type ProofLink } from "@/components/proofs";
-import { useSession } from "@/lib/session";
-import { toFriendlyError, type FriendlyError } from "@/lib/errors";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 import { AuthGate } from "@/components/auth-gate";
+import { CodeBlock } from "@/components/code-panel";
 import { ManifestOperations } from "@/components/manifest-view";
-import { OperationsBuilder, emptyOperation } from "@/components/operations-builder";
-import { Button, CategoryPill, ErrorNotice, ProofChip, SectionTitle } from "@/components/ui";
+import { emptyOperation, OperationsBuilder } from "@/components/operations-builder";
+import { type ProofLink, ProofPanel } from "@/components/proofs";
+import { Button, CategoryPill, Disclosure, ErrorNotice, SectionTitle } from "@/components/ui";
+import { type FriendlyError, toFriendlyError } from "@/lib/errors";
+import { useSession } from "@/lib/session";
+import { useSwarmWallet } from "@/lib/swarm-wallet";
 
 type Step = "idle" | "uploading" | "uploading-private" | "publishing" | "done";
 
@@ -47,11 +48,11 @@ type Progress = {
 /** Private files travel through the Swarm ID iframe as one message; keep them small. */
 const PRIVATE_FILE_MAX_BYTES = 512 * 1024;
 
-const fieldCls =
-  "field-control";
+const fieldCls = "field-control";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: the control is rendered as children
     <label className="block">
       <span className="mb-1.5 flex items-baseline justify-between text-xs text-ink-300">
         <span>{label}</span>
@@ -64,13 +65,10 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 function StepRow({ label, state }: { label: string; state: "todo" | "active" | "done" | "error" }) {
   const icon = state === "done" ? "✓" : state === "error" ? "✕" : state === "active" ? "…" : "○";
-  const tone =
-    state === "done" ? "text-olive-400" : state === "error" ? "text-rose-400" : state === "active" ? "text-spritz-300" : "text-ink-400";
+  const tone = state === "done" ? "text-olive-400" : state === "error" ? "text-rose-400" : state === "active" ? "text-spritz-300" : "text-ink-400";
   return (
     <li className={`flex items-center gap-3 text-sm ${tone}`}>
-      <span className={`flex h-6 w-6 items-center justify-center rounded-full border border-current font-mono text-xs ${state === "active" ? "animate-pulse" : ""}`}>
-        {icon}
-      </span>
+      <span className={`flex h-6 w-6 items-center justify-center rounded-full border border-current font-mono text-xs ${state === "active" ? "animate-pulse" : ""}`}>{icon}</span>
       {label}
     </li>
   );
@@ -224,46 +222,57 @@ function PublishForm() {
   if (progress.step === "done" && progress.result) {
     return (
       <div className="mx-auto max-w-2xl space-y-6 animate-fade-up">
-        <div className="card rounded-3xl p-8 text-center">
+        <div className="py-8 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-olive-400/15 text-3xl text-olive-400">✓</div>
-          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.25em] text-olive-400">Service live</p>
-          <h2 className="mt-1 text-3xl font-semibold">{name}</h2>
-          <p className="mt-2 text-sm text-ink-300">Manifest stored on Swarm, service registered on Arkiv.</p>
-          <ul className="mx-auto mt-6 max-w-xs space-y-2 text-left">
-            <StepRow label="Uploading manifest to Swarm" state="done" />
-            {progress.privateFile ? <StepRow label="Encrypting private file on Swarm (ACT)" state="done" /> : null}
-            <StepRow label="Publishing service to Arkiv" state="done" />
-          </ul>
-          <div className="mt-6 flex justify-center gap-2">
-            <ProofChip label="Swarm" />
-            <ProofChip label="Arkiv" href={arkivEntityUrl(progress.result.entityKey)} />
-          </div>
+          <p className="mt-4 text-xs font-normal text-olive-400">API published</p>
+          <h2 className="mt-1 break-words text-3xl font-medium">{name}</h2>
+          <p className="mt-2 text-sm text-ink-300">Your API is now in the marketplace.</p>
+          {progress.privateFile ? <p className="mt-2 text-xs text-subtle">Private file encrypted. Grant access after each purchase.</p> : null}
+        </div>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button href={`/services/${progress.result.serviceId}`}>View API</Button>
+          <Button variant="subtle" href="/provider">
+            My APIs
+          </Button>
         </div>
         <ProofPanel
           columns={2}
-          title="Your service, verifiable"
+          title="Publication details"
           proofs={[
-            { network: "Swarm · public gateway", label: `manifestRef · ${progress.manifestBytes ?? 0} bytes · via ${progress.manifestVia === "gateway" ? "public gateway" : "Swarm ID"}`, value: progress.manifestRef ?? "", href: swarmReferenceUrl(progress.manifestRef ?? ""), hrefLabel: "Swarm gateway" },
-            { network: "Arkiv · Tiramisu testnet", label: "entity key", value: progress.result.entityKey, href: arkivEntityUrl(progress.result.entityKey), hrefLabel: "Arkiv explorer" },
+            {
+              network: "Swarm · public gateway",
+              label: `manifestRef · ${progress.manifestBytes ?? 0} bytes · via ${progress.manifestVia === "gateway" ? "public gateway" : "Swarm ID"}`,
+              value: progress.manifestRef ?? "",
+              href: swarmReferenceUrl(progress.manifestRef ?? ""),
+              hrefLabel: "Swarm gateway",
+            },
+            {
+              network: "Arkiv · Tiramisu testnet",
+              label: "entity key",
+              value: progress.result.entityKey,
+              href: arkivEntityUrl(progress.result.entityKey),
+              hrefLabel: "Arkiv explorer",
+            },
             { network: "Arkiv · Tiramisu testnet", label: "transaction", value: progress.result.txHash, href: arkivTxUrl(progress.result.txHash), hrefLabel: "Transaction" },
             ...(progress.privateFile
-              ? [{ network: "Swarm · public gateway", label: `private file · ${progress.privateFile.name} · ${progress.privateFile.bytes} bytes · ACT encrypted, no public link`, value: progress.privateFile.encryptedRef } satisfies ProofLink]
+              ? [
+                  {
+                    network: "Swarm · public gateway",
+                    label: `private file · ${progress.privateFile.name} · ${progress.privateFile.bytes} bytes · ACT encrypted, no public link`,
+                    value: progress.privateFile.encryptedRef,
+                  } satisfies ProofLink,
+                ]
               : []),
             { network: "Arkiv · Tiramisu testnet", label: "serviceId", value: progress.result.serviceId },
             { network: "Arkiv · Tiramisu testnet", label: "access terms", value: `${formatPriceUsdc(priceUsdc.trim())} · ${formatAccessDuration(accessSeconds)}` },
           ]}
         />
-        <div className="flex flex-wrap justify-center gap-3">
-          <Button href={`/services/${progress.result.serviceId}`}>View service</Button>
-          <Button variant="ghost" href="/provider">Back to dashboard</Button>
-          <Button variant="ghost" href="/marketplace">Marketplace</Button>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+    <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
       <form
         className="min-w-0 space-y-8"
         onSubmit={(e) => {
@@ -271,83 +280,54 @@ function PublishForm() {
           if (canPublish) void publish();
         }}
       >
-        <section className="card space-y-5 rounded-3xl p-6">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">1 · Service</p>
-            <h2 className="mt-1 text-xl font-semibold">What are you offering?</h2>
-          </div>
-          <Field label="Service name" hint="shown on the card">
+        <section className="space-y-5 border-t border-line pt-6 first:border-0 first:pt-0">
+          <h2 className="text-xl font-medium">API details</h2>
+          <Field label="Service name">
             <input className={fieldCls} placeholder="Market Data API" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
           </Field>
           <Field label="Description" hint={`${description.length}/400`}>
             <textarea
               className={`${fieldCls} h-28 resize-none py-3`}
-              placeholder="Real-time crypto prices for any symbol."
+              placeholder="Crypto prices for any symbol."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={400}
             />
           </Field>
           <Field label="Category">
-            <div className="flex flex-wrap gap-2">
-              {SERVICE_CATEGORIES.map((c) => (
-                <button
-                  key={c.slug}
-                  type="button"
-                  onClick={() => setCategory(c.slug)}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                    category === c.slug ? "border-spritz-400/70 bg-spritz-500/15 text-spritz-300" : "border-white/15 text-ink-300 hover:border-white/25"
-                  }`}
-                >
-                  {c.label}
-                </button>
+            <select className={fieldCls} value={category} onChange={(event) => setCategory(event.target.value)}>
+              {SERVICE_CATEGORIES.map((item) => (
+                <option key={item.slug} value={item.slug}>
+                  {item.label}
+                </option>
               ))}
-              <button
-                type="button"
-                onClick={() => setCategory("custom")}
-                className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                  category === "custom" ? "border-spritz-400/70 bg-spritz-500/15 text-spritz-300" : "border-white/15 text-ink-300 hover:border-white/25"
-                }`}
-              >
-                Custom…
-              </button>
-            </div>
-            {category === "custom" ? (
+              <option value="custom">Custom</option>
+            </select>
+          </Field>
+          {category === "custom" ? (
+            <Field label="Custom category">
               <input
                 className={`${fieldCls} mt-3`}
+                aria-label="Custom category"
                 placeholder="my-category"
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
               />
-            ) : null}
-          </Field>
+            </Field>
+          ) : null}
         </section>
 
-        <section className="card space-y-5 rounded-3xl p-6">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">2 · Access terms</p>
-            <h2 className="mt-1 text-xl font-semibold">What does one access cost?</h2>
-            <p className="mt-1 text-sm text-ink-300">Stored on Arkiv with the listing. Clients will buy exactly this in Phase 2.</p>
-          </div>
+        <section className="space-y-5 border-t border-line pt-6 first:border-0 first:pt-0">
+          <h2 className="text-xl font-medium">Price and duration</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Price per access" hint="USDC">
+            <Field label="Price per access">
               <div className="relative">
-                <input
-                  className={`${fieldCls} pr-16 font-mono`}
-                  inputMode="decimal"
-                  placeholder="0.50"
-                  value={priceUsdc}
-                  onChange={(e) => setPriceUsdc(e.target.value)}
-                />
+                <input className={`${fieldCls} pr-16 font-mono`} inputMode="decimal" placeholder="0.50" value={priceUsdc} onChange={(e) => setPriceUsdc(e.target.value)} />
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink-400">USDC</span>
               </div>
             </Field>
-            <Field label="Access duration" hint="per purchase">
-              <select
-                className={fieldCls}
-                value={accessSeconds}
-                onChange={(e) => setAccessSeconds(Number(e.target.value))}
-              >
+            <Field label="Access duration">
+              <select className={fieldCls} value={accessSeconds} onChange={(e) => setAccessSeconds(Number(e.target.value))}>
                 {ACCESS_DURATIONS.map((d) => (
                   <option key={d.seconds} value={d.seconds}>
                     {d.label}
@@ -356,46 +336,43 @@ function PublishForm() {
               </select>
             </Field>
           </div>
-          <Field label="Payout wallet" hint={`USDC on ${PAYMENT_CHAIN_NAME}`}>
-            <div className={`${fieldCls} flex items-center justify-between gap-2 font-mono`}>
-              <span className="truncate text-ink-100">{swarmWallet.address ?? (swarmWallet.status === "deriving" ? "Deriving from your Swarm ID…" : "Swarm wallet unavailable")}</span>
+          <div>
+            <p className="mb-2 text-xs text-muted">Payout wallet · {PAYMENT_CHAIN_NAME}</p>
+            <div className="flex min-w-0 items-center justify-between gap-2 font-mono text-xs">
+              <span className="truncate text-ink-100">
+                {swarmWallet.address ?? (swarmWallet.status === "deriving" ? "Deriving from your Swarm ID…" : "Swarm wallet unavailable")}
+              </span>
               {swarmWallet.address ? (
                 <a href={explorerAddressUrl(swarmWallet.address)} target="_blank" rel="noreferrer" className="shrink-0 text-[11px] text-ink-400 hover:text-ink-200">
                   explorer ↗
                 </a>
               ) : null}
             </div>
-            <p className="mt-1.5 text-[11px] text-ink-400">
-              Your Swarm wallet, derived from your Swarm ID. Same identity, same address on every device. Withdraw or export its key from the provider dashboard.
-            </p>
-          </Field>
+            <p className="mt-1.5 text-[11px] text-ink-400">Payments go to your Swarm wallet.</p>
+          </div>
         </section>
 
-        <section className="card space-y-5 rounded-3xl p-6">
+        <section className="space-y-5 border-t border-line pt-6 first:border-0 first:pt-0">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">3 · Operations</p>
-            <h2 className="mt-1 text-xl font-semibold">How does a machine call it?</h2>
-            <p className="mt-1 text-sm text-ink-300">Each operation has a name and typed input fields. This becomes the Swarm manifest.</p>
+            <h2 className="mt-1 text-xl font-medium">Operations</h2>
+            <p className="mt-1 text-sm text-ink-300">Define operation names and inputs.</p>
           </div>
           <OperationsBuilder operations={operations} onChange={setOperations} />
         </section>
 
-        <section className="card space-y-4 rounded-3xl p-6">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">3b · Private file <span className="text-ink-400">· optional</span></p>
-            <h2 className="mt-1 text-xl font-semibold">Something only buyers should read?</h2>
-            <p className="mt-1 text-sm text-ink-300">
-              Full docs, examples, a data sample. It is encrypted on Swarm with an Access Control Trie: nobody can read it until you grant a buyer&apos;s Swarm key from your dashboard. Max {Math.round(PRIVATE_FILE_MAX_BYTES / 1024)} KB.
-            </p>
-          </div>
+        <Disclosure title="Private file" meta={privateFile ? privateFile.name : "Optional"}>
+          <p className="mb-4 text-xs text-subtle">Encrypted on Swarm. Grant each buyer access after purchase. Max {Math.round(PRIVATE_FILE_MAX_BYTES / 1024)} KB.</p>
           <Field label="File" hint="stays encrypted on Swarm">
             <input
               type="file"
-              className="block w-full text-sm text-ink-300 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink-100 hover:file:bg-white/15"
+              className="block w-full text-sm text-ink-300 file:mr-3 file:rounded-control file:border-0 file:bg-surface-raised file:px-3 file:py-2 file:text-xs file:font-medium file:text-content hover:file:bg-ink-800"
               onChange={(e) => {
                 const f = e.target.files?.[0] ?? null;
                 if (f && f.size > PRIVATE_FILE_MAX_BYTES) {
-                  setProgress({ step: "idle", error: { message: `Private file is too large (${Math.round(f.size / 1024)} KB, max ${Math.round(PRIVATE_FILE_MAX_BYTES / 1024)} KB).`, at: "form" } });
+                  setProgress({
+                    step: "idle",
+                    error: { message: `Private file is too large (${Math.round(f.size / 1024)} KB, max ${Math.round(PRIVATE_FILE_MAX_BYTES / 1024)} KB).`, at: "form" },
+                  });
                   e.target.value = "";
                   setPrivateFile(null);
                   return;
@@ -406,27 +383,25 @@ function PublishForm() {
             {privateFile ? (
               <p className="mt-1.5 text-[11px] text-ink-400">
                 {privateFile.name} · {privateFile.size < 1024 ? `${privateFile.size} B` : `${Math.round(privateFile.size / 1024)} KB`} · {privateFile.type || "unknown type"}{" "}
-                <button type="button" className="underline hover:text-ink-200" onClick={() => setPrivateFile(null)}>remove</button>
+                <button type="button" className="underline hover:text-ink-200" onClick={() => setPrivateFile(null)}>
+                  remove
+                </button>
               </p>
             ) : null}
           </Field>
-        </section>
+        </Disclosure>
 
-        <section className="card space-y-4 rounded-3xl p-6">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">4 · Publish</p>
-            <h2 className="mt-1 text-xl font-semibold">Ship it</h2>
-          </div>
+        <section className="space-y-4 border-t border-line pt-6">
+          <h2 className="text-xl font-medium">Ready to publish</h2>
           <div className="flex flex-wrap items-center gap-2 text-xs text-ink-300">
             <span>Publishing as</span>
-            <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 font-medium text-ink-100">{identity.name}</span>
-            <span className="break-all font-mono text-[11px] text-ink-400">{identity.id}</span>
+            <span className="font-medium text-content">{identity.name}</span>
           </div>
 
           {!session.canUpload ? (
             <ErrorNotice
               tone="warn"
-              message="Publishing requires Swarm upload capability for this identity. Swarm upload unavailable for this identity (no postage stamp / no subsidised gateway)."
+              message="Storage is unavailable. Add a Swarm drive or enable the shared gateway."
               detail={session.uploadUnavailableReason ? `uploadMode=${session.uploadMode ?? "?"} reason=${session.uploadUnavailableReason}` : undefined}
             />
           ) : null}
@@ -451,71 +426,63 @@ function PublishForm() {
           ) : null}
 
           {busy ? (
-            <ul className="space-y-2 rounded-2xl border border-white/15 bg-ink-900/60 p-4">
+            <ul className="space-y-2 py-3">
               <StepRow label="Uploading manifest to Swarm" state={progress.step === "uploading" ? "active" : "done"} />
-              {privateFile ? <StepRow label="Encrypting private file on Swarm (ACT)" state={progress.step === "uploading-private" ? "active" : progress.step === "publishing" ? "done" : "todo"} /> : null}
+              {privateFile ? (
+                <StepRow
+                  label="Encrypting private file on Swarm (ACT)"
+                  state={progress.step === "uploading-private" ? "active" : progress.step === "publishing" ? "done" : "todo"}
+                />
+              ) : null}
               <StepRow label="Publishing service to Arkiv" state={progress.step === "publishing" ? "active" : "todo"} />
             </ul>
           ) : null}
 
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" size="lg" disabled={!canPublish || busy}>
-              {progress.step === "uploading" ? "Uploading to Swarm…" : progress.step === "uploading-private" ? "Encrypting private file…" : progress.step === "publishing" ? "Publishing to Arkiv…" : "Publish service"}
+              {progress.step === "uploading"
+                ? "Uploading to Swarm…"
+                : progress.step === "uploading-private"
+                  ? "Encrypting private file…"
+                  : progress.step === "publishing"
+                    ? "Publishing to Arkiv…"
+                    : "Publish API"}
             </Button>
             <Link href="/provider" className="text-sm text-ink-400 hover:text-ink-100">
               Cancel
             </Link>
           </div>
-          <p className="text-[11px] text-ink-400">
-            Order is enforced: manifest → Swarm → reference → Arkiv entity. Arkiv is never written before Swarm succeeds.
-          </p>
+          <p className="text-[11px] text-ink-400">Your listing and API manifest will be public.</p>
         </section>
       </form>
 
       <aside className="min-w-0 space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
-        <section className="card rounded-3xl p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">Card preview</p>
-          <div className="mt-4 rounded-2xl border border-white/15 bg-ink-900/60 p-5">
+        <section className="min-w-0">
+          <p className="text-sm text-subtle">Listing preview</p>
+          <div className="mt-4 border-t border-line pt-5">
             <CategoryPill slug={effectiveCategory || "utility"} />
-            <h3 className="mt-3 text-lg font-semibold">{name.trim() || "Your service name"}</h3>
-            <p className="mt-1 line-clamp-2 text-sm text-ink-300">{description.trim() || "A short description that clients will read on the marketplace."}</p>
-            <p className="mt-3 text-sm text-ink-200">by {identity.name}</p>
+            <h3 className="mt-3 break-words text-lg font-medium">{name.trim() || "Your API name"}</h3>
+            <p className="mt-1 line-clamp-2 break-words text-sm text-ink-300">{description.trim() || "Your API description."}</p>
+            <p className="mt-3 break-words text-xs text-subtle">{identity.name}</p>
             <p className="mt-2 font-mono text-xs text-spritz-300">
-              {priceUsdcSchema.safeParse(priceUsdc).success ? formatPriceUsdc(priceUsdc.trim()) : "— USDC"} · {formatAccessDuration(accessSeconds)}
+              {priceUsdcSchema.safeParse(priceUsdc).success ? formatPriceUsdc(priceUsdc.trim()) : "Enter a price"} · {formatAccessDuration(accessSeconds)}
             </p>
-            <div className="mt-3 flex gap-2">
-              <ProofChip label="Arkiv" ok={false} />
-              <ProofChip label="Swarm" ok={false} />
-            </div>
           </div>
         </section>
 
-        <section className="card rounded-3xl p-6">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">Manifest preview</p>
-            <span className="font-mono text-[11px] text-ink-400">
-              {stats.operations} op · {stats.inputs} inputs
-            </span>
-          </div>
-          <div className="mt-4">
+        <section className="min-w-0">
+          <Disclosure title="Operations preview" meta={stats.operations}>
             <ManifestOperations manifest={manifest} compact />
-          </div>
-          <details className="group mt-4 rounded-2xl border border-white/15 bg-ink-900/70" open>
+          </Disclosure>
+          <details className="ui-disclosure mt-4">
             <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-ink-300 hover:text-ink-100">
-              <span>Raw manifest (goes to Swarm)</span>
+              <span>Manifest JSON</span>
               <span className="text-xs transition-transform group-open:rotate-90">▸</span>
             </summary>
-            <pre className="max-w-full overflow-auto border-t border-white/15 p-4 font-mono text-xs leading-relaxed text-ink-200">{serializeManifest(manifest)}</pre>
+            <CodeBlock label="Manifest JSON" className="max-w-full overflow-auto py-4 font-mono text-xs leading-relaxed text-muted">
+              {serializeManifest(manifest)}
+            </CodeBlock>
           </details>
-          {!manifestValidation.ok ? (
-            <ul className="mt-3 space-y-1 text-xs text-amber-200">
-              {manifestValidation.errors.map((e) => (
-                <li key={e}>• {e}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-xs text-olive-400">Manifest is valid.</p>
-          )}
         </section>
       </aside>
     </div>
@@ -524,15 +491,13 @@ function PublishForm() {
 
 export default function NewServicePage() {
   return (
-    <AuthGate title="Sign in to publish a service">
+    <AuthGate title="Sign in to publish APIs">
       <div className="space-y-8">
         <SectionTitle
-          eyebrow="Provider · new service"
-          title="Publish a service"
-          description="Friendly form first. The reduced manifest is generated live, uploaded to Swarm, then the service is registered on Arkiv."
+          title="Publish API"
           right={
             <Link href="/provider" className="text-sm text-ink-400 hover:text-ink-100">
-              ← Dashboard
+              ← My APIs
             </Link>
           }
         />

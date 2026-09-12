@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { verifyAccessPass, type AccessCheck } from "@apiritivo/arkiv";
+import { type AccessCheck, verifyAccessPass } from "@apiritivo/arkiv";
 import type { BotVerification } from "@apiritivo/shared";
+import { NextResponse } from "next/server";
 
 /** Shared by /api/bot and /api/gateway: check the bearer pass against Arkiv. */
 export async function requireAccessPass(request: Request, serviceId: string): Promise<{ check: AccessCheck & { ok: true }; verification: BotVerification } | NextResponse> {

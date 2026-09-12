@@ -37,9 +37,18 @@ const res = await fetch(url, {
   headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
   body: JSON.stringify({ operation, input }),
 });
-const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; result?: unknown; verification?: { secondsRemaining?: number; expiresAtBlock?: string }; upstream?: string };
+const json = (await res.json().catch(() => ({}))) as {
+  ok?: boolean;
+  error?: string;
+  result?: unknown;
+  verification?: { secondsRemaining?: number; expiresAtBlock?: string };
+  upstream?: string;
+};
 console.log(`HTTP ${res.status} in ${Date.now() - started} ms`);
-if (json.verification) console.log(`pass verified on Arkiv ✓  expires in ${json.verification.secondsRemaining ?? "?"} s (block ${json.verification.expiresAtBlock ?? "?"})  upstream=${json.upstream ?? "-"}`);
+if (json.verification)
+  console.log(
+    `pass verified on Arkiv ✓  expires in ${json.verification.secondsRemaining ?? "?"} s (block ${json.verification.expiresAtBlock ?? "?"})  upstream=${json.upstream ?? "-"}`,
+  );
 if (json.error) console.log(`error: ${json.error}`);
 console.log(JSON.stringify(json.result ?? json, null, 2));
 process.exit(res.ok ? 0 : 1);

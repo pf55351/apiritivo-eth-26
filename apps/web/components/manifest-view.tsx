@@ -1,13 +1,6 @@
 "use client";
 
 import type { ServiceManifest } from "@apiritivo/shared";
-import { JsonInspector } from "./ui";
-
-const TYPE_TONE: Record<string, string> = {
-  string: "text-spritz-300",
-  number: "text-sky-300",
-  boolean: "text-rose-400",
-};
 
 export function ManifestOperations({ manifest, compact = false }: { manifest: ServiceManifest; compact?: boolean }) {
   const entries = Object.entries(manifest.operations);
@@ -15,14 +8,13 @@ export function ManifestOperations({ manifest, compact = false }: { manifest: Se
     return <p className="text-sm text-ink-400">No operations yet.</p>;
   }
   return (
-    <ul className={`grid gap-3 ${compact ? "" : "sm:grid-cols-2"}`}>
+    <ul className={`divide-y divide-line ${compact ? "text-xs" : "text-sm"}`}>
       {entries.map(([name, op]) => {
         const inputs = Object.entries(op.input);
         return (
-          <li key={name} className="rounded-2xl border border-white/15 bg-ink-900/60 p-4">
+          <li key={name} className="py-4 first:pt-0 last:pb-0">
             <div className="flex items-center gap-2">
-              <span className="rounded-md bg-spritz-500/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-spritz-300">op</span>
-              <code className="font-mono text-sm text-ink-100">{name}</code>
+              <code className="break-all font-mono text-sm text-content">{name}</code>
             </div>
             <div className="mt-3 space-y-1.5">
               {inputs.length === 0 ? (
@@ -30,8 +22,8 @@ export function ManifestOperations({ manifest, compact = false }: { manifest: Se
               ) : (
                 inputs.map(([field, type]) => (
                   <div key={field} className="flex items-center justify-between gap-3 font-mono text-xs">
-                    <span className="text-ink-200">{field}</span>
-                    <span className={`${TYPE_TONE[type] ?? "text-ink-300"}`}>{type}</span>
+                    <span className="min-w-0 break-all text-ink-200">{field}</span>
+                    <span className="shrink-0 text-subtle">{type}</span>
                   </div>
                 ))
               )}
@@ -40,14 +32,5 @@ export function ManifestOperations({ manifest, compact = false }: { manifest: Se
         );
       })}
     </ul>
-  );
-}
-
-export function ManifestPanel({ manifest }: { manifest: ServiceManifest }) {
-  return (
-    <div className="space-y-4">
-      <ManifestOperations manifest={manifest} />
-      <JsonInspector value={manifest} title="Raw manifest (Swarm)" />
-    </div>
   );
 }

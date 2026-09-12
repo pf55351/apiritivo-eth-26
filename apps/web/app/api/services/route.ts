@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
-import { publishServiceInputSchema } from "@apiritivo/shared";
 import { ArkivWriterNotConfiguredError, getWriterStatus, isWriterConfigured, publishService } from "@apiritivo/arkiv/server";
+import { publishServiceInputSchema } from "@apiritivo/shared";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Vercel: on-chain verification plus Arkiv writes can exceed the 10 s default. */
+export const maxDuration = 60;
 
 /**
  * POST /api/services — create the Arkiv service entity.
@@ -23,17 +25,11 @@ export async function POST(request: Request) {
 
   const parsed = publishServiceInputSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid service data.", issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid service data.", issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) }, { status: 400 });
   }
 
   if (!isWriterConfigured()) {
-    return NextResponse.json(
-      { error: "Arkiv publication failed.", reason: "Arkiv writer not configured. Set ARKIV_WRITER_PRIVATE_KEY on the server." },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Arkiv publication failed.", reason: "Arkiv writer not configured. Set ARKIV_WRITER_PRIVATE_KEY on the server." }, { status: 503 });
   }
   const writer = await getWriterStatus();
   if (writer.funded === false) {

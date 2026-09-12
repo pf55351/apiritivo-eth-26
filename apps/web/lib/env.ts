@@ -7,8 +7,6 @@ export const publicEnv = {
   // Subsidised gateway that stamps uploads for identities without a drive.
   // Same value the official Swarm ID demo uses. Set to "off" to disable.
   swarmSubsidisedGatewayUrl:
-    process.env.NEXT_PUBLIC_SWARM_SUBSIDISED_GATEWAY_URL === "off"
-      ? undefined
-      : process.env.NEXT_PUBLIC_SWARM_SUBSIDISED_GATEWAY_URL || "https://api.gateway.ethswarm.org/",
+    process.env.NEXT_PUBLIC_SWARM_SUBSIDISED_GATEWAY_URL === "off" ? undefined : process.env.NEXT_PUBLIC_SWARM_SUBSIDISED_GATEWAY_URL || "https://api.gateway.ethswarm.org/",
   isDev: process.env.NODE_ENV !== "production",
 };

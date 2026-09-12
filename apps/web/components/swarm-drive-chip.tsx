@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { getSwarmDrive, type SwarmDrive } from "@apiritivo/swarm";
-import { useSession } from "@/lib/session";
+import { useEffect, useState } from "react";
 import { publicEnv } from "@/lib/env";
 import { formatTtl, shortRef } from "@/lib/format";
+import { useSession } from "@/lib/session";
 
 const WARN_BELOW_SECONDS = 7 * 86_400;
 
@@ -40,11 +40,9 @@ export function SwarmDriveChip() {
 
   if (!ownStamp || drive === null) return null;
 
-  const manageUrl = publicEnv.swarmIframeOrigin.replace(/\/+$/, "") + "/";
+  const manageUrl = `${publicEnv.swarmIframeOrigin.replace(/\/+$/, "")}/`;
   const expiring = drive?.ttlSeconds !== undefined && drive.ttlSeconds < WARN_BELOW_SECONDS;
-  const tone = expiring
-    ? "border-amber-300/30 bg-amber-300/10 text-amber-200"
-    : "border-olive-400/30 bg-olive-400/10 text-olive-400";
+  const tone = expiring ? "border-amber-300/30 bg-amber-300/10 text-amber-200" : "border-olive-400/30 bg-olive-400/10 text-olive-400";
 
   return (
     <a

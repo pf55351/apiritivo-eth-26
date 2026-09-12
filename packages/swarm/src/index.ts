@@ -5,13 +5,9 @@
  * `@snaha/swarm-id` `SwarmIdClient` methods: initialize, connect, disconnect,
  * connectionInfo, uploadData, downloadData, destroy.
  */
-import type { SwarmIdClient, ConnectionInfo as SdkConnectionInfo } from "@snaha/swarm-id";
-import {
-  manifestFromBytes,
-  manifestToBytes,
-  type ManifestValidation,
-  type ServiceManifest,
-} from "@apiritivo/shared";
+
+import { type ManifestValidation, manifestFromBytes, manifestToBytes, type ServiceManifest } from "@apiritivo/shared";
+import type { ConnectionInfo as SdkConnectionInfo, SwarmIdClient } from "@snaha/swarm-id";
 
 export type SwarmIdentity = {
   id: string;
@@ -61,14 +57,7 @@ export type SwarmAdapterConfig = {
 };
 
 export class SwarmError extends Error {
-  readonly code:
-    | "not-initialized"
-    | "login-failed"
-    | "upload-unavailable"
-    | "upload-failed"
-    | "download-failed"
-    | "invalid-manifest"
-    | "act-failed";
+  readonly code: "not-initialized" | "login-failed" | "upload-unavailable" | "upload-failed" | "download-failed" | "invalid-manifest" | "act-failed";
   readonly cause?: unknown;
   constructor(code: SwarmError["code"], message: string, cause?: unknown) {
     super(message);
@@ -375,7 +364,7 @@ type RawBatch = {
 /** Pure mapping from the SDK batch shape (exported for tests). Bee semantics:
  * usage = utilization / 2^(depth - bucketDepth). */
 export function driveFromBatch(batch: RawBatch): SwarmDrive {
-  const slots = Math.pow(2, Math.max(0, batch.depth - batch.bucketDepth));
+  const slots = 2 ** Math.max(0, batch.depth - batch.bucketDepth);
   const used = slots > 0 ? (batch.utilization / slots) * 100 : 0;
   return {
     batchId: batch.batchID,

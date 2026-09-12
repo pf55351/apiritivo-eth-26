@@ -1,0 +1,90 @@
+# UI guidance
+
+## Design Context
+
+Audience: API developers, agent builders, providers.
+
+Tasks: discover, inspect, buy access, call, publish, manage earnings.
+
+Tone: technical, premium, simple.
+
+Reference: [Supabase](https://supabase.com/). Keep APIritivo orange.
+
+## Rules
+
+* Short copy. Keywords preferred.
+* Labels: 1 to 3 words. Headings: 2 to 5 words.
+* Helper text only when needed. One brief sentence.
+* No nested rectangular panels. Use rows, spacing, dividers.
+* One primary action per section.
+* No dash phrases in visible UI prose. Avoid hyphenated compounds and dash separators.
+* Preserve exact URLs, code, identifiers, negative numbers, and user content.
+* Keep price, network, duration, permissions, and errors explicit.
+* SDK details: development disclosures.
+* Default view: name, state, price or balance, duration, next action.
+* Addresses, receipts, proofs, JSON, and export tools: closed disclosures.
+* API keys: copy action first; reveal on request.
+* One place for each metric. Label recorded sales separately from contract balances.
+* Service page: operations and tester together; supporting data below, never a tall sidebar.
+* Provider page: API list and wallet first. History and connection details below.
+* Prefer borderless sections and simple rows. Use a surface only to focus a decision.
+* Keep actionable errors and disabled action reasons visible outside disclosures.
+
+These writing rules apply to product UI, including page titles. Technical documentation and code syntax keep their normal notation.
+
+## Style
+
+| Element | Rule |
+| --- | --- |
+| Body | Inter · regular |
+| Headings | Manrope · medium · normal tracking |
+| Code | Source Code Pro |
+| Palette | Orange `#ff7847` · charcoal · warm white |
+| Borders | 1px solid |
+| Corners | Controls 6px · panels 12px |
+| Buttons | Primary · secondary · subtle · danger |
+| Layout | Flat · spacious · no panel inside panel |
+| Interaction | Visible focus · reduced motion · mobile targets |
+
+The account control uses a circular, identity-specific monogram with a spritz
+accent and an orbital ring. Reuse `ProfileAvatar` in the header and account menu;
+the connected Swarm identity is unchanged. Keep ring motion brief and respect
+reduced motion.
+
+Form fields and code editors may have functional boundaries. Remove extra decorative containers around them.
+
+## Workspaces
+
+* Client: Marketplace, My passes.
+* Provider: My APIs, Publish.
+* Docs and service details: shared. Service actions follow the active view; switching keeps the current API open.
+* Header switch: compact toggle with an orange thumb and an animated role label beside it. Keep keyboard focus and reduced motion support.
+* Navbar: transparent with backdrop blur. Active and hovered links use a thin white underline, never a filled rectangle. Respect reduced transparency preferences.
+* Hide the other view's navigation and actions. Direct links require an explicit switch.
+* Keep one identity connected. Save the view per identity; guests use a separate preference.
+* View selection controls the interface, never permissions or payment validation.
+
+## Source files
+
+* [Live CSS](../apps/web/app/globals.css): tokens, variants, spacing.
+* [Components](../apps/web/components/ui.tsx): reuse existing props.
+* `Disclosure`: shared native disclosure for secondary information; children stay mounted.
+* [Code panel](../apps/web/components/code-panel.tsx): code, copy, format controls.
+* [Workspace switch](../apps/web/components/workspace-switch.tsx): Client and Provider views.
+* `/design-system`: component preview, not a separate rulebook.
+
+## Skills
+
+* [Taste](https://github.com/Leonxlnx/taste-skill/tree/main/skills/taste-skill): landing pages and redesign review. Installed locally as `taste-skill` (skill name `design-taste-frontend`).
+* [Layout](skills/apiritivo-ui-layout/SKILL.md)
+* [Copy](skills/apiritivo-ui-copy/SKILL.md)
+* [Review](skills/apiritivo-ui-review/SKILL.md)
+
+All UI guidance lives here. Other repo files link here. Keep runtime and data rules in `CLAUDE.md`.
+
+Taste settings: `DESIGN_VARIANCE=6`, `MOTION_INTENSITY=3`, `VISUAL_DENSITY=3`.
+Preserve the existing brand and dark theme. Keep interactions quiet. Use one purposeful hero image and the real API example component; avoid decorative filler.
+Taste covers marketing surfaces. Use the project skills for dashboards, forms, and reference tables.
+For each route: context → essential information → consolidate → source review → next route. Follow the user's testing permissions.
+
+Latest pass: [route review](route-review.md).

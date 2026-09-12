@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { arkivEntityUrl, arkivTxUrl, type BlockTiming, formatPassBearer, generatePassSecret, hashPassSecret, secondsUntilBlock } from "@apiritivo/arkiv";
+import { AVAX_FAUCET_URL, explorerAddressUrl, explorerTxUrl, isContractMode, PAYMENT_CHAIN_NAME, paymentsContractAddress, USDC_FAUCET_URL } from "@apiritivo/payments";
+import { hasInjectedWallet, injectedSigner, payForAccess, type Signer, waitForPayment } from "@apiritivo/payments/browser";
 import type { AccessPass, ArkivService, IssueAccessPassResult } from "@apiritivo/shared";
 import { formatAccessDuration, formatPriceUsdc, formatRemaining } from "@apiritivo/shared";
-import { PAYMENT_CHAIN_NAME, USDC_FAUCET_URL, AVAX_FAUCET_URL, explorerTxUrl, explorerAddressUrl, isContractMode, paymentsContractAddress } from "@apiritivo/payments";
-import { hasInjectedWallet, injectedSigner, payForAccess, waitForPayment, type Signer } from "@apiritivo/payments/browser";
-import { arkivEntityUrl, arkivTxUrl, formatPassBearer, generatePassSecret, hashPassSecret, type BlockTiming, secondsUntilBlock } from "@apiritivo/arkiv";
-import { ApiKeyBox } from "./api-key-box";
-import { useSession } from "@/lib/session";
 import { getGranteeKey } from "@apiritivo/swarm";
+import { useState } from "react";
+import { type FriendlyError, toFriendlyError } from "@/lib/errors";
+import { useSession } from "@/lib/session";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
-import { toFriendlyError, type FriendlyError } from "@/lib/errors";
-import { Button, ErrorNotice } from "./ui";
+import { ApiKeyBox } from "./api-key-box";
+import { Button, Disclosure, ErrorNotice } from "./ui";
 
 type Step = "idle" | "approving" | "paying" | "confirming" | "issuing" | "done";
 
@@ -28,8 +28,7 @@ function StepRow({ label, state }: { label: string; state: "todo" | "active" | "
 }
 
 const ORDER: Step[] = ["approving", "paying", "confirming", "issuing", "done"];
-const stateOf = (current: Step, step: Step): "todo" | "active" | "done" =>
-  current === step ? "active" : ORDER.indexOf(current) > ORDER.indexOf(step) ? "done" : "todo";
+const stateOf = (current: Step, step: Step): "todo" | "active" | "done" => (current === step ? "active" : ORDER.indexOf(current) > ORDER.indexOf(step) ? "done" : "todo");
 
 export function BuyAccess({
   service,
@@ -45,6 +44,7 @@ export function BuyAccess({
   const session = useSession();
   const swarmWallet = useSwarmWallet();
   const [useInjected, setUseInjected] = useState(false);
+  const [repurchase, setRepurchase] = useState(false);
   const [step, setStep] = useState<Step>("idle");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<FriendlyError | null>(null);
@@ -89,7 +89,15 @@ export function BuyAccess({
       const res = await fetch("/api/access-passes", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ serviceId: service.serviceId, buyerId: session.identity.id, buyerAddress: sent.from, txHash: sent.txHash, secretHash, encryptedSecret, buyerPublicKey: getGranteeKey() }),
+        body: JSON.stringify({
+          serviceId: service.serviceId,
+          buyerId: session.identity.id,
+          buyerAddress: sent.from,
+          txHash: sent.txHash,
+          secretHash,
+          encryptedSecret,
+          buyerPublicKey: getGranteeKey(),
+        }),
       });
       const json = (await res.json().catch(() => ({}))) as Partial<IssueAccessPassResult> & { error?: string; reason?: string };
       if (!res.ok || !json.passKey) throw new Error(json.reason ?? json.error ?? "Access pass could not be issued.");
@@ -97,6 +105,7 @@ export function BuyAccess({
       setResult(issued);
       setResultBearer(formatPassBearer(issued.passKey, secret));
       setStep("done");
+      setRepurchase(false);
       onIssued(issued);
       void swarmWallet.refreshBalances();
     } catch (err) {
@@ -106,127 +115,157 @@ export function BuyAccess({
     }
   }
 
-  const payerLabel = useInjected ? "MetaMask / Core" : "your Swarm wallet";
+  const checkoutVisible = !activePass || repurchase || busy;
 
   return (
-    <section className="card rounded-3xl p-6">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">Access</p>
-      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
-        <span className="text-3xl font-semibold tracking-tight text-ink-100">{service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}</span>
-        <span className="text-sm text-ink-300">{service.accessSeconds ? `per ${formatAccessDuration(service.accessSeconds)}` : "open access"}</span>
+    <section className="min-w-0 rounded-panel bg-surface p-5 sm:p-6">
+      <p className="text-xs text-subtle">{PAYMENT_CHAIN_NAME}</p>
+      <div className="mt-3 flex flex-wrap items-baseline gap-2">
+        <span className="text-3xl font-medium">{service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}</span>
+        <span className="text-sm text-subtle">{service.accessSeconds ? `/ ${formatAccessDuration(service.accessSeconds)}` : "Open access"}</span>
       </div>
 
-      {activePass && timing ? (
-        <div className="mt-4 rounded-2xl border border-olive-400/30 bg-olive-400/10 p-3 text-sm text-olive-400">
-          <p className="font-semibold">Unlocked · {formatRemaining(secondsUntilBlock(activePass.expiresAtBlock, timing))} left</p>
-          <p className="mt-1 break-all font-mono text-[11px] text-ink-200">{activePass.passKey}</p>
-          <a href={arkivEntityUrl(activePass.passKey)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] text-ink-300 hover:text-ink-100">
-            pass on Arkiv explorer ↗
+      {activePass ? (
+        <div className="mt-5">
+          <p className="text-sm text-olive-400">{timing ? `Unlocked · ${formatRemaining(secondsUntilBlock(activePass.expiresAtBlock, timing))} left` : "Checking expiry…"}</p>
+          {!checkoutVisible ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button href="#try-api">Use API</Button>
+              <Button variant="subtle" size="sm" onClick={() => setRepurchase(true)}>
+                Buy again
+              </Button>
+            </div>
+          ) : null}
+          <a href={arkivEntityUrl(activePass.passKey)} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-subtle hover:text-content">
+            View pass ↗
           </a>
         </div>
       ) : null}
 
       {!purchasable ? (
-        <p className="mt-4 text-sm text-amber-200">This provider has not set a payout wallet yet, so access cannot be bought.</p>
+        <p className="mt-4 text-sm text-subtle">Purchasing is unavailable for this API.</p>
       ) : !session.identity ? (
-        <p className="mt-4 text-sm text-ink-300">Sign in with Swarm ID to buy access.</p>
-      ) : (
-        <div className="mt-4 space-y-3">
-          <p className="text-xs text-ink-400">
-            {contract ? (
-              <>
-                Paid in USDC on {PAYMENT_CHAIN_NAME} through the{" "}
-                <a href={explorerAddressUrl(contract)} target="_blank" rel="noreferrer" className="font-mono text-ink-300 hover:text-ink-100">APIritivoPayments ↗</a> contract, credited to the provider.
-              </>
-            ) : (
-              <>
-                Paid in USDC on {PAYMENT_CHAIN_NAME}, straight to the provider&apos;s wallet{" "}
-                <a href={explorerAddressUrl(service.payoutAddress!)} target="_blank" rel="noreferrer" className="font-mono text-ink-300 hover:text-ink-100">
-                  {service.payoutAddress!.slice(0, 6)}…{service.payoutAddress!.slice(-4)} ↗
-                </a>
-                .
-              </>
-            )}{" "}
-            The server verifies the {contract ? "Purchased event" : "transfer"} and mints your access pass on Arkiv.
-          </p>
-
-          <div className="rounded-2xl border border-white/15 bg-ink-900/60 p-3 text-xs">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-ink-300">Pay with</span>
-              <div className="flex gap-1 rounded-full border border-white/15 p-0.5">
-                <button type="button" onClick={() => setUseInjected(false)} className={`rounded-full px-2.5 py-0.5 ${!useInjected ? "bg-spritz-500 text-ink-950" : "text-ink-300"}`}>Swarm wallet</button>
-                <button type="button" onClick={() => setUseInjected(true)} className={`rounded-full px-2.5 py-0.5 ${useInjected ? "bg-spritz-500 text-ink-950" : "text-ink-300"}`} disabled={!hasInjectedWallet()} title={hasInjectedWallet() ? "" : "No wallet extension detected"}>MetaMask</button>
-              </div>
+        <div className="mt-5">
+          <Button onClick={session.connect} disabled={session.status !== "ready" || session.connecting}>
+            Sign in to buy
+          </Button>
+        </div>
+      ) : checkoutVisible ? (
+        <div className="mt-5 space-y-4">
+          <label className="block">
+            <span className="mb-2 block text-xs text-subtle">Pay with</span>
+            <select className="field-control" value={useInjected ? "injected" : "swarm"} disabled={busy} onChange={(event) => setUseInjected(event.target.value === "injected")}>
+              <option value="swarm">Swarm wallet</option>
+              <option value="injected" disabled={!hasInjectedWallet()}>
+                Browser wallet{!hasInjectedWallet() ? " unavailable" : ""}
+              </option>
+            </select>
+          </label>
+          {!useInjected ? (
+            <div className="text-xs text-subtle">
+              {swarmWallet.address ? (
+                <>
+                  <p>
+                    {swarmWallet.balances?.usdc ?? "…"} USDC · {swarmWallet.balances ? Number(swarmWallet.balances.avax).toFixed(4) : "…"} AVAX
+                  </p>
+                  <div className="mt-3">
+                    <Disclosure title="Fund wallet">
+                      <a href={explorerAddressUrl(swarmWallet.address)} target="_blank" rel="noreferrer" className="break-all font-mono text-xs hover:text-content">
+                        {swarmWallet.address} ↗
+                      </a>
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <a className="py-2 hover:text-content" href={USDC_FAUCET_URL} target="_blank" rel="noreferrer">
+                          USDC faucet ↗
+                        </a>
+                        <a className="py-2 hover:text-content" href={AVAX_FAUCET_URL} target="_blank" rel="noreferrer">
+                          AVAX faucet ↗
+                        </a>
+                        <Button variant="subtle" size="sm" onClick={() => void swarmWallet.refreshBalances()}>
+                          Refresh
+                        </Button>
+                      </div>
+                    </Disclosure>
+                  </div>
+                </>
+              ) : (
+                <p>{swarmWallet.status === "deriving" ? "Preparing wallet…" : (swarmWallet.error?.message ?? "Wallet unavailable.")}</p>
+              )}
             </div>
-            {!useInjected ? (
-              <div className="mt-2 text-ink-400">
-                {swarmWallet.address ? (
-                  <>
-                    <span className="break-all font-mono text-ink-300">{swarmWallet.address}</span>
-                    <div className="mt-1">
-                      USDC <span className="text-ink-200">{swarmWallet.balances?.usdc ?? "…"}</span> · AVAX <span className="text-ink-200">{swarmWallet.balances ? Number(swarmWallet.balances.avax).toFixed(4) : "…"}</span>
-                      <button type="button" onClick={() => void swarmWallet.refreshBalances()} className="ml-2 underline hover:text-ink-200">refresh</button>
-                    </div>
-                    <div className="mt-1">
-                      Top up: <a className="underline hover:text-ink-200" href={USDC_FAUCET_URL} target="_blank" rel="noreferrer">USDC faucet</a> ·{" "}
-                      <a className="underline hover:text-ink-200" href={AVAX_FAUCET_URL} target="_blank" rel="noreferrer">AVAX faucet</a> (gas)
-                    </div>
-                  </>
-                ) : (
-                  <span>{swarmWallet.status === "deriving" ? "Deriving your wallet from Swarm ID…" : swarmWallet.error?.message ?? "Wallet unavailable."}</span>
-                )}
-              </div>
-            ) : (
-              <p className="mt-2 text-ink-400">Your browser wallet will be asked to switch to {PAYMENT_CHAIN_NAME}{contract ? " and to approve USDC, then to buy" : " and to send USDC"}.</p>
-            )}
-          </div>
+          ) : (
+            <p className="text-xs text-subtle">Confirm the payment in your browser wallet on {PAYMENT_CHAIN_NAME}.</p>
+          )}
 
           {busy ? (
-            <ul className="space-y-2 rounded-2xl border border-white/15 bg-ink-900/60 p-4">
-              {isContractMode() ? <StepRow label="Approving USDC for the contract" state={stateOf(step, "approving")} /> : null}
-              <StepRow label={`Paying ${formatPriceUsdc(service.priceUsdc!)} from ${payerLabel}`} state={stateOf(step, "paying")} />
-              <StepRow label="Waiting for Avalanche confirmation" state={stateOf(step, "confirming")} />
-              <StepRow label="Minting access pass on Arkiv" state={stateOf(step, "issuing")} />
+            <ul aria-label="Purchase progress" className="space-y-2 py-2">
+              {isContractMode() ? <StepRow label="Approve USDC" state={stateOf(step, "approving")} /> : null}
+              <StepRow label={`Pay ${formatPriceUsdc(service.priceUsdc!)}`} state={stateOf(step, "paying")} />
+              <StepRow label="Confirm payment" state={stateOf(step, "confirming")} />
+              <StepRow label="Create pass" state={stateOf(step, "issuing")} />
             </ul>
           ) : null}
-
           <Button size="lg" className="w-full" onClick={buy} disabled={busy || swarmWallet.status !== "ready" || (!useInjected && !swarmWallet.signer)}>
-            {step === "approving" ? "Approving…" : step === "paying" ? "Paying…" : step === "confirming" ? "Confirming…" : step === "issuing" ? "Minting pass…" : activePass ? `Buy again · ${formatPriceUsdc(service.priceUsdc!)}` : `Buy access · ${formatPriceUsdc(service.priceUsdc!)}`}
+            {step === "approving"
+              ? "Approving…"
+              : step === "paying"
+                ? "Paying…"
+                : step === "confirming"
+                  ? "Confirming…"
+                  : step === "issuing"
+                    ? "Creating pass…"
+                    : `Buy access · ${formatPriceUsdc(service.priceUsdc!)}`}
           </Button>
-          {txHash ? (
-            <a href={explorerTxUrl(txHash)} target="_blank" rel="noreferrer" className="block break-all font-mono text-[11px] text-ink-400 hover:text-ink-100">
-              payment tx {txHash} ↗
-            </a>
+          {activePass && !busy ? (
+            <Button variant="subtle" size="sm" onClick={() => setRepurchase(false)}>
+              Cancel
+            </Button>
           ) : null}
-          {error ? <ErrorNotice message={error.message} detail={error.detail} /> : null}
-          {result ? (
-            <div className="rounded-2xl border border-olive-400/30 bg-olive-400/10 p-3 text-sm text-olive-400">
-              <p className="font-semibold">Access pass minted ✓ · valid until {new Date(result.expiresAt).toLocaleString()}</p>
-              {resultBearer ? (
-                <div className="mt-2">
-                  <ApiKeyBox serviceId={service.serviceId} bearer={{ status: "ready", bearer: resultBearer }} />
-                </div>
-              ) : null}
-              <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                <a href={arkivEntityUrl(result.passKey)} target="_blank" rel="noreferrer" className="rounded-full border border-olive-400/40 px-2.5 py-0.5 hover:bg-olive-400/10">
-                  pass on Arkiv ↗
-                </a>
-                <a href={arkivEntityUrl(result.saleKey)} target="_blank" rel="noreferrer" className="rounded-full border border-olive-400/40 px-2.5 py-0.5 hover:bg-olive-400/10">
-                  sale receipt on Arkiv ↗
-                </a>
-                <a href={explorerTxUrl(result.txHash)} target="_blank" rel="noreferrer" className="rounded-full border border-olive-400/40 px-2.5 py-0.5 hover:bg-olive-400/10">
-                  payment on SnowTrace ↗
-                </a>
-                {result.arkivTxHashes.map((h) => (
-                  <a key={h} href={arkivTxUrl(h)} target="_blank" rel="noreferrer" className="rounded-full border border-olive-400/40 px-2.5 py-0.5 hover:bg-olive-400/10">
-                    Arkiv tx {h.slice(0, 8)}… ↗
-                  </a>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          <p className="text-xs text-subtle">{contract ? "USDC approval and purchase." : "USDC transfer to the provider."} AVAX covers gas.</p>
         </div>
-      )}
+      ) : null}
+
+      {error ? (
+        <div className="mt-4">
+          <ErrorNotice message={error.message} detail={error.detail} />
+        </div>
+      ) : null}
+      {txHash || result ? (
+        <div className="mt-4">
+          {result ? (
+            <p role="status" className="mb-3 text-xs text-olive-400">
+              Access ready until {new Date(result.expiresAt).toLocaleString()}.
+            </p>
+          ) : null}
+          <Disclosure title="Payment receipt">
+            <div className="flex flex-wrap gap-3 text-xs text-muted">
+              {txHash ? (
+                <a href={explorerTxUrl(txHash)} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
+                  Payment ↗
+                </a>
+              ) : null}
+              {result ? (
+                <>
+                  <a href={arkivEntityUrl(result.passKey)} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
+                    Pass ↗
+                  </a>
+                  <a href={arkivEntityUrl(result.saleKey)} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
+                    Receipt ↗
+                  </a>
+                  {result.arkivTxHashes.map((hash) => (
+                    <a key={hash} href={arkivTxUrl(hash)} target="_blank" rel="noreferrer" className="py-2 hover:text-content">
+                      Arkiv {hash.slice(0, 8)}… ↗
+                    </a>
+                  ))}
+                </>
+              ) : null}
+            </div>
+            {resultBearer ? (
+              <div className="mt-3">
+                <ApiKeyBox serviceId={service.serviceId} bearer={{ status: "ready", bearer: resultBearer }} />
+              </div>
+            ) : null}
+          </Disclosure>
+        </div>
+      ) : null}
     </section>
   );
 }

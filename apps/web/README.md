@@ -3,7 +3,7 @@
 Next.js 15 App Router + Tailwind v4. All vendor calls go through the packages; components only see `ArkivService`, `ServiceManifest`, `AccessPass`, `Sale`, `SwarmConnectionInfo`, `Signer`.
 
 ```text
-/                         home, Swarm ID sign-in, role chooser
+/                         home, Swarm ID sign-in, active workspace actions
 /marketplace              live Arkiv query, search, category filter
 /services/[serviceId]     Arkiv entity + Swarm manifest, buy access, bot console, proofs, on-chain panel
 /passes                   client's live access passes with countdown and Data Explorer links
@@ -18,7 +18,7 @@ Next.js 15 App Router + Tailwind v4. All vendor calls go through the packages; c
 
 ## State and config
 
-- `lib/session.tsx` — Swarm ID connection + role preference (localStorage keyed by identity id, never access control).
+- `lib/session.tsx` — Swarm ID connection + workspace preference (localStorage per identity, separate guest preference, never access control).
 - `lib/swarm-wallet.tsx` — EVM wallet derived from the identity (`deriveWalletSecret` → `swarmSigner`); the secret stays in memory for the session.
 - `lib/use-services.ts`, `lib/use-access.ts` — small query hooks over the Arkiv adapter (services, passes, sales, block timing).
 - `lib/use-live-sales.ts` — subscribes to Fuji (`watchSales`) for a provider address; fires `onSale` so Arkiv lists refresh.
@@ -36,7 +36,7 @@ Each block has its own Snowtrace tx link and error line. The panel also reveals 
 
 ## UI
 
-Foundations live in `app/globals.css`; shared controls in `components/ui.tsx`, technical previews in `components/code-panel.tsx`, proof chips and links in `components/proofs.tsx`. Follow the [design system guide](../../docs/design-system.md) and [design context](../../.impeccable.md) when adding pages; `/design-system` shows the actual components.
+Follow [UI guidance](../../ui-guidance/README.md). `/design-system` previews the shared components.
 
 Every Arkiv entity link goes through `arkivEntityUrl` and opens the Data Explorer with `$key = key(…)` on Tiramisu. Arkiv transaction hashes and the writer's GLM balance link to the Tiramisu block explorer, which is the only place that shows them.
 

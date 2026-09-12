@@ -1,5 +1,5 @@
-import { describe, expect, test, afterEach } from "bun:test";
-import { EXPLORER_URL, PAYMENT_CHAIN, PAYMENT_CHAIN_ID, USDC_ADDRESS, explorerAddressUrl, explorerTokenUrl, explorerTxUrl } from "../src";
+import { afterEach, describe, expect, test } from "bun:test";
+import { EXPLORER_URL, explorerAddressUrl, explorerTokenUrl, explorerTxUrl, PAYMENT_CHAIN, PAYMENT_CHAIN_ID, USDC_ADDRESS } from "../src";
 import { isContractMode, paymentsContractAddress } from "../src/contract";
 
 describe("Avalanche Fuji is the payment network", () => {

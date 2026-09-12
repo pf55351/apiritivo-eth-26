@@ -10,7 +10,10 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "lint": "turbo lint",
+    "lint": "biome check . && turbo lint",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "format": "biome format --write .",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "dev:web": "bun --cwd apps/web dev",
@@ -20,6 +23,7 @@
     "demo:check": "bun --cwd tools demo:check"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.13",
     "turbo": "^2.5.0",
     "typescript": "^5.9.0"
   }

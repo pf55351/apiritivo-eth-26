@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { AccessPass, ArkivService, Grant } from "@apiritivo/shared";
 import { arkivEntityUrl, findGrant } from "@apiritivo/arkiv";
+import type { AccessPass, ArkivService, Grant } from "@apiritivo/shared";
 import { downloadPrivateFile } from "@apiritivo/swarm";
+import { useCallback, useEffect, useState } from "react";
+import { type FriendlyError, toFriendlyError } from "@/lib/errors";
 import { useSession } from "@/lib/session";
-import { toFriendlyError, type FriendlyError } from "@/lib/errors";
-import { Button, ErrorNotice } from "./ui";
+import { CodeBlock } from "./code-panel";
+import { Button, Disclosure, ErrorNotice } from "./ui";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -48,7 +49,9 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
     setPreview(null);
     try {
       // The provider reads with the refs from upload; a buyer with the refs from their grant.
-      const refs = grant ? { encryptedRef: grant.encryptedRef, historyRef: grant.historyRef, publisherPubKey: grant.publisherPubKey } : { encryptedRef: file.encryptedRef, historyRef: file.historyRef, publisherPubKey: file.publisherPubKey };
+      const refs = grant
+        ? { encryptedRef: grant.encryptedRef, historyRef: grant.historyRef, publisherPubKey: grant.publisherPubKey }
+        : { encryptedRef: file.encryptedRef, historyRef: file.historyRef, publisherPubKey: file.publisherPubKey };
       const bytes = await downloadPrivateFile(refs);
       const type = file.contentType || "application/octet-stream";
       if (bytes.byteLength <= 20_000 && /^(text\/|application\/json)/.test(type)) setPreview(new TextDecoder().decode(bytes));
@@ -66,19 +69,25 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
   }
 
   const canRead = isProvider || (Boolean(activePass) && Boolean(grant));
-  const state = isProvider ? "You published this file." : !session.identity ? "Sign in and buy access to unlock it." : !activePass ? "Buy access to unlock it." : grant === undefined ? "Checking your grant on Arkiv…" : grant ? "Granted to your Swarm ID." : "Waiting for the provider to grant your key.";
+  const state = isProvider
+    ? "You published this file."
+    : !session.identity
+      ? "Sign in and buy access to unlock it."
+      : !activePass
+        ? "Buy access to unlock it."
+        : grant === undefined
+          ? "Checking access…"
+          : grant
+            ? "Access granted."
+            : "Waiting for provider approval.";
 
   return (
-    <section className="card rounded-3xl p-6">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-olive-400">Private file · Swarm ACT</p>
-      <h2 className="mt-1 text-xl font-semibold">{file.name}</h2>
-      <p className="mt-1 text-sm text-ink-300">
-        {formatBytes(file.bytes)} on Swarm, encrypted with an Access Control Trie. Only the provider and the buyers it granted can decrypt it. The references are public; the content is not.
-      </p>
+    <section className="min-w-0 border-t border-line pt-5">
+      <p className="text-xs font-normal text-olive-400">Private file</p>
+      <h2 className="mt-2 break-words text-base font-medium">{file.name}</h2>
+      <p className="mt-1 text-sm text-ink-300">{formatBytes(file.bytes)} · Encrypted</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${canRead ? "border-olive-400/30 bg-olive-400/10 text-olive-400" : "border-white/15 bg-white/5 text-ink-400"}`}>
-          {canRead ? "🔓 unlocked" : "🔒 locked"}
-        </span>
+        <span className={`inline-flex items-center gap-1.5 text-xs font-normal ${canRead ? "text-olive-400" : "text-subtle"}`}>{canRead ? "🔓 unlocked" : "🔒 locked"}</span>
         <span className="text-xs text-ink-300">{state}</span>
         {activePass && grant === null && !isProvider ? (
           <button type="button" onClick={() => void loadGrant()} className="text-xs text-ink-400 underline hover:text-ink-200">
@@ -89,24 +98,37 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
       {canRead ? (
         <div className="mt-4">
           <Button onClick={download} disabled={busy}>
-            {busy ? "Decrypting with your Swarm ID…" : `Download ${file.name}`}
+            {busy ? "Decrypting…" : "Download file"}
           </Button>
         </div>
       ) : null}
-      {grant ? (
-        <p className="mt-2 text-[11px] text-ink-400">
-          grant{" "}
-          <a href={arkivEntityUrl(grant.grantKey)} target="_blank" rel="noreferrer" className="font-mono hover:text-ink-200">
-            {grant.grantKey.slice(0, 10)}… ↗
-          </a>{" "}
-          · history {grant.historyRef.slice(0, 10)}…
-        </p>
+      <div className="mt-4">
+        <Disclosure title="File details">
+          {grant ? (
+            <p className="mt-2 text-[11px] text-ink-400">
+              grant{" "}
+              <a href={arkivEntityUrl(grant.grantKey)} target="_blank" rel="noreferrer" className="font-mono hover:text-ink-200">
+                {grant.grantKey.slice(0, 10)}… ↗
+              </a>{" "}
+              · history {grant.historyRef.slice(0, 10)}…
+            </p>
+          ) : null}
+          <p className="mt-3 text-[11px] text-ink-400">
+            encrypted ref <span className="font-mono">{file.encryptedRef.slice(0, 12)}…</span> · publisher key{" "}
+            <span className="font-mono">{file.publisherPubKey.slice(0, 12)}…</span>
+          </p>
+        </Disclosure>
+      </div>
+      {error ? (
+        <div className="mt-3">
+          <ErrorNotice message={error.message} detail={error.detail} />
+        </div>
       ) : null}
-      {error ? <div className="mt-3"><ErrorNotice message={error.message} detail={error.detail} /></div> : null}
-      {preview ? <pre className="mt-3 max-h-64 overflow-auto rounded-2xl border border-white/15 bg-ink-900/70 p-4 font-mono text-xs leading-relaxed text-ink-100">{preview}</pre> : null}
-      <p className="mt-3 text-[11px] text-ink-400">
-        encrypted ref <span className="font-mono">{file.encryptedRef.slice(0, 12)}…</span> · publisher key <span className="font-mono">{file.publisherPubKey.slice(0, 12)}…</span>
-      </p>
+      {preview ? (
+        <CodeBlock label="File preview" className="mt-3 max-h-64 overflow-auto rounded-control bg-surface p-4 font-mono text-xs leading-relaxed text-content">
+          {preview}
+        </CodeBlock>
+      ) : null}
     </section>
   );
 }

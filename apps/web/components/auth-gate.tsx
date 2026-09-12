@@ -6,14 +6,14 @@ import { Button, ErrorNotice, Skeleton } from "./ui";
 
 /**
  * Soft gate: shows a sign-in card when there is no Swarm identity.
- * Never blocks navigation between Client and Provider sections.
+ * Workspace selection is handled separately by AppShell.
  */
 export function AuthGate({ children, title = "Sign in to continue" }: { children: ReactNode; title?: string }) {
   const session = useSession();
 
   if (session.status === "initializing") {
     return (
-      <div className="glass mx-auto max-w-lg rounded-3xl p-8">
+      <div className="mx-auto max-w-md py-12">
         <Skeleton className="h-5 w-40" />
         <Skeleton className="mt-4 h-4 w-full" />
         <Skeleton className="mt-2 h-4 w-3/4" />
@@ -32,15 +32,13 @@ export function AuthGate({ children, title = "Sign in to continue" }: { children
 
   if (!session.identity) {
     return (
-      <div className="glass mx-auto max-w-lg rounded-3xl p-8 text-center animate-fade-up">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">Swarm ID</p>
+      <div className="mx-auto max-w-md py-12 text-center">
+        <p className="text-xs font-normal text-spritz-300">Swarm ID</p>
         <h2 className="mt-2 text-2xl font-semibold">{title}</h2>
-        <p className="mt-2 text-sm text-ink-300">
-          APIritivo uses your Swarm ID as identity. Continue with the Swarm ID sign-in button. No wallet required.
-        </p>
+        <p className="mt-2 text-sm text-ink-300">Continue with Swarm ID. No wallet required.</p>
         <div className="mt-6">
           <Button size="lg" onClick={session.connect} disabled={session.connecting}>
-            {session.connecting ? "Complete sign-in" : "Enter with Swarm ID"}
+            {session.connecting ? "Complete sign in" : "Enter with Swarm ID"}
           </Button>
         </div>
         {session.error ? (

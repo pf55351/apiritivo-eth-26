@@ -7,11 +7,11 @@ import { useSession } from "@/lib/session";
 export default function ChooseRolePage() {
   const session = useSession();
   return (
-    <AuthGate title="Sign in to choose a role">
+    <AuthGate title="Sign in to continue">
       <div className="mx-auto max-w-3xl animate-fade-up">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">Welcome {session.identity?.name}</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">How do you want to use APIritivo?</h1>
-        <p className="mt-2 text-sm text-ink-300">Your choice only sets your default experience. You can switch any time from the header.</p>
+        <p className="break-words text-sm text-subtle">Welcome {session.identity?.name}</p>
+        <h1 className="mt-1 text-3xl font-medium sm:text-4xl">Choose your view</h1>
+        <p className="mt-2 text-sm text-muted">Switch anytime from the header.</p>
         <div className="mt-8">
           <RoleChooser />
         </div>

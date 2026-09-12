@@ -1,10 +1,12 @@
-import { NextResponse } from "next/server";
-import { publishGrantInputSchema } from "@apiritivo/shared";
 import { getService } from "@apiritivo/arkiv";
 import { isWriterConfigured, publishGrant } from "@apiritivo/arkiv/server";
+import { publishGrantInputSchema } from "@apiritivo/shared";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Vercel: on-chain verification plus Arkiv writes can exceed the 10 s default. */
+export const maxDuration = 60;
 
 /**
  * POST /api/grants — record that a provider granted a buyer access to the

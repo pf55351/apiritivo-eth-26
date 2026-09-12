@@ -7,22 +7,23 @@
  *    and are trusted as-is. There is no signature from the Swarm identity, so
  *    this route must never be exposed as a trustless publishing endpoint.
  */
-import { createPublicClient, createWalletClient, ExpirationTime, jsonToPayload } from "@arkiv-network/sdk";
-import { addr, bool, dec, i32, str, u64 } from "@arkiv-network/sdk/attr";
+
 import {
   ACCESS_PASS_ENTITY_TYPE,
   APP_ID,
-  GRANT_ENTITY_TYPE,
-  SALE_ENTITY_TYPE,
-  SERVICE_ENTITY_TYPE,
   type ArkivService,
+  GRANT_ENTITY_TYPE,
   type IssueAccessPassResult,
   type PublishGrantInput,
   type PublishGrantResult,
   type PublishServiceInput,
   type PublishServiceResult,
+  SALE_ENTITY_TYPE,
+  SERVICE_ENTITY_TYPE,
 } from "@apiritivo/shared";
-import { formatEther, http, type Hex } from "viem";
+import { createPublicClient, createWalletClient, ExpirationTime, jsonToPayload } from "@arkiv-network/sdk";
+import { addr, bool, dec, i32, str, u64 } from "@arkiv-network/sdk/attr";
+import { formatEther, type Hex, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { resolveChain } from "./config";
 import { ATTR } from "./entity";
@@ -70,7 +71,9 @@ export type WriterStatus = {
 };
 
 export const ARKIV_FAUCET_URL = "https://hub.arkiv.network/faucet";
+
 import { ARKIV_EXPLORER_URL, arkivOwnerUrl } from "./index";
+
 export { ARKIV_EXPLORER_URL };
 
 /** Health of the app-owned writer (no secrets). Used by the provider dashboard. */

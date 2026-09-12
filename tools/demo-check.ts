@@ -2,13 +2,13 @@
  * Pre-demo readiness check. Run from the repo root: `bun demo:check`
  * Reads apps/web/.env.local, then pings every external dependency the demo needs.
  */
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { PAYMENT_CHAIN, paymentsAbi, USDC_ADDRESS, unitsToUsdc } from "@apiritivo/payments";
 import { createPublicClient as createArkivClient } from "@arkiv-network/sdk";
 import { tiramisu } from "@arkiv-network/sdk/chains";
 import { and, eq } from "@arkiv-network/sdk/query";
 import { createPublicClient, erc20Abi, formatEther, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { PAYMENT_CHAIN, USDC_ADDRESS, paymentsAbi, unitsToUsdc } from "@apiritivo/payments";
 
 const envPath = new URL("../apps/web/.env.local", import.meta.url).pathname;
 const env: Record<string, string> = {};
@@ -48,11 +48,19 @@ try {
     const glm = Number(formatEther(bal));
     (glm > 0.01 ? ok : fail)("writer funded", `${writer.address} · ${glm.toFixed(4)} GLM${glm <= 0.01 ? " → https://hub.arkiv.network/faucet" : ""}`);
   }
-  const services = await arkiv.select({ key: true, attributes: true }).where(and(eq("app", "apiritivo"), eq("entity_type", "service"))).limit(50).fetch();
+  const services = await arkiv
+    .select({ key: true, attributes: true })
+    .where(and(eq("app", "apiritivo"), eq("entity_type", "service")))
+    .limit(50)
+    .fetch();
   (services.entities.length > 0 ? ok : warn)("services published", `${services.entities.length} (publish one from /provider/new if 0)`);
   const missingPayout = services.entities.filter((e) => !e.attributes?.payout_address).length;
   if (missingPayout > 0) warn("services without payout wallet", `${missingPayout} (not purchasable, republish them)`);
-  const passes = await arkiv.select({ key: true }).where(and(eq("app", "apiritivo"), eq("entity_type", "access_pass"))).limit(50).fetch();
+  const passes = await arkiv
+    .select({ key: true })
+    .where(and(eq("app", "apiritivo"), eq("entity_type", "access_pass")))
+    .limit(50)
+    .fetch();
   ok("live access passes", String(passes.entities.length));
 } catch (err) {
   fail("Arkiv unreachable", (err as Error).message.split("\n")[0]);
@@ -64,7 +72,12 @@ const gateway = (env.NEXT_PUBLIC_SWARM_GATEWAY_URL || "https://api.gateway.ethsw
 try {
   const res = await fetch(`${gateway}/health`, { signal: AbortSignal.timeout(10_000) });
   (res.ok ? ok : fail)("gateway reachable", `${gateway} → ${res.status}`);
-  const up = await fetch(`${gateway}/bytes`, { method: "POST", headers: { "content-type": "application/octet-stream" }, body: new TextEncoder().encode('{"v":1,"operations":{"ping":{"input":{}}}}'), signal: AbortSignal.timeout(20_000) });
+  const up = await fetch(`${gateway}/bytes`, {
+    method: "POST",
+    headers: { "content-type": "application/octet-stream" },
+    body: new TextEncoder().encode('{"v":1,"operations":{"ping":{"input":{}}}}'),
+    signal: AbortSignal.timeout(20_000),
+  });
   const json = (await up.json().catch(() => ({}))) as { reference?: string };
   (up.ok && json.reference ? ok : fail)("unstamped upload works", json.reference ? `ref ${json.reference.slice(0, 12)}…` : `HTTP ${up.status}`);
 } catch (err) {

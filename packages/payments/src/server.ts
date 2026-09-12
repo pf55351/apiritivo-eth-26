@@ -3,9 +3,9 @@
  * pass is issued. Contract mode checks the `Purchased` event of
  * APIritivoPayments; direct mode checks a plain USDC `Transfer`.
  */
-import { createPublicClient, erc20Abi, http, parseEventLogs, type Address, type Hash, type Log } from "viem";
-import { PAYMENT_CHAIN, USDC_ADDRESS, unitsToUsdc, usdcToUnits } from "./index";
+import { type Address, createPublicClient, erc20Abi, type Hash, http, type Log, parseEventLogs } from "viem";
 import { paymentsAbi, paymentsContractAddress, serviceKey } from "./contract";
+import { PAYMENT_CHAIN, USDC_ADDRESS, unitsToUsdc, usdcToUnits } from "./index";
 
 export type PaymentVerification =
   | { ok: true; mode: "contract" | "direct"; from: Address; to: Address; amountUsdc: string; blockNumber: bigint; purchaseId?: number }
@@ -52,20 +52,13 @@ export async function verifyUsdcPayment(params: { txHash: Hash; to: Address; min
 }
 
 /** Contract mode, pure: a `Purchased(provider, serviceId)` event emitted by `contract` of at least `minUsdc`. */
-export function verifyContractReceipt(
-  receipt: ReceiptLike | null,
-  contract: Address,
-  params: { provider: Address; serviceId: string; minUsdc: string },
-): PaymentVerification {
+export function verifyContractReceipt(receipt: ReceiptLike | null, contract: Address, params: { provider: Address; serviceId: string; minUsdc: string }): PaymentVerification {
   if (!receipt) return { ok: false, reason: NOT_FOUND };
   if (receipt.status !== "success") return { ok: false, reason: "Transaction reverted." };
 
   const key = serviceKey(params.serviceId).toLowerCase();
   const purchases = parseEventLogs({ abi: paymentsAbi, eventName: "Purchased", logs: receipt.logs }).filter(
-    (log) =>
-      log.address.toLowerCase() === contract.toLowerCase() &&
-      log.args.provider.toLowerCase() === params.provider.toLowerCase() &&
-      log.args.serviceId.toLowerCase() === key,
+    (log) => log.address.toLowerCase() === contract.toLowerCase() && log.args.provider.toLowerCase() === params.provider.toLowerCase() && log.args.serviceId.toLowerCase() === key,
   );
   if (purchases.length === 0) return { ok: false, reason: "No Purchased event for this service/provider in the transaction." };
   const p = purchases[0]!;

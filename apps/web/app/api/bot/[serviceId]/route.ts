@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
 import { botRequestSchema } from "@apiritivo/shared";
+import { NextResponse } from "next/server";
 import { requireAccessPass, runDemoOperation } from "@/lib/server/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Vercel: on-chain verification plus Arkiv writes can exceed the 10 s default. */
+export const maxDuration = 60;
 
 /**
  * Demo bot behind an access pass. Before answering it verifies the bearer

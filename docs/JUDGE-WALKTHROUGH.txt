@@ -10,6 +10,19 @@ When the pass expires, Arkiv deletes it and the API stops answering.
 
 Everything is testnet. Nothing costs real money. Total time: about 20 minutes.
 
+Short path (5 phases, details below)
+------------------------------------
+  SETUP    clone, bun install, copy .env.example, bun demo:check, bun dev              (STEP 0)
+  CREATOR  sign in with Swarm ID as Provider, publish a service, open the two proofs    (STEP 1-2)
+  BUYER    second Swarm ID as Client, fund its Swarm wallet from the two faucets, buy,
+           copy the API key from the "Your API key" box, try the bot, call from terminal (STEP 3-5)
+  VERIFY   creator sees the sale live and opens the receipt in the Arkiv Data Explorer  (STEP 6)
+  PAYOUT   claim from the contract to the Swarm wallet, then send USDC anywhere         (STEP 7-8)
+
+  Screens and flows are drawn in docs/ux-flows/ (screen map, per-flow diagrams, clickable wireframes).
+  Expiry, once and for all: a pass is an Arkiv entity with a TTL. When it expires Arkiv deletes it,
+  the API answers 403, nothing has to be revoked.
+
 Networks and identities involved
 --------------------------------
   Swarm ID          login identity (no wallet, no seed phrase). https://swarm-id.snaha.net
@@ -58,6 +71,7 @@ STEP 1 — Create the CREATOR identity (Swarm ID)
      Create a new identity (or sign in to one you already have). No wallet, no seed phrase.
      If nothing appears, your browser blocked the popup: allow it and click "retry".
   3. Back in the app, choose "I'm a Provider". This is only a preference; both areas stay reachable.
+     The role screen appears only on the first login of an identity; later logins go straight to the last area.
 
   You land on /provider. Check the status chips at the top:
     - Swarm ID: your identity name and id
@@ -111,7 +125,8 @@ STEP 4 — BUYER pays and gets an access pass  (Fuji + Arkiv)
        access_pass   expires after the duration; carries secret_hash and the encrypted secret
        sale          permanent receipt: buyer_id, buyer_address, tx_hash, paid_usdc, pass_key
   3. Success. The green box shows "Unlocked - 59m left" and the pass key.
-     Below it: "Your API key" = <passKey>.<secret>. Click Copy. This is the credential.
+     Below it: "Your API key" = <passKey>.<secret>. Click Copy. This is the credential and the ONE place
+     to take it from now; "My passes" has the same Copy button for later.
      The secret was generated in your browser and stored on Arkiv encrypted for your Swarm ID only.
   4. Proof links: pass on Arkiv, sale receipt on Arkiv, payment tx on Snowtrace.
 

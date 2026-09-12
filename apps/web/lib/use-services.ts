@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { ArkivService } from "@apiritivo/shared";
 import { getService, listServices, listServicesByProvider } from "@apiritivo/arkiv";
-import { toFriendlyError, type FriendlyError } from "./errors";
+import type { ArkivService } from "@apiritivo/shared";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { type FriendlyError, toFriendlyError } from "./errors";
 
 type State<T> = { data: T | null; loading: boolean; error: FriendlyError | null };
 
@@ -14,6 +14,10 @@ type State<T> = { data: T | null; loading: boolean; error: FriendlyError | null 
 function useArkivQuery<T>(key: string | null, load: (key: string) => Promise<T>, fallback: string) {
   const [state, setState] = useState<State<T>>({ data: null, loading: key !== null, error: null });
   const [tick, setTick] = useState(0);
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  const fallbackRef = useRef(fallback);
+  fallbackRef.current = fallback;
 
   useEffect(() => {
     if (key === null) {
@@ -22,18 +26,17 @@ function useArkivQuery<T>(key: string | null, load: (key: string) => Promise<T>,
     }
     let cancelled = false;
     setState((s) => ({ ...s, loading: true, error: null }));
-    load(key)
+    loadRef
+      .current(key)
       .then((data) => {
         if (!cancelled) setState({ data, loading: false, error: null });
       })
       .catch((err: unknown) => {
-        if (!cancelled) setState({ data: null, loading: false, error: toFriendlyError(err, fallback) });
+        if (!cancelled) setState({ data: null, loading: false, error: toFriendlyError(err, fallbackRef.current) });
       });
     return () => {
       cancelled = true;
     };
-    // `load` and `fallback` are stable module-level functions / literals.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, tick]);
 
   const reload = useCallback(() => setTick((n) => n + 1), []);

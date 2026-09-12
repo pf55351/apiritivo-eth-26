@@ -71,9 +71,7 @@ export function formatPriceUsdc(price: string): string {
 export const evmAddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Invalid EVM address (0x + 40 hex)");
 
 /** Swarm reference: 64 hex chars (plain) or 128 (encrypted). */
-export const swarmReferenceSchema = z
-  .string()
-  .regex(/^[0-9a-fA-F]{64}(?:[0-9a-fA-F]{64})?$/, "Invalid Swarm reference");
+export const swarmReferenceSchema = z.string().regex(/^[0-9a-fA-F]{64}(?:[0-9a-fA-F]{64})?$/, "Invalid Swarm reference");
 
 /**
  * Normalised service as read from Arkiv. This is OUR shape; vendor entity
@@ -138,7 +136,11 @@ export const publishServiceInputSchema = z.object({
   name: z.string().trim().min(2, "Min 2 characters").max(80, "Max 80 characters"),
   description: z.string().trim().min(8, "Min 8 characters").max(400, "Max 400 characters"),
   priceUsdc: priceUsdcSchema,
-  accessSeconds: z.number().int().positive("Pick an access duration").max(10 * 365 * 86400),
+  accessSeconds: z
+    .number()
+    .int()
+    .positive("Pick an access duration")
+    .max(10 * 365 * 86400),
   payoutAddress: evmAddressSchema,
   privateAttachment: privateAttachmentSchema.optional(),
 });

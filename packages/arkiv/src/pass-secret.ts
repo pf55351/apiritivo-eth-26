@@ -10,7 +10,7 @@
  *   - the API key is `<passKey>.<S>`; the server hashes `S` and compares.
  * Browser-safe: WebCrypto + viem keccak, no vendor SDK.
  */
-import { bytesToHex, hexToBytes, keccak256, type Hex } from "viem";
+import { bytesToHex, type Hex, hexToBytes, keccak256 } from "viem";
 
 export const PASS_SECRET_BYTES = 32;
 const IV_BYTES = 12;

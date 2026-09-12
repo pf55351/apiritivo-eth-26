@@ -2,7 +2,7 @@
  * Payment rail for Phase 2: USDC on Avalanche Fuji, paid directly from the
  * client's wallet to the provider's payout address. No contract yet.
  */
-import { defineChain, formatUnits, parseUnits, type Address, type Hash } from "viem";
+import { type Address, defineChain, formatUnits, type Hash, parseUnits } from "viem";
 
 /** Avalanche Fuji, defined locally so we do not pull every viem chain into the bundle. */
 export const PAYMENT_CHAIN = defineChain({

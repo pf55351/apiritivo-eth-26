@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { PassBearer } from "@/lib/use-pass-bearer";
 import { copyText } from "@/lib/format";
+import type { PassBearer } from "@/lib/use-pass-bearer";
+import { CodeBlock } from "./code-panel";
+import { Button, Disclosure } from "./ui";
 
 /** curl that a machine (or you) can paste to call the service with this pass. */
 export function curlForService(serviceId: string, bearer: string, operation = "getQuote", input: Record<string, unknown> = { symbol: "BTC" }): string {
@@ -28,32 +30,41 @@ export function ApiKeyBox({ serviceId, bearer, operation, input }: { serviceId: 
     }
   };
 
-  if (bearer.status === "loading") return <p className="text-xs text-ink-400">Unlocking your API key with Swarm ID…</p>;
-  if (bearer.status === "legacy") return <p className="text-xs text-amber-200">This pass was minted before pass secrets. It cannot be used; buy access again.</p>;
+  if (bearer.status === "loading")
+    return (
+      <p role="status" className="text-xs text-subtle">
+        Unlocking API key…
+      </p>
+    );
+  if (bearer.status === "legacy") return <p className="text-xs text-amber-200">This older pass is unsupported. Buy access again.</p>;
   if (bearer.status === "locked") return <p className="text-xs text-amber-200">{bearer.error}</p>;
 
   const curl = curlForService(serviceId, bearer.bearer, operation, input);
   return (
-    <div className="space-y-2">
-      <div className="rounded-2xl border border-white/15 bg-ink-900/70 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] uppercase tracking-wider text-ink-400">API key · passKey.secret</p>
-          <button type="button" onClick={() => copy("key", bearer.bearer)} className="rounded-full border border-white/15 px-2.5 py-0.5 text-[11px] text-ink-300 hover:text-ink-100">
-            {copied === "key" ? "Copied ✓" : "Copy"}
-          </button>
-        </div>
-        <code className="mt-1 block break-all font-mono text-[11px] leading-relaxed text-ink-100">{bearer.bearer}</code>
-        <p className="mt-1 text-[11px] text-ink-400">The part after the dot is secret: only its hash is on Arkiv. Anyone with the whole key can use your pass until it expires.</p>
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="ghost" onClick={() => copy("key", bearer.bearer)}>
+          {copied === "key" ? "Copied" : "Copy API key"}
+        </Button>
+        <Button size="sm" variant="subtle" onClick={() => copy("curl", curl)}>
+          {copied === "curl" ? "Copied" : "Copy curl"}
+        </Button>
+        <span role="status" className="sr-only">
+          {copied ? `${copied === "key" ? "API key" : "curl"} copied.` : ""}
+        </span>
       </div>
-      <div className="rounded-2xl border border-white/15 bg-ink-900/70 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] uppercase tracking-wider text-ink-400">Call it from anywhere</p>
-          <button type="button" onClick={() => copy("curl", curl)} className="rounded-full border border-white/15 px-2.5 py-0.5 text-[11px] text-ink-300 hover:text-ink-100">
-            {copied === "curl" ? "Copied ✓" : "Copy curl"}
-          </button>
+      <details className="mt-2">
+        <summary className="min-h-11 cursor-pointer py-3 text-xs text-subtle hover:text-content">Show credentials</summary>
+        <p className="mb-3 text-xs text-subtle">Keep this key private. It grants access until your pass expires.</p>
+        <code className="block break-all font-mono text-xs leading-6 text-muted">{bearer.bearer}</code>
+        <div className="mt-4">
+          <Disclosure title="Request example">
+            <CodeBlock label="curl request" className="max-w-full overflow-auto py-2 font-mono text-xs leading-6 text-muted">
+              {curl}
+            </CodeBlock>
+          </Disclosure>
         </div>
-        <pre className="mt-1 max-w-full overflow-x-auto font-mono text-[11px] leading-relaxed text-ink-200">{curl}</pre>
-      </div>
+      </details>
     </div>
   );
 }

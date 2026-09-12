@@ -99,9 +99,7 @@ export function driveCheck(input: ReadinessInput): ReadinessCheck {
 }
 
 export function buildChecks(input: ReadinessInput): ReadinessCheck[] {
-  return input.view === "client"
-    ? [usdcCheck(input), avaxCheck(input), glmCheck(input)]
-    : [driveCheck(input), glmCheck(input), avaxCheck(input), usdcCheck(input)];
+  return input.view === "client" ? [usdcCheck(input), avaxCheck(input), glmCheck(input)] : [driveCheck(input), glmCheck(input), avaxCheck(input), usdcCheck(input)];
 }
 
 export type ReadinessSummary = {

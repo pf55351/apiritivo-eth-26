@@ -11,7 +11,7 @@ APIritivo is a service marketplace for developers and AI agents. Providers publi
 
 Built at **ETH Rome 2026** · Swarm ID · Swarm · Arkiv · Avalanche Fuji
 
-[Run locally](#run-locally) · [Architecture](#architecture) · [Demo walkthrough](docs/JUDGE-WALKTHROUGH.txt) · [Technical guide](docs/technical-guide.md)
+[Run locally](#run-locally) · [Architecture](#architecture) · [Demo walkthrough](docs/JUDGE-WALKTHROUGH.txt) · [Technical guide](docs/technical-guide.md) · [UX flows](docs/ux-flows/UX-FLOWS.md)
 
 [![Client workflow: discover a service, approve and pay USDC, receive an access pass, and call the API.](docs/images/client-workflow.png)](docs/images/client-workflow.png)
 
@@ -42,9 +42,25 @@ The example config includes the gateways, deployed payment contract, and a **pub
 | Command | Purpose |
 | --- | --- |
 | `bun demo:check` | Check writer funding, RPCs, payment contract, and a small Swarm test upload |
-| `bun typecheck && bun lint && bun test` | Check TypeScript, lint, and application tests |
+| `bun typecheck && bun lint && bun test` | Check TypeScript, Biome + ESLint, and application tests |
+| `bun check:fix` | Format and auto-fix the whole monorepo with Biome |
 | `bun test:contracts` | Run Solidity tests with Foundry |
 | `bun run build` | Build for production; stop `bun dev` first because both use `.next` |
+
+### Deploy on Vercel
+
+The app is a standard Next.js build; only `apps/web` is deployed.
+
+| Setting | Value |
+| --- | --- |
+| Root Directory | `apps/web` (keep "Include source files outside of the Root Directory" on) |
+| Install Command | `bun install` (the root `bun.lock` is detected) |
+| Build Command | `next build` (workspace packages are transpiled by Next, no separate build) |
+| Production Branch | the branch that contains this README |
+
+Environment variables to set in the project (see [.env.example](.env.example)): `ARKIV_WRITER_PRIVATE_KEY` (required, server only), `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS` (required for contract mode), and optionally `AVALANCHE_FUJI_RPC_URL` for a dedicated Fuji RPC. Every other `NEXT_PUBLIC_*` has a default in the code.
+
+Swarm ID scopes the app secret to the page origin: the same identity gets a different derived wallet and pass key on every domain, including each preview URL. Fund and publish on one stable production domain and run the demo there.
 
 ## Architecture
 

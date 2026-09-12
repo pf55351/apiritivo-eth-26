@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AVAX_LOW_BELOW, buildChecks, driveCheck, stateLabel, summarize, type ReadinessInput } from "./readiness";
+import { AVAX_LOW_BELOW, buildChecks, driveCheck, type ReadinessInput, stateLabel, summarize } from "./readiness";
 
 const faucets = { avax: "https://avax", usdc: "https://usdc", glm: "https://glm" };
 
@@ -98,12 +98,5 @@ describe("provider checks", () => {
 });
 
 test("state labels are short words", () => {
-  expect(["ok", "low", "missing", "info", "loading", "unknown"].map((s) => stateLabel(s as never))).toEqual([
-    "present",
-    "low",
-    "missing",
-    "balance",
-    "checking",
-    "unknown",
-  ]);
+  expect(["ok", "low", "missing", "info", "loading", "unknown"].map((s) => stateLabel(s as never))).toEqual(["present", "low", "missing", "balance", "checking", "unknown"]);
 });

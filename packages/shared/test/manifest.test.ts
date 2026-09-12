@@ -1,5 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { buildManifest, formatRemaining, sumUsdc, formatAccessDuration, formatPriceUsdc, generateServiceId, manifestFromBytes, manifestToBytes, priceUsdcSchema, slugify, validateManifest } from "../src";
+import {
+  buildManifest,
+  formatAccessDuration,
+  formatPriceUsdc,
+  formatRemaining,
+  generateServiceId,
+  manifestFromBytes,
+  manifestToBytes,
+  priceUsdcSchema,
+  slugify,
+  sumUsdc,
+  validateManifest,
+} from "../src";
 
 describe("manifest", () => {
   test("builds the reduced manifest from form drafts", () => {

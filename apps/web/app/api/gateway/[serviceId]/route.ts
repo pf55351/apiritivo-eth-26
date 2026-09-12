@@ -1,10 +1,12 @@
-import { NextResponse } from "next/server";
-import { botRequestSchema, manifestFromBytes } from "@apiritivo/shared";
 import { getService } from "@apiritivo/arkiv";
+import { botRequestSchema, manifestFromBytes } from "@apiritivo/shared";
+import { NextResponse } from "next/server";
 import { requireAccessPass, runDemoOperation } from "@/lib/server/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Vercel: on-chain verification plus Arkiv writes can exceed the 10 s default. */
+export const maxDuration = 60;
 
 const GATEWAY = (process.env.NEXT_PUBLIC_SWARM_GATEWAY_URL || "https://api.gateway.ethswarm.org").replace(/\/+$/, "");
 
@@ -68,7 +70,10 @@ export async function POST(request: Request, context: { params: Promise<{ servic
     } catch {
       /* plain text upstream */
     }
-    return NextResponse.json({ ok: upstream.ok, operation: parsed.data.operation, result, verification: gate.verification, upstream: endpoint }, { status: upstream.ok ? 200 : 502 });
+    return NextResponse.json(
+      { ok: upstream.ok, operation: parsed.data.operation, result, verification: gate.verification, upstream: endpoint },
+      { status: upstream.ok ? 200 : 502 },
+    );
   } catch (err) {
     return NextResponse.json({ ok: false, error: `Upstream call failed: ${(err as Error).message}`, verification: gate.verification, upstream: endpoint }, { status: 502 });
   }

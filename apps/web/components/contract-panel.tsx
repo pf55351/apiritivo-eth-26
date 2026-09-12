@@ -1,17 +1,28 @@
 "use client";
 
+import { explorerAddressUrl, explorerTokenUrl, type OnChainPurchase, PAYMENT_CHAIN_NAME, paymentsContractAddress, serviceKey, USDC_ADDRESS } from "@apiritivo/payments";
+import { type ProviderStats, readProviderStats, readRecentPurchases, readServiceStats, type ServiceStats } from "@apiritivo/payments/browser";
+import { formatAccessDuration, formatPriceUsdc } from "@apiritivo/shared";
 import { useEffect, useState } from "react";
 import type { Address } from "viem";
-import { formatAccessDuration, formatPriceUsdc } from "@apiritivo/shared";
-import { explorerAddressUrl, explorerTokenUrl, paymentsContractAddress, serviceKey, PAYMENT_CHAIN_NAME, USDC_ADDRESS, type OnChainPurchase } from "@apiritivo/payments";
-import { readProviderStats, readRecentPurchases, readServiceStats, type ProviderStats, type ServiceStats } from "@apiritivo/payments/browser";
+import { Button, Disclosure } from "./ui";
 
 /**
  * "On-chain" panel for the Avalanche bounty: contract address, live stats read
  * from the contract and the latest purchases, all linked to Snowtrace.
  * Filter by service or provider.
  */
-export function ContractPanel({ serviceId, provider, title = "On-chain payments", refreshKey = 0 }: { serviceId?: string; provider?: Address; title?: string; /** Bump to re-read the contract (e.g. after a live sale). */ refreshKey?: number }) {
+export function ContractPanel({
+  serviceId,
+  provider,
+  title = "Payment activity",
+  refreshKey = 0,
+}: {
+  serviceId?: string;
+  provider?: Address;
+  title?: string /** Bump to re-read the contract (e.g. after a live sale). */;
+  refreshKey?: number;
+}) {
   const contract = paymentsContractAddress();
   const [serviceStats, setServiceStats] = useState<ServiceStats | null>(null);
   const [providerStats, setProviderStats] = useState<ProviderStats | null>(null);
@@ -41,30 +52,19 @@ export function ContractPanel({ serviceId, provider, title = "On-chain payments"
   }, [contract, serviceId, provider, tick, refreshKey]);
 
   return (
-    <section className="card rounded-3xl p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">{PAYMENT_CHAIN_NAME}</p>
-          <h2 className="mt-1 text-xl font-semibold">{title}</h2>
-        </div>
-        {contract ? (
-          <button type="button" onClick={() => setTick((n) => n + 1)} className="rounded-full border border-white/15 px-3 py-1 text-xs text-ink-300 hover:text-ink-100">
+    <Disclosure title={title} meta={PAYMENT_CHAIN_NAME}>
+      {contract ? (
+        <div className="mb-4 flex justify-end">
+          <Button variant="subtle" size="sm" onClick={() => setTick((n) => n + 1)}>
             Refresh
-          </button>
-        ) : null}
-      </div>
-
-      {!contract ? (
-        <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
-          <p className="font-medium">APIritivoPayments contract not deployed yet.</p>
-          <p className="mt-1 text-xs text-amber-200/90">
-            Payments currently go straight to the provider wallet. Once deployed (contracts/script/Deploy.s.sol), set{" "}
-            <code className="font-mono">NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS</code> and this panel shows the contract, its revenue counters and every purchase.
-          </p>
+          </Button>
         </div>
+      ) : null}
+      {!contract ? (
+        <p className="text-sm text-subtle">Payments go directly to the provider wallet.</p>
       ) : (
         <div className="mt-4 space-y-4">
-          <div className="rounded-2xl border border-white/15 bg-ink-900/60 p-3">
+          <div className="min-w-0 py-2">
             <p className="text-[11px] uppercase tracking-wider text-ink-400">Contract · APIritivoPayments</p>
             <a href={explorerAddressUrl(contract)} target="_blank" rel="noreferrer" className="mt-1 block break-all font-mono text-xs text-ink-100 hover:text-spritz-300">
               {contract} ↗
@@ -95,9 +95,9 @@ export function ContractPanel({ serviceId, provider, title = "On-chain payments"
             ) : purchases.length === 0 ? (
               <p className="text-xs text-ink-400">No purchases yet.</p>
             ) : (
-              <ul className="divide-y divide-white/10 rounded-2xl border border-white/15">
+              <ul className="divide-y divide-line">
                 {purchases.map((p) => (
-                  <li key={`${p.purchaseId}-${p.timestamp}`} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs">
+                  <li key={`${p.purchaseId}-${p.timestamp}`} className="flex flex-wrap items-center justify-between gap-2 py-3 text-xs">
                     <span className="font-mono text-ink-300">#{p.purchaseId}</span>
                     <span className="font-semibold text-olive-400">{formatPriceUsdc(p.amountUsdc)}</span>
                     <span className="text-ink-400">{formatAccessDuration(p.accessSeconds)}</span>
@@ -110,18 +110,15 @@ export function ContractPanel({ serviceId, provider, title = "On-chain payments"
               </ul>
             )}
           </div>
-          <p className="text-[11px] text-ink-400">
-            Every purchase is a <code className="font-mono">Purchased</code> event; the app server verifies that event before minting the Arkiv access pass.{" "}
-          </p>
         </div>
       )}
-    </section>
+    </Disclosure>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/15 bg-ink-900/60 p-3">
+    <div className="min-w-0 py-2">
       <p className="text-[11px] uppercase tracking-wider text-ink-400">{label}</p>
       <p className="mt-1 text-lg font-semibold">{value}</p>
     </div>

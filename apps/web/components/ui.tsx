@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useState, type ReactNode } from "react";
 import { categoryLabel } from "@apiritivo/shared";
+import Image from "next/image";
+import Link from "next/link";
+import { type ReactNode, useState } from "react";
 import { publicEnv } from "@/lib/env";
 import { copyText, hueFor, initials, shortRef } from "@/lib/format";
 import { CodePanel } from "./code-panel";
@@ -21,38 +22,17 @@ type ButtonProps = {
   title?: string;
 };
 
-const base =
-  "inline-flex items-center justify-center gap-2 rounded-control border font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50";
-const variants = {
-  primary:
-    "border-accent bg-accent text-canvas enabled:hover:border-accent-hover enabled:hover:bg-accent-hover [&:is(a)]:hover:bg-accent-hover",
-  ghost: "border-line-strong bg-surface text-content enabled:hover:bg-surface-raised [&:is(a)]:hover:bg-surface-raised",
-  subtle: "border-transparent text-muted enabled:hover:bg-surface-raised enabled:hover:text-content [&:is(a)]:hover:text-content",
-  danger: "border-rose-400/40 text-rose-400 enabled:hover:bg-rose-400/10",
-};
-const sizes = { sm: "min-h-9 shrink-0 px-3 py-1.5 text-xs", md: "min-h-11 px-4 py-2 text-sm", lg: "min-h-12 px-6 py-3 text-sm" };
-
-export function Button({
-  children,
-  onClick,
-  href,
-  type = "button",
-  variant = "primary",
-  size = "md",
-  disabled,
-  className = "",
-  title,
-}: ButtonProps) {
-  const cls = `${base} ${variants[variant]} ${sizes[size]} ${className}`;
+export function Button({ children, onClick, href, type = "button", variant = "primary", size = "md", disabled, className = "", title }: ButtonProps) {
+  const cls = `ui-button ${className}`;
   if (href && !disabled) {
     return (
-      <Link href={href} className={cls} title={title}>
+      <Link href={href} className={cls} data-variant={variant} data-size={size} title={title}>
         {children}
       </Link>
     );
   }
   return (
-    <button type={type} onClick={onClick} disabled={disabled} className={cls} title={title}>
+    <button type={type} onClick={onClick} disabled={disabled} className={cls} data-variant={variant} data-size={size} title={title}>
       {children}
     </button>
   );
@@ -60,52 +40,31 @@ export function Button({
 
 /* ---------- Pills & chips ---------- */
 
-const CATEGORY_TONES: Record<string, string> = {
-  "market-data": "bg-spritz-500/15 text-spritz-300 border-spritz-500/30",
-  "ai-text": "bg-rose-400/15 text-rose-400 border-rose-400/30",
-  "ai-vision": "bg-fuchsia-400/15 text-fuchsia-300 border-fuchsia-400/30",
-  weather: "bg-sky-400/15 text-sky-300 border-sky-400/30",
-  geo: "bg-emerald-400/15 text-emerald-300 border-emerald-400/30",
-  identity: "bg-violet-400/15 text-violet-300 border-violet-400/30",
-  payments: "bg-olive-400/15 text-olive-400 border-olive-400/30",
-  storage: "bg-amber-300/15 text-amber-200 border-amber-300/30",
-  messaging: "bg-cyan-400/15 text-cyan-300 border-cyan-400/30",
-  analytics: "bg-indigo-400/15 text-indigo-300 border-indigo-400/30",
-  utility: "bg-white/10 text-ink-200 border-white/15",
-};
-
 export function CategoryPill({ slug, className = "" }: { slug: string; className?: string }) {
-  const tone = CATEGORY_TONES[slug] ?? "bg-white/10 text-ink-200 border-white/15";
+  return <span className={`inline-flex items-center text-xs font-normal text-subtle ${className}`}>{categoryLabel(slug)}</span>;
+}
+
+/** Secondary information stays available without adding another panel. */
+export function Disclosure({ title, children, meta }: { title: string; children: ReactNode; meta?: ReactNode }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium ${tone} ${className}`}
-    >
-      {categoryLabel(slug)}
-    </span>
+    <details className="ui-disclosure">
+      <summary>
+        <span>{title}</span>
+        {meta !== undefined && meta !== null ? <span className="ml-auto min-w-0 max-w-[50%] truncate text-xs font-normal text-subtle">{meta}</span> : null}
+        <span aria-hidden="true" className="disclosure-chevron">
+          ⌄
+        </span>
+      </summary>
+      <div className="min-w-0 pb-5 pt-1">{children}</div>
+    </details>
   );
 }
 
-export function ProofChip({
-  label,
-  ok = true,
-  title,
-  href,
-}: {
-  label: "Arkiv" | "Swarm" | "Swarm ID";
-  ok?: boolean;
-  title?: string;
-  href?: string;
-}) {
-  const tone = ok
-    ? "border-olive-400/30 bg-olive-400/10 text-olive-400"
-    : "border-white/15 bg-white/5 text-ink-400";
+export function ProofChip({ label, ok = true, title, href }: { label: "Arkiv" | "Swarm" | "Swarm ID"; ok?: boolean; title?: string; href?: string }) {
+  const tone = ok ? "border-olive-400/30 bg-olive-400/10 text-olive-400" : "border-white/15 bg-white/5 text-ink-400";
   const content = (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-[11px] ${tone}`}
-      title={title}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      {label} {ok ? "✓" : "–"}
+    <span className={`inline-flex items-center gap-1.5 rounded-control border px-2 py-0.5 text-[11px] ${tone}`} title={title}>
+      {label} {ok ? "✓" : "· Unverified"}
     </span>
   );
   if (href) {
@@ -124,26 +83,37 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
     accent: "border-spritz-500/30 bg-spritz-500/10 text-spritz-300",
     warn: "border-amber-300/30 bg-amber-300/10 text-amber-200",
   };
-  return (
-    <span className={`inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-medium ${tones[tone]}`}>
-      {children}
-    </span>
-  );
+  return <span className={`inline-flex items-center rounded-control border px-2 py-0.5 text-xs font-normal ${tones[tone]}`}>{children}</span>;
 }
 
 /* ---------- Avatar ---------- */
 
-export function Avatar({
-  name,
-  seed,
-  src,
-  size = 36,
-}: {
-  name: string;
-  seed?: string;
-  src?: string;
-  size?: number;
-}) {
+/** An app-specific profile mark, stable for the connected identity. */
+export function ProfileAvatar({ name, seed, size = 36 }: { name: string; seed?: string; size?: number }) {
+  const angle = hueFor(seed ?? name);
+
+  return (
+    <span className="profile-avatar" style={{ width: size, height: size }} role="img" aria-label={`${name} profile`}>
+      <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <circle cx="32" cy="32" r="30" fill="var(--color-ink-950)" />
+        <g transform={`rotate(${angle} 32 32)`}>
+          <circle cx="32" cy="32" r="24" fill="var(--color-spritz-500)" />
+          <path d="M32 8a24 24 0 0 1 24 24C42 21 22 42 8 32A24 24 0 0 1 32 8Z" fill="var(--color-spritz-300)" />
+        </g>
+        <circle cx="32" cy="32" r="17" fill="var(--color-ink-900)" />
+        <text x="32" y="33" textAnchor="middle" dominantBaseline="middle" fill="var(--color-ink-100)" fontSize="19" fontWeight="500" fontFamily="var(--font-heading)">
+          {initials(name)}
+        </text>
+        <g className="profile-avatar-orbit">
+          <circle cx="32" cy="32" r="30" stroke="var(--color-spritz-400)" strokeWidth="1" strokeDasharray="132 57" transform="rotate(-70 32 32)" />
+          <circle cx="60.2" cy="21.7" r="2.5" fill="var(--color-spritz-300)" />
+        </g>
+      </svg>
+    </span>
+  );
+}
+
+export function Avatar({ name, seed, src, size = 36 }: { name: string; seed?: string; src?: string; size?: number }) {
   const hue = hueFor(seed ?? name);
   const style = {
     width: size,
@@ -152,14 +122,10 @@ export function Avatar({
     fontSize: Math.max(10, size * 0.36),
   };
   return (
-    <span
-      className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg font-semibold text-ink-950"
-      style={style}
-      aria-label={name}
-    >
+    <span className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg font-semibold text-ink-950" style={style} role="img" aria-label={name}>
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={name} className="h-full w-full object-cover" />
+        // biome-ignore lint/performance/noImgElement: avatar URLs come from Swarm ID and are not allow-listed for next/image
+        <img src={src} alt={name} className="h-full w-full object-cover" /> // eslint-disable-line @next/next/no-img-element
       ) : (
         initials(name)
       )}
@@ -173,7 +139,7 @@ export function RefField({ label, value, href }: { label: string; value: string;
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">{label}</span>
+      <span className="text-xs text-subtle">{label}</span>
       <div className="flex items-center gap-2">
         {href ? (
           <a href={href} target="_blank" rel="noreferrer" className="truncate font-mono text-xs text-ink-200 hover:text-spritz-300" title={value}>
@@ -210,41 +176,22 @@ export function Skeleton({ className = "" }: { className?: string }) {
 
 export function ServiceCardSkeleton() {
   return (
-    <div className="card flex flex-col gap-4 rounded-2xl p-5">
+    <div className="flex min-w-0 flex-col gap-4 border-t border-line py-5">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="h-6 w-2/3" />
       <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-4/5" />
-      <div className="mt-2 flex items-center gap-3">
-        <Skeleton className="h-8 w-8 rounded-full" />
-        <Skeleton className="h-4 w-28" />
-      </div>
-      <div className="flex gap-2">
-        <Skeleton className="h-5 w-16" />
-        <Skeleton className="h-5 w-16" />
-      </div>
-      <Skeleton className="h-10 w-full rounded-full" />
+      <Skeleton className="h-5 w-28" />
     </div>
   );
 }
 
-export function EmptyState({
-  title,
-  description,
-  action,
-  icon = "◌",
-}: {
-  title: string;
-  description?: string;
-  action?: ReactNode;
-  icon?: string;
-}) {
+export function EmptyState({ title, description, action, icon = "◌" }: { title: string; description?: string; action?: ReactNode; icon?: string }) {
   return (
-    <div className="glass flex flex-col items-center gap-3 rounded-3xl px-6 py-14 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/5 text-2xl text-spritz-300">
+    <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+      <div aria-hidden="true" className="text-2xl text-spritz-300">
         {icon}
       </div>
-      <h3 className="text-lg font-semibold">{title}</h3>
+      <h3 className="text-base font-medium">{title}</h3>
       {description ? <p className="max-w-md text-sm text-ink-300">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
@@ -265,12 +212,9 @@ export function ErrorNotice({
   /** Disable live announcements only for static examples in the UI library. */
   announce?: boolean;
 }) {
-  const tones =
-    tone === "error"
-      ? "border-rose-400/30 bg-rose-400/10 text-rose-100"
-      : "border-amber-300/30 bg-amber-300/10 text-amber-100";
+  const tones = tone === "error" ? "border-rose-400 text-rose-400" : "border-amber-300 text-amber-200";
   return (
-    <div role={announce ? (tone === "error" ? "alert" : "status") : undefined} className={`rounded-panel border p-4 text-sm ${tones}`}>
+    <div role={announce ? (tone === "error" ? "alert" : "status") : undefined} className={`min-w-0 border-l-2 py-2 pl-4 text-sm ${tones}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-medium">{message}</p>
         {onRetry ? (
@@ -281,7 +225,7 @@ export function ErrorNotice({
       </div>
       {publicEnv.isDev && detail ? (
         <details className="mt-3">
-          <summary className="cursor-pointer text-xs text-ink-300">Debug details (development only)</summary>
+          <summary className="min-h-9 cursor-pointer py-2 text-xs text-subtle">Debug details</summary>
           <pre className="mt-2 max-h-64 max-w-full overflow-auto whitespace-pre-wrap break-words rounded-lg bg-ink-900/80 p-3 font-mono text-[11px] leading-relaxed text-ink-200">
             {detail}
           </pre>
@@ -293,9 +237,9 @@ export function ErrorNotice({
 
 export function SectionTitle({ eyebrow, title, description, right }: { eyebrow?: string; title: string; description?: string; right?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-6 border-b border-line pb-8 pt-3">
+    <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        {eyebrow ? <Eyebrow className="mb-4">{eyebrow}</Eyebrow> : null}
+        {eyebrow ? <Eyebrow className="mb-3">{eyebrow}</Eyebrow> : null}
         <h1 className="section-heading">{title}</h1>
         {description ? <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">{description}</p> : null}
       </div>
@@ -308,21 +252,43 @@ export function Eyebrow({ children, className = "" }: { children: ReactNode; cla
   return <p className={`eyebrow ${className}`}>{children}</p>;
 }
 
-/** Shared by the header and the UI reference page; no external brand assets. */
+/** Supplied brand artwork, framed to remove the exports' transparent margins. */
 export function BrandMark({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className={`h-8 w-8 shrink-0 ${className}`}>
-      <rect width="32" height="32" rx="7" fill="currentColor" />
-      <path fillRule="evenodd" d="M8 23 14 9h4l6 14h-4l-1.2-3H13l-1.2 3H8Zm6.2-6h3.6L16 12.5 14.2 17Z" fill="var(--color-ink-950)" />
-      <path d="m24 7 2 2-2 2-2-2 2-2Z" fill="var(--color-ink-950)" />
-    </svg>
+    <span aria-hidden="true" className={`relative inline-block h-8 w-11 shrink-0 overflow-hidden ${className}`}>
+      <Image
+        src="/brand/icons/apiritivo-symbol.png"
+        alt=""
+        width={1254}
+        height={1254}
+        sizes="56px"
+        priority
+        className="absolute left-1/2 top-1/2 h-14 w-14 max-w-none -translate-x-1/2 -translate-y-1/2"
+      />
+    </span>
+  );
+}
+
+export function BrandLogo({ className = "" }: { className?: string }) {
+  return (
+    <span className={`relative inline-block h-10 w-48 shrink-0 overflow-hidden ${className}`}>
+      <Image
+        src="/brand/logos/apiritivo-logo-dark.png"
+        alt="APIritivo"
+        width={2172}
+        height={724}
+        sizes="208px"
+        priority
+        className="absolute left-1/2 top-1/2 h-auto w-[208px] max-w-none -translate-x-1/2 -translate-y-1/2"
+      />
+    </span>
   );
 }
 
 export function JsonInspector({ value, title = "Raw JSON", defaultOpen = false }: { value: unknown; title?: string; defaultOpen?: boolean }) {
   return (
-    <details className="group min-w-0 rounded-panel border border-line bg-surface p-1" open={defaultOpen}>
-      <summary className="flex cursor-pointer items-center justify-between rounded-control px-3 py-3 text-sm text-muted hover:text-content">
+    <details className="group min-w-0" open={defaultOpen}>
+      <summary className="flex cursor-pointer items-center justify-between rounded-control py-3 text-sm text-muted hover:text-content">
         <span>{title}</span>
         <span className="text-xs transition-transform group-open:rotate-90">▸</span>
       </summary>
