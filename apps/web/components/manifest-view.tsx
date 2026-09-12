@@ -1,6 +1,6 @@
 "use client";
 
-import type { ServiceManifest } from "@apiperitivo/shared";
+import type { ServiceManifest } from "@apiritivo/shared";
 import { JsonInspector } from "./ui";
 
 const TYPE_TONE: Record<string, string> = {

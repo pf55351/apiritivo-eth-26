@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Workspace packages export raw TypeScript; let Next compile them.
-  transpilePackages: ["@apiperitivo/shared", "@apiperitivo/swarm", "@apiperitivo/arkiv", "@apiperitivo/payments"],
+  transpilePackages: ["@apiritivo/shared", "@apiritivo/swarm", "@apiritivo/arkiv", "@apiritivo/payments"],
 };
 
 export default nextConfig;

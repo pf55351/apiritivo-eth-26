@@ -1,21 +1,22 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "apiperitivo",
+      "name": "apiritivo",
       "devDependencies": {
         "turbo": "^2.5.0",
         "typescript": "^5.9.0",
       },
     },
     "apps/web": {
-      "name": "@apiperitivo/web",
+      "name": "@apiritivo/web",
       "version": "0.0.0",
       "dependencies": {
-        "@apiperitivo/arkiv": "workspace:*",
-        "@apiperitivo/payments": "workspace:*",
-        "@apiperitivo/shared": "workspace:*",
-        "@apiperitivo/swarm": "workspace:*",
+        "@apiritivo/arkiv": "workspace:*",
+        "@apiritivo/payments": "workspace:*",
+        "@apiritivo/shared": "workspace:*",
+        "@apiritivo/swarm": "workspace:*",
         "next": "^15.5.0",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
@@ -42,10 +43,10 @@
       },
     },
     "packages/arkiv": {
-      "name": "@apiperitivo/arkiv",
+      "name": "@apiritivo/arkiv",
       "version": "0.0.0",
       "dependencies": {
-        "@apiperitivo/shared": "workspace:*",
+        "@apiritivo/shared": "workspace:*",
         "@arkiv-network/sdk": "^0.8.1",
         "viem": "^2.21.0",
       },
@@ -56,10 +57,10 @@
       },
     },
     "packages/payments": {
-      "name": "@apiperitivo/payments",
+      "name": "@apiritivo/payments",
       "version": "0.0.0",
       "dependencies": {
-        "@apiperitivo/shared": "workspace:*",
+        "@apiritivo/shared": "workspace:*",
         "viem": "^2.21.0",
       },
       "devDependencies": {
@@ -69,7 +70,7 @@
       },
     },
     "packages/shared": {
-      "name": "@apiperitivo/shared",
+      "name": "@apiritivo/shared",
       "version": "0.0.0",
       "dependencies": {
         "zod": "^4.1.0",
@@ -81,10 +82,10 @@
       },
     },
     "packages/swarm": {
-      "name": "@apiperitivo/swarm",
+      "name": "@apiritivo/swarm",
       "version": "0.0.0",
       "dependencies": {
-        "@apiperitivo/shared": "workspace:*",
+        "@apiritivo/shared": "workspace:*",
         "@snaha/swarm-id": "^0.4.1",
       },
       "devDependencies": {
@@ -94,10 +95,10 @@
       },
     },
     "tools": {
-      "name": "@apiperitivo/tools",
+      "name": "@apiritivo/tools",
       "version": "0.0.0",
       "dependencies": {
-        "@apiperitivo/payments": "workspace:*",
+        "@apiritivo/payments": "workspace:*",
         "@arkiv-network/sdk": "^0.8.1",
         "viem": "^2.21.0",
       },
@@ -113,17 +114,17 @@
 
     "@alloc/quick-lru": ["@alloc/quick-lru@5.3.0", "", {}, "sha512-U4+70Pc5ZS9osnCBCE5Jha/ciHM+Yp+CNMNC/7HvYbNRk1Ldd+f7qO65W5qfhu/TCv+/ozljlXXe9Nj8419DMA=="],
 
-    "@apiperitivo/arkiv": ["@apiperitivo/arkiv@workspace:packages/arkiv"],
+    "@apiritivo/arkiv": ["@apiritivo/arkiv@workspace:packages/arkiv"],
 
-    "@apiperitivo/payments": ["@apiperitivo/payments@workspace:packages/payments"],
+    "@apiritivo/payments": ["@apiritivo/payments@workspace:packages/payments"],
 
-    "@apiperitivo/shared": ["@apiperitivo/shared@workspace:packages/shared"],
+    "@apiritivo/shared": ["@apiritivo/shared@workspace:packages/shared"],
 
-    "@apiperitivo/swarm": ["@apiperitivo/swarm@workspace:packages/swarm"],
+    "@apiritivo/swarm": ["@apiritivo/swarm@workspace:packages/swarm"],
 
-    "@apiperitivo/tools": ["@apiperitivo/tools@workspace:tools"],
+    "@apiritivo/tools": ["@apiritivo/tools@workspace:tools"],
 
-    "@apiperitivo/web": ["@apiperitivo/web@workspace:apps/web"],
+    "@apiritivo/web": ["@apiritivo/web@workspace:apps/web"],
 
     "@arkiv-network/sdk": ["@arkiv-network/sdk@0.8.1", "", { "dependencies": { "brotli-wasm": "^3.0.1" }, "peerDependencies": { "typescript": ">=5.0.0", "viem": "^2.0.0" }, "optionalPeers": ["typescript"] }, "sha512-J2Qn7OOPZet5qGtN2XwLkSEnzk70FZCYDNclS/a4vrYBmsW4xgblTXWrczZXAhD2x4unSgGQwqpGZkBta/x7ow=="],
 

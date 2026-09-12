@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SERVICE_CATEGORIES, categoryLabel } from "@apiperitivo/shared";
+import { SERVICE_CATEGORIES, categoryLabel } from "@apiritivo/shared";
 import { useMarketplace } from "@/lib/use-services";
 import { useSession } from "@/lib/session";
 import { ServiceCard } from "@/components/service-card";
@@ -39,8 +39,8 @@ export default function MarketplacePage() {
     <div className="space-y-8">
       <SectionTitle
         eyebrow="Marketplace"
-        title="Discover APIs that machines can understand."
-        description="Every card is a live Arkiv entity pointing to an immutable manifest on Swarm."
+        title="Find your next connection."
+        description="Discover APIs, inspect their manifests, and choose the access that fits your next build."
         right={
           <div className="flex items-center gap-2 text-xs text-ink-400">
             {data ? <span>{data.length} services</span> : null}
@@ -51,20 +51,21 @@ export default function MarketplacePage() {
         }
       />
 
-      <div className="glass flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="relative flex-1">
-          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-400">⌕</span>
+          <span className="sr-only">Search services, providers, or categories</span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search services, providers, categories…"
-            className="h-11 w-full rounded-xl border border-white/15 bg-ink-900/70 pl-10 pr-4 text-sm text-ink-100 placeholder:text-ink-400 focus:border-spritz-400/60 focus:outline-none"
+            className="field-control"
           />
         </label>
         <select
+          aria-label="Filter by category"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="h-11 rounded-xl border border-white/15 bg-ink-900/70 px-4 text-sm text-ink-100 focus:border-spritz-400/60 focus:outline-none sm:w-56"
+          className="field-control sm:w-56"
         >
           <option value="all">All categories</option>
           {categories.map((slug) => (
@@ -80,7 +81,8 @@ export default function MarketplacePage() {
           <button
             type="button"
             onClick={() => setCategory("all")}
-            className={`rounded-full border px-3 py-1 text-xs transition ${category === "all" ? "border-spritz-400/60 bg-spritz-500/15 text-spritz-300" : "border-white/15 text-ink-300 hover:border-white/25"}`}
+            aria-pressed={category === "all"}
+            className={`min-h-9 rounded-control border px-3 py-1 text-xs transition-colors ${category === "all" ? "border-spritz-400/60 bg-spritz-500/10 text-spritz-300" : "border-line text-muted hover:border-line-strong"}`}
           >
             All
           </button>
@@ -89,7 +91,8 @@ export default function MarketplacePage() {
               key={slug}
               type="button"
               onClick={() => setCategory(slug === category ? "all" : slug)}
-              className={`rounded-full border px-3 py-1 text-xs transition ${category === slug ? "border-spritz-400/60 bg-spritz-500/15 text-spritz-300" : "border-white/15 text-ink-300 hover:border-white/25"}`}
+              aria-pressed={category === slug}
+              className={`min-h-9 rounded-control border px-3 py-1 text-xs transition-colors ${category === slug ? "border-spritz-400/60 bg-spritz-500/10 text-spritz-300" : "border-line text-muted hover:border-line-strong"}`}
             >
               {categoryLabel(slug)}
             </button>

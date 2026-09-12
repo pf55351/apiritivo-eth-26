@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ROLE_HOME, type Role } from "@apiperitivo/shared";
+import { ROLE_HOME, type Role } from "@apiritivo/shared";
 import { useSession } from "@/lib/session";
 
 const OPTIONS: { role: Role; title: string; subtitle: string; icon: string; blurb: string }[] = [
@@ -37,11 +37,12 @@ export function RoleChooser({ compact = false }: { compact?: boolean }) {
               session.setRole(opt.role);
               router.push(ROLE_HOME[opt.role]);
             }}
-            className={`card group flex flex-col items-start gap-3 rounded-3xl p-6 text-left ${
-              active ? "border-spritz-400/60 shadow-glow" : ""
+            aria-pressed={active}
+            className={`card card-interactive group flex flex-col items-start gap-3 p-6 text-left ${
+              active ? "card-selected" : ""
             }`}
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-spritz-500/30 to-rose-400/20 text-2xl text-spritz-300 transition group-hover:scale-105">
+            <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-control border border-spritz-500/25 bg-spritz-500/10 text-xl text-spritz-300">
               {opt.icon}
             </span>
             <span>

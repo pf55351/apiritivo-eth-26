@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { AccessPass, Sale } from "@apiperitivo/shared";
-import { getBlockTiming, listAccessPassesByBuyer, listAccessPassesForService, listSalesByProvider, secondsUntilBlock, type BlockTiming } from "@apiperitivo/arkiv";
+import type { AccessPass, Sale } from "@apiritivo/shared";
+import { getBlockTiming, listAccessPassesByBuyer, listAccessPassesForService, listSalesByProvider, secondsUntilBlock, type BlockTiming } from "@apiritivo/arkiv";
 import { toFriendlyError, type FriendlyError } from "./errors";
 
 type State<T> = { data: T | null; loading: boolean; error: FriendlyError | null; timing: BlockTiming | null };

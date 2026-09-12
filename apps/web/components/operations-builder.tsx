@@ -1,6 +1,6 @@
 "use client";
 
-import { OPERATION_INPUT_TYPES, type OperationDraft, type OperationInputType } from "@apiperitivo/shared";
+import { OPERATION_INPUT_TYPES, type OperationDraft, type OperationInputType } from "@apiritivo/shared";
 import { Button } from "./ui";
 
 export function newId(): string {
@@ -11,8 +11,7 @@ export function emptyOperation(name = ""): OperationDraft {
   return { id: newId(), name, inputs: [{ id: newId(), name: "", type: "string" }] };
 }
 
-const inputCls =
-  "h-10 w-full rounded-xl border border-white/15 bg-ink-900/70 px-3 font-mono text-sm text-ink-100 placeholder:text-ink-400 focus:border-spritz-400/60 focus:outline-none";
+const inputCls = "field-control font-mono";
 
 export function OperationsBuilder({
   operations,
@@ -59,9 +58,10 @@ export function OperationsBuilder({
             <span className="mb-2 block text-xs text-ink-300">Input fields</span>
             <div className="space-y-2">
               {op.inputs.map((field) => (
-                <div key={field.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+                <div key={field.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
                   <input
-                    className={inputCls}
+                    className={`${inputCls} col-span-2 sm:col-span-1`}
+                    aria-label={`Input name for ${op.name || `operation ${index + 1}`}`}
                     placeholder="symbol"
                     value={field.name}
                     onChange={(e) =>
@@ -74,7 +74,8 @@ export function OperationsBuilder({
                     spellCheck={false}
                   />
                   <select
-                    className="h-10 rounded-xl border border-white/15 bg-ink-900/70 px-3 font-mono text-sm text-ink-100 focus:border-spritz-400/60 focus:outline-none"
+                    className="field-control font-mono sm:w-auto"
+                    aria-label={`Type of ${field.name || "input field"}`}
                     value={field.type}
                     onChange={(e) =>
                       update(op.id, {
@@ -93,7 +94,8 @@ export function OperationsBuilder({
                   <button
                     type="button"
                     onClick={() => update(op.id, { inputs: op.inputs.filter((f) => f.id !== field.id) })}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 text-ink-400 hover:border-rose-400/40 hover:text-rose-400"
+                    className="flex h-11 w-11 items-center justify-center rounded-control border border-line-strong text-subtle hover:border-rose-400/40 hover:text-rose-400"
+                    aria-label={`Remove ${field.name || "input field"}`}
                     title="Remove field"
                   >
                     ×

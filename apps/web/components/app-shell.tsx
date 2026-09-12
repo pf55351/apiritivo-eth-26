@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ROLE_HOME } from "@apiperitivo/shared";
-import { SWARM_ID_FRAME_CONTAINER_ID, useSession } from "@/lib/session";
-import { Avatar, Badge, Button } from "./ui";
+import { ROLE_HOME } from "@apiritivo/shared";
+import { explorerAddressUrl, paymentsContractAddress } from "@apiritivo/payments";
+import { useSession } from "@/lib/session";
+import { Avatar, Badge, BrandMark, Button } from "./ui";
+import { SwarmSignIn } from "./swarm-sign-in";
 
 function NavLink({ href, children }: { href: string; children: ReactNode }) {
   const pathname = usePathname();
@@ -13,12 +15,31 @@ function NavLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <Link
       href={href}
-      className={`rounded-full px-3.5 py-1.5 text-sm transition-colors ${
-        active ? "bg-white/10 text-ink-100" : "text-ink-300 hover:bg-white/5 hover:text-ink-100"
+      aria-current={active ? "page" : undefined}
+      className={`inline-flex min-h-11 items-center border-b-2 px-3 text-[13px] transition-colors ${
+        active ? "border-accent text-content" : "border-transparent text-subtle hover:text-content"
       }`}
     >
       {children}
     </Link>
+  );
+}
+
+/** External link to the deployed APIritivoPayments contract on SnowTrace; hidden in direct-transfer mode. */
+function ContractLink({ short = false }: { short?: boolean }) {
+  const contract = paymentsContractAddress();
+  if (!contract) return null;
+  return (
+    <a
+      href={explorerAddressUrl(contract)}
+      target="_blank"
+      rel="noreferrer"
+      title={`APIritivoPayments · ${contract}`}
+      className="inline-flex min-h-9 items-center gap-1 rounded-control border border-line px-2.5 py-1 font-mono text-[10px] text-subtle transition hover:border-line-strong hover:text-content"
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {short ? "Contract" : `Contract ${contract.slice(0, 6)}…${contract.slice(-4)}`} ↗
+    </a>
   );
 }
 
@@ -33,15 +54,25 @@ function IdentityMenu() {
     const onClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        ref.current?.querySelector("button")?.focus();
+      }
+    };
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [open]);
 
   if (!session.identity) {
     return (
       <Button size="sm" className="whitespace-nowrap" onClick={session.connect} disabled={session.status !== "ready" || session.connecting}>
-        <span className="hidden sm:inline">{session.connecting ? "Waiting for Swarm ID…" : "Enter with Swarm ID"}</span>
-        <span className="sm:hidden">{session.connecting ? "Waiting…" : "Enter"}</span>
+        <span className="hidden sm:inline">{session.connecting ? "Complete sign-in" : "Enter with Swarm ID"}</span>
+        <span className="sm:hidden">{session.connecting ? "Sign in" : "Enter"}</span>
       </Button>
     );
   }
@@ -53,16 +84,18 @@ function IdentityMenu() {
     <div className="relative" ref={ref}>
       <button
         type="button"
+        aria-expanded={open}
+        aria-label={`Account for ${identity.name}`}
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2.5 rounded-full border border-white/15 bg-white/5 py-1 pl-1 pr-3 transition hover:border-spritz-400/40"
+        className="flex min-h-10 items-center gap-2 rounded-control border border-line bg-surface py-1 pl-1 pr-2.5 transition hover:border-line-strong"
       >
         <Avatar name={identity.name} seed={identity.id} src={identity.avatarUrl} size={28} />
         <span className="hidden max-w-[140px] truncate text-sm sm:block">{identity.name}</span>
-        {role ? <Badge tone="accent">{role}</Badge> : <Badge tone="warn">no role</Badge>}
+        <span className="hidden md:inline-flex">{role ? <Badge tone="accent">{role}</Badge> : <Badge tone="warn">no role</Badge>}</span>
         <span className="text-xs text-ink-400">▾</span>
       </button>
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-72 rounded-2xl border border-white/15 bg-ink-850 p-2 shadow-[0_24px_60px_-12px_rgb(0_0_0_/0.85)] ring-1 ring-black/60">
+        <div className="absolute right-0 z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-panel border border-line bg-surface-raised p-2 shadow-xl">
           <div className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2">
             <Avatar name={identity.name} seed={identity.id} src={identity.avatarUrl} size={40} />
             <div className="min-w-0">
@@ -109,40 +142,49 @@ function IdentityMenu() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-scene min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-ink-950/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-spritz-400 to-rose-400 text-sm font-black text-ink-950">
-                A
-              </span>
-              <span className="text-base font-semibold tracking-tight">
-                API<span className="text-spritz-300">peritivo</span>
-              </span>
+    <div className="bg-scene flex min-h-dvh flex-col">
+      <a href="#main-content" className="skip-link">Skip to content</a>
+      <header className="sticky top-0 z-20 border-b border-line bg-canvas/95 backdrop-blur-md">
+        <div className="mx-auto flex min-h-18 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-6 lg:gap-10">
+            <Link href="/" aria-label="APIritivo home" className="flex shrink-0 items-center gap-2.5">
+              <BrandMark className="text-accent" />
+              <span className="text-lg font-semibold tracking-[-0.055em]">APIritivo</span>
             </Link>
-            <nav className="hidden items-center gap-1 sm:flex">
+            <nav aria-label="Main navigation" className="hidden items-center gap-1 lg:flex">
               <NavLink href="/marketplace">Marketplace</NavLink>
               <NavLink href="/passes">My passes</NavLink>
               <NavLink href="/provider">Provider</NavLink>
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            <nav className="hidden items-center gap-1 max-sm:flex">
-              <NavLink href="/marketplace">Market</NavLink>
-              <NavLink href="/passes">Passes</NavLink>
-              <NavLink href="/provider">Provider</NavLink>
-            </nav>
+            <span className="hidden xl:inline-flex">
+              <ContractLink />
+            </span>
             <IdentityMenu />
           </div>
         </div>
+        <nav aria-label="Mobile navigation" className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 lg:hidden">
+          <NavLink href="/marketplace">Marketplace</NavLink>
+          <NavLink href="/passes">My passes</NavLink>
+          <NavLink href="/provider">Provider</NavLink>
+        </nav>
       </header>
-      <main className="mx-auto w-full min-w-0 max-w-7xl px-4 pb-24 pt-8 sm:px-6">{children}</main>
-      <footer className="border-t border-white/10 py-6 text-center text-xs text-ink-400">
-        APIperitivo · Phase 1 · Swarm ID · Swarm · Arkiv · no payments yet
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 pb-20 pt-8 sm:px-6 lg:px-8">{children}</main>
+      <footer className="border-t border-line">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5 px-4 py-7 sm:px-6 lg:px-8">
+          <div>
+            <p className="text-sm font-semibold tracking-tight">APIritivo <span className="ml-2 text-xs font-normal text-subtle">An open table for APIs.</span></p>
+            <p className="mt-2 text-xs text-subtle">Swarm ID · Swarm · Arkiv · USDC on Avalanche Fuji</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-xs text-subtle">
+            <span className="rounded-md border border-line px-2 py-1">Testnet edition</span>
+            <Link href="/design-system" className="py-2 hover:text-content">UI library ↗</Link>
+            <ContractLink short />
+          </div>
+        </div>
       </footer>
-      {/* Swarm ID mounts its iframe here. Zero-size so the SDK's own login widget never shows; we use our buttons. */}
-      <div id={SWARM_ID_FRAME_CONTAINER_ID} aria-hidden style={{ position: "fixed", bottom: 0, right: 0, width: 0, height: 0, overflow: "hidden" }} />
+      <SwarmSignIn />
     </div>
   );
 }

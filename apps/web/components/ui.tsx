@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { categoryLabel } from "@apiperitivo/shared";
+import { categoryLabel } from "@apiritivo/shared";
 import { publicEnv } from "@/lib/env";
 import { copyText, hueFor, initials, shortRef } from "@/lib/format";
+import { CodePanel } from "./code-panel";
 
 /* ---------- Buttons ---------- */
 
@@ -21,15 +22,15 @@ type ButtonProps = {
 };
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-spritz-400/70 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-control border font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50";
 const variants = {
   primary:
-    "bg-spritz-500 text-ink-950 hover:bg-spritz-400 shadow-[0_10px_30px_-10px_rgb(255_122_26_/0.7)] hover:shadow-glow",
-  ghost: "border border-white/15 text-ink-100 hover:border-spritz-400/50 hover:bg-white/5",
-  subtle: "text-ink-300 hover:text-ink-100 hover:bg-white/5",
-  danger: "border border-rose-400/40 text-rose-400 hover:bg-rose-400/10",
+    "border-accent bg-accent text-canvas enabled:hover:border-accent-hover enabled:hover:bg-accent-hover [&:is(a)]:hover:bg-accent-hover",
+  ghost: "border-line-strong bg-surface text-content enabled:hover:bg-surface-raised [&:is(a)]:hover:bg-surface-raised",
+  subtle: "border-transparent text-muted enabled:hover:bg-surface-raised enabled:hover:text-content [&:is(a)]:hover:text-content",
+  danger: "border-rose-400/40 text-rose-400 enabled:hover:bg-rose-400/10",
 };
-const sizes = { sm: "h-8 shrink-0 px-3 text-xs", md: "h-10 px-5 text-sm", lg: "h-12 px-7 text-base" };
+const sizes = { sm: "min-h-9 shrink-0 px-3 py-1.5 text-xs", md: "min-h-11 px-4 py-2 text-sm", lg: "min-h-12 px-6 py-3 text-sm" };
 
 export function Button({
   children,
@@ -77,7 +78,7 @@ export function CategoryPill({ slug, className = "" }: { slug: string; className
   const tone = CATEGORY_TONES[slug] ?? "bg-white/10 text-ink-200 border-white/15";
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${tone} ${className}`}
+      className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium ${tone} ${className}`}
     >
       {categoryLabel(slug)}
     </span>
@@ -124,7 +125,7 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
     warn: "border-amber-300/30 bg-amber-300/10 text-amber-200",
   };
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${tones[tone]}`}>
+    <span className={`inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-medium ${tones[tone]}`}>
       {children}
     </span>
   );
@@ -147,12 +148,12 @@ export function Avatar({
   const style = {
     width: size,
     height: size,
-    background: `linear-gradient(135deg, hsl(${hue} 80% 60%), hsl(${(hue + 50) % 360} 80% 45%))`,
+    background: `hsl(${hue} 28% 73%)`,
     fontSize: Math.max(10, size * 0.36),
   };
   return (
     <span
-      className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-ink-950 ring-2 ring-white/10"
+      className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg font-semibold text-ink-950"
       style={style}
       aria-label={name}
     >
@@ -191,7 +192,8 @@ export function RefField({ label, value, href }: { label: string; value: string;
               setTimeout(() => setCopied(false), 1200);
             }
           }}
-          className="rounded-md border border-white/15 px-1.5 py-0.5 text-[10px] text-ink-400 hover:border-spritz-400/50 hover:text-ink-100"
+          aria-label={`Copy ${label}`}
+          className="min-h-8 rounded-md border border-line px-2 text-[11px] text-subtle hover:border-line-strong hover:text-content"
         >
           {copied ? "copied" : "copy"}
         </button>
@@ -254,18 +256,21 @@ export function ErrorNotice({
   detail,
   onRetry,
   tone = "error",
+  announce = true,
 }: {
   message: string;
   detail?: string;
   onRetry?: () => void;
   tone?: "error" | "warn";
+  /** Disable live announcements only for static examples in the UI library. */
+  announce?: boolean;
 }) {
   const tones =
     tone === "error"
       ? "border-rose-400/30 bg-rose-400/10 text-rose-100"
       : "border-amber-300/30 bg-amber-300/10 text-amber-100";
   return (
-    <div className={`rounded-2xl border p-4 text-sm ${tones}`}>
+    <div role={announce ? (tone === "error" ? "alert" : "status") : undefined} className={`rounded-panel border p-4 text-sm ${tones}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-medium">{message}</p>
         {onRetry ? (
@@ -288,27 +293,40 @@ export function ErrorNotice({
 
 export function SectionTitle({ eyebrow, title, description, right }: { eyebrow?: string; title: string; description?: string; right?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        {eyebrow ? <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">{eyebrow}</p> : null}
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
-        {description ? <p className="mt-2 max-w-2xl text-sm text-ink-300 sm:text-base">{description}</p> : null}
+    <div className="flex flex-wrap items-end justify-between gap-6 border-b border-line pb-8 pt-3">
+      <div className="min-w-0">
+        {eyebrow ? <Eyebrow className="mb-4">{eyebrow}</Eyebrow> : null}
+        <h1 className="section-heading">{title}</h1>
+        {description ? <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">{description}</p> : null}
       </div>
       {right ? <div>{right}</div> : null}
     </div>
   );
 }
 
+export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <p className={`eyebrow ${className}`}>{children}</p>;
+}
+
+/** Shared by the header and the UI reference page; no external brand assets. */
+export function BrandMark({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className={`h-8 w-8 shrink-0 ${className}`}>
+      <rect width="32" height="32" rx="7" fill="currentColor" />
+      <path fillRule="evenodd" d="M8 23 14 9h4l6 14h-4l-1.2-3H13l-1.2 3H8Zm6.2-6h3.6L16 12.5 14.2 17Z" fill="var(--color-ink-950)" />
+      <path d="m24 7 2 2-2 2-2-2 2-2Z" fill="var(--color-ink-950)" />
+    </svg>
+  );
+}
+
 export function JsonInspector({ value, title = "Raw JSON", defaultOpen = false }: { value: unknown; title?: string; defaultOpen?: boolean }) {
   return (
-    <details className="group min-w-0 overflow-hidden rounded-2xl border border-white/15 bg-ink-900/70" open={defaultOpen}>
-      <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-ink-300 hover:text-ink-100">
+    <details className="group min-w-0 rounded-panel border border-line bg-surface p-1" open={defaultOpen}>
+      <summary className="flex cursor-pointer items-center justify-between rounded-control px-3 py-3 text-sm text-muted hover:text-content">
         <span>{title}</span>
         <span className="text-xs transition-transform group-open:rotate-90">▸</span>
       </summary>
-      <pre className="max-w-full overflow-auto border-t border-white/15 p-4 font-mono text-xs leading-relaxed text-ink-200">
-        {JSON.stringify(value, null, 2)}
-      </pre>
+      <CodePanel title={title} code={JSON.stringify(value, null, 2) ?? "null"} />
     </details>
   );
 }

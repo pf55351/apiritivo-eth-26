@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { ArkivService } from "@apiperitivo/shared";
-import { getService, listServices, listServicesByProvider } from "@apiperitivo/arkiv";
+import type { ArkivService } from "@apiritivo/shared";
+import { getService, listServices, listServicesByProvider } from "@apiritivo/arkiv";
 import { toFriendlyError, type FriendlyError } from "./errors";
 
 type State<T> = { data: T | null; loading: boolean; error: FriendlyError | null };
