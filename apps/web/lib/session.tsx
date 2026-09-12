@@ -6,19 +6,17 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
 import {
   DISCONNECTED,
-  connect as swarmConnect,
   disconnect as swarmDisconnect,
   initSwarm,
   type SwarmConnectionInfo,
   type SwarmIdentity,
-} from "@apiperitivo/swarm";
-import { isRole, roleStorageKey, type Role } from "@apiperitivo/shared";
+} from "@apiritivo/swarm";
+import { isRole, roleStorageKey, type Role } from "@apiritivo/shared";
 import { publicEnv } from "./env";
 import { toFriendlyError } from "./errors";
 
@@ -33,7 +31,10 @@ export type Session = {
   uploadMode?: SwarmConnectionInfo["uploadMode"];
   uploadUnavailableReason?: SwarmConnectionInfo["uploadUnavailableReason"];
   connecting: boolean;
-  connect: () => Promise<void>;
+  /** Show the SDK-owned sign-in button, preserving the iframe's popup opener. */
+  connect: () => void;
+  /** Close the sign-in dialog without disconnecting an existing session. */
+  cancelConnect: () => void;
   disconnect: () => Promise<void>;
   retry: () => void;
   /** Role preference for the current identity (null while unknown / not chosen). */
@@ -44,9 +45,7 @@ export type Session = {
 
 const SessionContext = createContext<Session | null>(null);
 
-const CONNECT_TIMEOUT_MS = 120_000;
-
-/** Hidden host for the Swarm ID iframe; rendered by <AppShell>. */
+/** Persistent host for the Swarm ID iframe; shown in the sign-in dialog. */
 export const SWARM_ID_FRAME_CONTAINER_ID = "swarm-id-frame";
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -56,7 +55,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [info, setInfo] = useState<SwarmConnectionInfo>(DISCONNECTED);
   const [connecting, setConnecting] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const connectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Role, keyed by identity id in localStorage.
   const identityId = info.identity?.id ?? null;
@@ -75,12 +73,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       gatewayUrl: publicEnv.swarmGatewayUrl,
       subsidisedGatewayUrl: publicEnv.swarmSubsidisedGatewayUrl,
       containerId: SWARM_ID_FRAME_CONTAINER_ID,
+      debug: publicEnv.isDev,
       onConnectionChange: (next) => {
         if (cancelled) return;
         setInfo(next);
         if (next.identity) {
           setConnecting(false);
-          if (connectTimer.current) clearTimeout(connectTimer.current);
         }
       },
     })
@@ -129,20 +127,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [identityId],
   );
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(() => {
     setError(undefined);
     setErrorDetail(undefined);
+    // The next click happens inside the SDK iframe. Its popup then has the
+    // iframe as opener, so session handover works with partitioned storage.
     setConnecting(true);
-    if (connectTimer.current) clearTimeout(connectTimer.current);
-    connectTimer.current = setTimeout(() => setConnecting(false), CONNECT_TIMEOUT_MS);
-    try {
-      await swarmConnect();
-    } catch (err) {
-      setConnecting(false);
-      const friendly = toFriendlyError(err, "Swarm ID login failed.");
-      setError(friendly.message);
-      setErrorDetail(friendly.detail);
-    }
+  }, []);
+
+  const cancelConnect = useCallback(() => {
+    setConnecting(false);
   }, []);
 
   const disconnect = useCallback(async () => {
@@ -167,13 +161,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       uploadUnavailableReason: info.uploadUnavailableReason,
       connecting,
       connect,
+      cancelConnect,
       disconnect,
       retry,
       role,
       roleLoaded,
       setRole,
     }),
-    [status, error, errorDetail, info, connecting, connect, disconnect, retry, role, roleLoaded, setRole],
+    [status, error, errorDetail, info, connecting, connect, cancelConnect, disconnect, retry, role, roleLoaded, setRole],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

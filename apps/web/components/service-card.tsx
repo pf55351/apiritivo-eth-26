@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { formatAccessDuration, formatPriceUsdc, type ArkivService } from "@apiperitivo/shared";
-import { arkivEntityUrl } from "@apiperitivo/arkiv";
-import { swarmReferenceUrl } from "@apiperitivo/swarm";
+import { formatAccessDuration, formatPriceUsdc, type ArkivService } from "@apiritivo/shared";
+import { arkivEntityUrl } from "@apiritivo/arkiv";
+import { swarmReferenceUrl } from "@apiritivo/swarm";
 import { Avatar, CategoryPill, ProofChip } from "./ui";
 
 export function ServiceCard({ service, showAvailability = false }: { service: ArkivService; showAvailability?: boolean }) {
   const provider = service.providerName?.trim() || service.providerId;
   return (
-    <article className="card group relative flex min-w-0 flex-col gap-4 rounded-2xl p-5 animate-fade-up">
+    <article className="card card-interactive group relative flex min-w-0 flex-col gap-5 p-5 animate-fade-up">
       <div className="flex items-start justify-between gap-3">
         <CategoryPill slug={service.category} />
         {showAvailability ? (
@@ -35,19 +35,24 @@ export function ServiceCard({ service, showAvailability = false }: { service: Ar
           </p>
         </div>
       </div>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-xl border border-white/15 bg-ink-900/60 px-3 py-2">
-        <span className="text-base font-semibold text-spritz-300">{service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}</span>
+      <div className="mt-auto flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-line pt-4">
+        <span className="text-xl font-semibold tracking-tight text-content">{service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}</span>
         <span className="text-xs text-ink-300">{service.accessSeconds ? `${formatAccessDuration(service.accessSeconds)} access` : "open access"}</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <span className="relative z-10 flex gap-2">
-          <ProofChip label="Arkiv" title="Open entity on Arkiv explorer (Tiramisu)" href={service.entityKey ? arkivEntityUrl(service.entityKey) : undefined} />
+          <ProofChip label="Arkiv" title="Open entity in the Arkiv Data Explorer (Tiramisu)" href={service.entityKey ? arkivEntityUrl(service.entityKey) : undefined} />
           <ProofChip label="Swarm" title="Open manifest on Swarm gateway" href={swarmReferenceUrl(service.manifestRef)} />
+          {service.privateAttachment ? (
+            <span className="inline-flex items-center gap-1 rounded-md border border-olive-400/30 bg-olive-400/10 px-2 py-0.5 font-mono text-[11px] text-olive-400" title={`Private file: ${service.privateAttachment.name} (Swarm ACT)`}>
+              🔒 private file
+            </span>
+          ) : null}
         </span>
         <span className="ml-auto font-mono text-[10px] text-ink-400">v{service.version}</span>
       </div>
-      <span className="mt-1 inline-flex h-10 items-center justify-center rounded-full border border-white/15 text-sm font-medium text-ink-100 transition group-hover:border-spritz-400/60 group-hover:bg-spritz-500 group-hover:text-ink-950">
-        View service →
+      <span className="inline-flex items-center justify-between border-t border-line pt-4 text-xs font-semibold text-muted transition-colors group-hover:text-accent-text">
+        Inspect service <span aria-hidden="true">↗</span>
       </span>
     </article>
   );

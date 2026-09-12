@@ -1,15 +1,18 @@
 import {
   ACCESS_PASS_ENTITY_TYPE,
   APP_ID,
+  GRANT_ENTITY_TYPE,
   SALE_ENTITY_TYPE,
   SERVICE_ENTITY_TYPE,
   accessPassSchema,
   arkivServiceSchema,
+  grantSchema,
   saleSchema,
   type AccessPass,
   type ArkivService,
+  type Grant,
   type Sale,
-} from "@apiperitivo/shared";
+} from "@apiritivo/shared";
 
 /**
  * On-chain attribute names. snake_case because the Arkiv engine only accepts
@@ -35,6 +38,21 @@ export const ATTR = {
   paidUsdc: "paid_usdc",
   chainId: "chain_id",
   passKey: "pass_key",
+  /** keccak256(secret) of an access pass: proof of ownership, see pass-secret.ts. */
+  secretHash: "secret_hash",
+  /** Buyer's compressed public key (ACT grantee). On passes and sales. */
+  buyerPublicKey: "buyer_pubkey",
+  // private file of a service (Swarm ACT)
+  privateName: "private_name",
+  privateBytes: "private_bytes",
+  privateType: "private_type",
+  privateEncRef: "private_enc_ref",
+  privateHistoryRef: "private_history_ref",
+  privatePubkey: "private_pubkey",
+  // grant entities
+  actHistoryRef: "act_history_ref",
+  actEncRef: "act_enc_ref",
+  actPubkey: "act_pubkey",
 } as const;
 
 /**
@@ -69,7 +87,7 @@ function attrNumber(entity: RawServiceEntity, name: string): number | undefined 
 
 /**
  * Convert a raw Arkiv entity into our `ArkivService`. Returns `null` for
- * entities that are not valid APIperitivo services (defensive: anyone can
+ * entities that are not valid APIritivo services (defensive: anyone can
  * write attributes to a public chain).
  */
 export function parseServiceEntity(entity: RawServiceEntity): ArkivService | null {
@@ -100,6 +118,16 @@ export function parseServiceEntity(entity: RawServiceEntity): ArkivService | nul
     entityKey: entity.key,
     owner: entity.owner,
     createdAtBlock: entity.createdAt !== undefined ? entity.createdAt.toString() : undefined,
+    privateAttachment: attrString(entity, ATTR.privateEncRef)
+      ? {
+          name: attrString(entity, ATTR.privateName) ?? "private file",
+          bytes: attrNumber(entity, ATTR.privateBytes) ?? 0,
+          contentType: attrString(entity, ATTR.privateType),
+          encryptedRef: attrString(entity, ATTR.privateEncRef),
+          historyRef: attrString(entity, ATTR.privateHistoryRef),
+          publisherPubKey: attrString(entity, ATTR.privatePubkey),
+        }
+      : undefined,
   };
 
   const parsed = arkivServiceSchema.safeParse(candidate);
@@ -127,6 +155,26 @@ export function parseAccessPassEntity(entity: RawServiceEntity): AccessPass | nu
     expiresAtBlock: entity.expiresAt !== undefined ? entity.expiresAt.toString() : undefined,
     createdAtBlock: entity.createdAt !== undefined ? entity.createdAt.toString() : undefined,
     serviceName: typeof payload.serviceName === "string" ? payload.serviceName : undefined,
+    secretHash: attrString(entity, ATTR.secretHash),
+    encryptedSecret: typeof payload.encryptedSecret === "string" ? payload.encryptedSecret : undefined,
+    buyerPublicKey: attrString(entity, ATTR.buyerPublicKey),
+  });
+  return parsed.success ? parsed.data : null;
+}
+
+export function parseGrantEntity(entity: RawServiceEntity): Grant | null {
+  if (attrString(entity, ATTR.app) !== APP_ID) return null;
+  if (attrString(entity, ATTR.entityType) !== GRANT_ENTITY_TYPE) return null;
+  const parsed = grantSchema.safeParse({
+    grantKey: entity.key,
+    serviceId: attrString(entity, ATTR.serviceId),
+    providerId: attrString(entity, ATTR.providerId),
+    buyerId: attrString(entity, ATTR.buyerId),
+    buyerPublicKey: attrString(entity, ATTR.buyerPublicKey),
+    historyRef: attrString(entity, ATTR.actHistoryRef),
+    encryptedRef: attrString(entity, ATTR.actEncRef),
+    publisherPubKey: attrString(entity, ATTR.actPubkey),
+    createdAtBlock: entity.createdAt !== undefined ? entity.createdAt.toString() : undefined,
   });
   return parsed.success ? parsed.data : null;
 }
@@ -143,6 +191,7 @@ export function parseSaleEntity(entity: RawServiceEntity): Sale | null {
     paidUsdc: attrString(entity, ATTR.paidUsdc),
     chainId: attrNumber(entity, ATTR.chainId),
     passKey: attrString(entity, ATTR.passKey),
+    buyerPublicKey: attrString(entity, ATTR.buyerPublicKey),
     createdAtBlock: entity.createdAt !== undefined ? entity.createdAt.toString() : undefined,
   });
   return parsed.success ? parsed.data : null;

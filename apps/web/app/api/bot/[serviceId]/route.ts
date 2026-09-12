@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { botRequestSchema } from "@apiperitivo/shared";
+import { botRequestSchema } from "@apiritivo/shared";
 import { requireAccessPass, runDemoOperation } from "@/lib/server/access";
 
 export const runtime = "nodejs";

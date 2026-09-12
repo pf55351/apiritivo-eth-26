@@ -12,13 +12,16 @@ import { addr, bool, dec, i32, str, u64 } from "@arkiv-network/sdk/attr";
 import {
   ACCESS_PASS_ENTITY_TYPE,
   APP_ID,
+  GRANT_ENTITY_TYPE,
   SALE_ENTITY_TYPE,
   SERVICE_ENTITY_TYPE,
   type ArkivService,
   type IssueAccessPassResult,
+  type PublishGrantInput,
+  type PublishGrantResult,
   type PublishServiceInput,
   type PublishServiceResult,
-} from "@apiperitivo/shared";
+} from "@apiritivo/shared";
 import { formatEther, http, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { resolveChain } from "./config";
@@ -59,12 +62,16 @@ export type WriterStatus = {
   balance?: string;
   funded?: boolean;
   chainId: number;
+  /** Tiramisu block explorer: balance + transactions of the writer. */
   explorerUrl?: string;
+  /** Arkiv Data Explorer: every entity the writer owns. */
+  dataExplorerUrl?: string;
   faucetUrl: string;
 };
 
 export const ARKIV_FAUCET_URL = "https://hub.arkiv.network/faucet";
-export const ARKIV_EXPLORER_URL = "https://tiramisu.explorer.arkiv.network";
+import { ARKIV_EXPLORER_URL, arkivOwnerUrl } from "./index";
+export { ARKIV_EXPLORER_URL };
 
 /** Health of the app-owned writer (no secrets). Used by the provider dashboard. */
 export async function getWriterStatus(): Promise<WriterStatus> {
@@ -88,6 +95,7 @@ export async function getWriterStatus(): Promise<WriterStatus> {
     funded,
     chainId: chain.id,
     explorerUrl: `${ARKIV_EXPLORER_URL}/address/${address}`,
+    dataExplorerUrl: arkivOwnerUrl(address),
     faucetUrl: ARKIV_FAUCET_URL,
   };
 }
@@ -125,6 +133,17 @@ export async function publishService(input: PublishServiceInput): Promise<Publis
     [ATTR.accessSeconds]: u64(input.accessSeconds),
     // Where USDC payments go (Avalanche Fuji). Lives on Arkiv, not in the Swarm manifest.
     [ATTR.payoutAddress]: addr(input.payoutAddress),
+    // Optional private file on Swarm (ACT). References are public, the content is not.
+    ...(input.privateAttachment
+      ? {
+          [ATTR.privateName]: str(input.privateAttachment.name),
+          [ATTR.privateBytes]: u64(input.privateAttachment.bytes),
+          [ATTR.privateType]: str(input.privateAttachment.contentType ?? ""),
+          [ATTR.privateEncRef]: str(input.privateAttachment.encryptedRef),
+          [ATTR.privateHistoryRef]: str(input.privateAttachment.historyRef),
+          [ATTR.privatePubkey]: str(input.privateAttachment.publisherPubKey),
+        }
+      : {}),
   };
 
   const { entityKey, txHash } = await client.createEntity({
@@ -160,6 +179,12 @@ export async function issueAccessPass(params: {
   txHash: string;
   paidUsdc: string;
   chainId: number;
+  /** keccak256(secret), stored in clear as `secret_hash`. */
+  secretHash: string;
+  /** Secret encrypted for the buyer, stored in the payload. The server never sees the secret. */
+  encryptedSecret: string;
+  /** Buyer's Swarm public key for ACT grants (optional). */
+  buyerPublicKey?: string;
 }): Promise<IssueAccessPassResult> {
   const { service } = params;
   if (!service.accessSeconds) throw new Error("Service has no access duration.");
@@ -175,12 +200,13 @@ export async function issueAccessPass(params: {
     [ATTR.txHash]: str(txHash),
     [ATTR.paidUsdc]: dec(params.paidUsdc),
     [ATTR.chainId]: i32(params.chainId),
+    ...(params.buyerPublicKey ? { [ATTR.buyerPublicKey]: str(params.buyerPublicKey) } : {}),
   };
 
   const pass = await client.createEntity({
-    payload: jsonToPayload({ serviceName: service.name, purchasedAt: new Date().toISOString() }),
+    payload: jsonToPayload({ serviceName: service.name, purchasedAt: new Date().toISOString(), encryptedSecret: params.encryptedSecret }),
     contentType: "application/json",
-    attributes: { ...common, [ATTR.entityType]: str(ACCESS_PASS_ENTITY_TYPE) },
+    attributes: { ...common, [ATTR.entityType]: str(ACCESS_PASS_ENTITY_TYPE), [ATTR.secretHash]: str(params.secretHash.toLowerCase()) },
     expires: ExpirationTime.fromSeconds(service.accessSeconds),
   });
 
@@ -204,4 +230,29 @@ export async function issueAccessPass(params: {
     expiresAt,
     arkivTxHashes: [pass.txHash, sale.txHash],
   };
+}
+
+/**
+ * Record that the provider granted a buyer access to the service's private
+ * file (Swarm ACT). Permanent; the newest grant carries the live history ref.
+ */
+export async function publishGrant(input: PublishGrantInput): Promise<PublishGrantResult> {
+  const client = walletClient();
+  const { entityKey, txHash } = await client.createEntity({
+    payload: jsonToPayload({ grantedAt: new Date().toISOString() }),
+    contentType: "application/json",
+    attributes: {
+      [ATTR.app]: str(APP_ID),
+      [ATTR.entityType]: str(GRANT_ENTITY_TYPE),
+      [ATTR.serviceId]: str(input.serviceId),
+      [ATTR.providerId]: str(input.providerId),
+      [ATTR.buyerId]: str(input.buyerId),
+      [ATTR.buyerPublicKey]: str(input.buyerPublicKey),
+      [ATTR.actHistoryRef]: str(input.historyRef),
+      [ATTR.actEncRef]: str(input.encryptedRef),
+      [ATTR.actPubkey]: str(input.publisherPubKey),
+    },
+    expires: ExpirationTime.permanent(),
+  });
+  return { grantKey: entityKey, txHash };
 }

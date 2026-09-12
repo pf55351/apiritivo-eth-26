@@ -1,13 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { formatRemaining } from "@apiperitivo/shared";
-import { arkivEntityUrl } from "@apiperitivo/arkiv";
-import { explorerTxUrl } from "@apiperitivo/payments";
+import { formatRemaining } from "@apiritivo/shared";
+import { arkivEntityUrl } from "@apiritivo/arkiv";
+import { explorerTxUrl } from "@apiritivo/payments";
 import { useSession } from "@/lib/session";
 import { remainingSeconds, useMyPasses } from "@/lib/use-access";
 import { AuthGate } from "@/components/auth-gate";
 import { Button, EmptyState, ErrorNotice, SectionTitle, Skeleton } from "@/components/ui";
+import { usePassBearer } from "@/lib/use-pass-bearer";
+import { ApiKeyBox } from "@/components/api-key-box";
+import type { AccessPass } from "@apiritivo/shared";
+
+function PassApiKey({ pass }: { pass: AccessPass }) {
+  const bearer = usePassBearer(pass);
+  return <ApiKeyBox serviceId={pass.serviceId} bearer={bearer} />;
+}
 
 function PassesList() {
   const session = useSession();
@@ -18,7 +26,7 @@ function PassesList() {
       <SectionTitle
         eyebrow="Client"
         title="My access passes"
-        description="Live passes on Arkiv. When a pass expires, Arkiv removes it and the bot stops answering."
+        description="Live passes on Arkiv. Your API key is passKey.secret: the secret is decrypted here with your Swarm ID, only its hash is on-chain. When a pass expires, Arkiv removes it and the bot stops answering."
         right={
           <Button variant="ghost" size="sm" onClick={reload} disabled={loading}>
             Refresh
@@ -48,7 +56,10 @@ function PassesList() {
                   </span>
                 </div>
                 <p className="mt-1 font-mono text-[11px] text-ink-400">{p.serviceId} · paid {p.paidUsdc} USDC</p>
-                <p className="mt-3 break-all font-mono text-[11px] text-ink-200">{p.passKey}</p>
+                <p className="mt-3 break-all font-mono text-[11px] text-ink-400">pass {p.passKey}</p>
+                <div className="mt-3">
+                  <PassApiKey pass={p} />
+                </div>
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                   <a href={arkivEntityUrl(p.passKey)} target="_blank" rel="noreferrer" className="rounded-full border border-white/15 px-2.5 py-0.5 text-ink-300 hover:text-ink-100">
                     Arkiv explorer ↗

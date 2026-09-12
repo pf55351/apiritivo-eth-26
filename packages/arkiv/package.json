@@ -1,5 +1,5 @@
 {
-  "name": "@apiperitivo/arkiv",
+  "name": "@apiritivo/arkiv",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@apiperitivo/shared": "workspace:*",
+    "@apiritivo/shared": "workspace:*",
     "@arkiv-network/sdk": "^0.8.1",
     "viem": "^2.21.0"
   },

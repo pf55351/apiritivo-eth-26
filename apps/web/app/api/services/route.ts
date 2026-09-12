@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { publishServiceInputSchema } from "@apiperitivo/shared";
-import { ArkivWriterNotConfiguredError, getWriterStatus, isWriterConfigured, publishService } from "@apiperitivo/arkiv/server";
+import { publishServiceInputSchema } from "@apiritivo/shared";
+import { ArkivWriterNotConfiguredError, getWriterStatus, isWriterConfigured, publishService } from "@apiritivo/arkiv/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

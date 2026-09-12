@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const APP_ID = "apiperitivo" as const;
+export const APP_ID = "apiritivo" as const;
 export const SERVICE_ENTITY_TYPE = "service" as const;
 
 /** Curated categories. Providers may also type a custom slug. */
@@ -79,6 +79,27 @@ export const swarmReferenceSchema = z
  * Normalised service as read from Arkiv. This is OUR shape; vendor entity
  * objects never leave the arkiv adapter.
  */
+/** Swarm ACT reference (encrypted reference or history reference): 64 or 128 hex chars. */
+const actRefSchema = z.string().regex(/^[0-9a-fA-F]{64}([0-9a-fA-F]{64})?$/, "Invalid Swarm ACT reference");
+/** Compressed secp256k1 public key, 33 bytes, as used for ACT grantees. */
+export const actPublicKeySchema = z.string().regex(/^(0x)?[0-9a-fA-F]{66}$/, "Invalid compressed public key");
+
+/**
+ * Optional private file of a service, stored on Swarm with ACT (Access Control
+ * Trie): encrypted, readable only by the provider and the buyers it granted.
+ * The references are public on Arkiv but useless without being a grantee.
+ */
+export const privateAttachmentSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  bytes: z.number().int().positive(),
+  contentType: z.string().max(100).optional(),
+  encryptedRef: actRefSchema,
+  /** History reference at upload time (grants produce newer ones, see `grant` entities). */
+  historyRef: actRefSchema,
+  publisherPubKey: actPublicKeySchema,
+});
+export type PrivateAttachment = z.infer<typeof privateAttachmentSchema>;
+
 export const arkivServiceSchema = z.object({
   serviceId: z.string(),
   category: z.string(),
@@ -101,6 +122,8 @@ export const arkivServiceSchema = z.object({
   owner: z.string().optional(),
   /** Block the entity was created at. */
   createdAtBlock: z.string().optional(),
+  /** Private file (Swarm ACT), if the provider attached one. */
+  privateAttachment: privateAttachmentSchema.optional(),
 });
 
 export type ArkivService = z.infer<typeof arkivServiceSchema>;
@@ -117,6 +140,7 @@ export const publishServiceInputSchema = z.object({
   priceUsdc: priceUsdcSchema,
   accessSeconds: z.number().int().positive("Pick an access duration").max(10 * 365 * 86400),
   payoutAddress: evmAddressSchema,
+  privateAttachment: privateAttachmentSchema.optional(),
 });
 
 export type PublishServiceInput = z.infer<typeof publishServiceInputSchema>;

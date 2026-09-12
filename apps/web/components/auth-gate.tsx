@@ -36,11 +36,11 @@ export function AuthGate({ children, title = "Sign in to continue" }: { children
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">Swarm ID</p>
         <h2 className="mt-2 text-2xl font-semibold">{title}</h2>
         <p className="mt-2 text-sm text-ink-300">
-          APIperitivo uses your Swarm ID as identity. No wallet, no payment. A popup will open.
+          APIritivo uses your Swarm ID as identity. Continue with the Swarm ID sign-in button. No wallet required.
         </p>
         <div className="mt-6">
           <Button size="lg" onClick={session.connect} disabled={session.connecting}>
-            {session.connecting ? "Waiting for Swarm ID…" : "Enter with Swarm ID"}
+            {session.connecting ? "Complete sign-in" : "Enter with Swarm ID"}
           </Button>
         </div>
         {session.error ? (

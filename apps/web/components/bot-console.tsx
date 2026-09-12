@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { BotVerification, ServiceManifest } from "@apiperitivo/shared";
-import { formatRemaining } from "@apiperitivo/shared";
+import type { BotVerification, ServiceManifest } from "@apiritivo/shared";
+import { formatRemaining } from "@apiritivo/shared";
 import { Button } from "./ui";
+import type { PassBearer } from "@/lib/use-pass-bearer";
+import { ApiKeyBox } from "./api-key-box";
 
 type BotResponse = {
   ok: boolean;
@@ -13,13 +15,14 @@ type BotResponse = {
   verification?: BotVerification;
 };
 
-const inputCls = "h-10 w-full rounded-xl border border-white/15 bg-ink-900/70 px-3 font-mono text-sm text-ink-100 placeholder:text-ink-400 focus:border-spritz-400/60 focus:outline-none";
+const inputCls = "field-control font-mono";
 
 /**
  * "Try it" console: calls the demo bot with the access pass as bearer token.
  * The bot verifies the pass on Arkiv before answering.
  */
-export function BotConsole({ serviceId, manifest, passKey }: { serviceId: string; manifest: ServiceManifest; passKey: string }) {
+export function BotConsole({ serviceId, manifest, bearer }: { serviceId: string; manifest: ServiceManifest; bearer: PassBearer }) {
+  const token = bearer.status === "ready" ? bearer.bearer : null;
   const operations = useMemo(() => Object.keys(manifest.operations), [manifest]);
   const [operation, setOperation] = useState(operations[0] ?? "");
   const [values, setValues] = useState<Record<string, string>>({});
@@ -41,7 +44,7 @@ export function BotConsole({ serviceId, manifest, passKey }: { serviceId: string
     try {
       const res = await fetch(`/api/bot/${serviceId}`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${passKey}` },
+        headers: { "content-type": "application/json", authorization: `Bearer ${token ?? ""}` },
         body: JSON.stringify({ operation, input }),
       });
       setStatus(res.status);
@@ -59,11 +62,13 @@ export function BotConsole({ serviceId, manifest, passKey }: { serviceId: string
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-olive-400">Unlocked · try the bot</p>
       <h2 className="mt-1 text-xl font-semibold">Call the service with your pass</h2>
       <p className="mt-1 text-sm text-ink-300">
-        The bot checks your pass on Arkiv before every answer: the entity must exist, match this service and not be expired.
+        The bot checks your pass on Arkiv before every answer: the entity must exist, match this service, not be expired, and the secret half of your key must hash to the pass&apos;s <code className="font-mono">secret_hash</code>.
       </p>
       <div className="mt-4 rounded-2xl border border-white/15 bg-ink-900/60 p-3 font-mono text-[11px] text-ink-300">
         <div>POST {endpoint}</div>
-        <div className="break-all">Authorization: Bearer {passKey}</div>
+      </div>
+      <div className="mt-3">
+        <ApiKeyBox serviceId={serviceId} bearer={bearer} operation={operation || "getQuote"} />
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -105,7 +110,7 @@ export function BotConsole({ serviceId, manifest, passKey }: { serviceId: string
       </div>
 
       <div className="mt-4 flex items-center gap-3">
-        <Button onClick={run} disabled={busy || !operation}>
+        <Button onClick={run} disabled={busy || !operation || !token}>
           {busy ? "Verifying pass on Arkiv…" : `Call ${operation || "operation"}`}
         </Button>
         {status !== null ? <span className={`font-mono text-xs ${status < 300 ? "text-olive-400" : "text-rose-400"}`}>HTTP {status}</span> : null}

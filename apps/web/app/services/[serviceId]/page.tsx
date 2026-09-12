@@ -6,12 +6,15 @@ import { useEffect, useState } from "react";
 import { BuyAccess } from "@/components/buy-access";
 import { BotConsole } from "@/components/bot-console";
 import { usePassesForService, remainingSeconds } from "@/lib/use-access";
-import type { ServiceManifest } from "@apiperitivo/shared";
-import { manifestStats } from "@apiperitivo/shared";
-import { arkivEntityUrl } from "@apiperitivo/arkiv";
+import type { ServiceManifest } from "@apiritivo/shared";
+import { manifestStats } from "@apiritivo/shared";
+import { arkivEntityUrl } from "@apiritivo/arkiv";
+import { explorerAddressUrl, explorerTokenUrl, paymentsContractAddress, USDC_ADDRESS } from "@apiritivo/payments";
 import { ProofPanel, type ProofLink } from "@/components/proofs";
+import { usePassBearer } from "@/lib/use-pass-bearer";
+import { PrivateFilesPanel } from "@/components/private-files-panel";
 import { ContractPanel } from "@/components/contract-panel";
-import { downloadServiceManifest, swarmReferenceUrl } from "@apiperitivo/swarm";
+import { downloadServiceManifest, swarmReferenceUrl } from "@apiritivo/swarm";
 import { useService } from "@/lib/use-services";
 import { useSession } from "@/lib/session";
 import { toFriendlyError, type FriendlyError } from "@/lib/errors";
@@ -60,6 +63,7 @@ export default function ServiceDetailPage() {
     const left = remainingSeconds(p, passesState.timing);
     return left === null || left > 0;
   });
+  const activeBearer = usePassBearer(activePass);
 
   if (loading) {
     return (
@@ -166,6 +170,13 @@ export default function ServiceDetailPage() {
               { network: "Swarm · public gateway", label: "manifestRef", value: service.manifestRef, href: swarmUrl, hrefLabel: "Swarm gateway" },
               { network: "Arkiv · Tiramisu testnet", label: "serviceId", value: service.serviceId },
               { network: "Arkiv · Tiramisu testnet", label: "providerId (Swarm ID)", value: service.providerId },
+              ...(service.payoutAddress
+                ? [{ network: "Avalanche Fuji · SnowTrace", label: "payout wallet (receives USDC)", value: service.payoutAddress, href: explorerAddressUrl(service.payoutAddress), hrefLabel: "SnowTrace" } satisfies ProofLink]
+                : []),
+              ...(paymentsContractAddress()
+                ? [{ network: "Avalanche Fuji · SnowTrace", label: "APIritivoPayments contract", value: paymentsContractAddress()!, href: explorerAddressUrl(paymentsContractAddress()!), hrefLabel: "SnowTrace" } satisfies ProofLink]
+                : []),
+              { network: "Avalanche Fuji · SnowTrace", label: "USDC token (Circle testnet)", value: USDC_ADDRESS, href: explorerTokenUrl(), hrefLabel: "SnowTrace" },
             ]}
           />
           <section className="card rounded-3xl p-6">
@@ -189,13 +200,14 @@ export default function ServiceDetailPage() {
               </div>
             </div>
           </section>
+          <PrivateFilesPanel service={service} activePass={activePass} />
           <ContractPanel serviceId={service.serviceId} />
           <JsonInspector value={service} title="Raw service (Arkiv)" />
         </aside>
       </div>
 
       {activePass && manifestState.manifest ? (
-        <BotConsole serviceId={service.serviceId} manifest={manifestState.manifest} passKey={activePass.passKey} />
+        <BotConsole serviceId={service.serviceId} manifest={manifestState.manifest} bearer={activeBearer} />
       ) : null}
     </div>
   );

@@ -2,8 +2,10 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Address } from "viem";
-import { deriveWalletSecret } from "@apiperitivo/swarm";
-import { getBalances, secretToPrivateKey, swarmSigner, type Balances, type Signer } from "@apiperitivo/payments/browser";
+import { derivePassEncryptionKey, deriveWalletSecret } from "@apiritivo/swarm";
+import { decryptPassSecret, encryptPassSecret } from "@apiritivo/arkiv";
+import type { Hex } from "viem";
+import { getBalances, secretToPrivateKey, swarmSigner, type Balances, type Signer } from "@apiritivo/payments/browser";
 import { useSession } from "./session";
 import { toFriendlyError, type FriendlyError } from "./errors";
 
@@ -16,6 +18,10 @@ export type SwarmWallet = {
   refreshBalances: () => Promise<void>;
   /** Returns the hex private key. Only call from an explicit user action. */
   revealPrivateKey: () => `0x${string}` | null;
+  /** Encrypt an access-pass secret for this identity (key derived from Swarm ID, never stored). */
+  sealPassSecret: (secret: Hex) => Promise<string>;
+  /** Decrypt an access-pass secret stored in a pass payload. Throws for another identity's pass. */
+  openPassSecret: (blob: string) => Promise<Hex>;
 };
 
 const Ctx = createContext<SwarmWallet | null>(null);
@@ -29,6 +35,7 @@ export function SwarmWalletProvider({ children }: { children: ReactNode }) {
   const session = useSession();
   const identityId = session.identity?.id ?? null;
   const secretRef = useRef<Uint8Array | null>(null);
+  const passKeyRef = useRef<Uint8Array | null>(null);
   const [signer, setSigner] = useState<Signer | null>(null);
   const [status, setStatus] = useState<SwarmWallet["status"]>("idle");
   const [balances, setBalances] = useState<Balances | null>(null);
@@ -36,6 +43,7 @@ export function SwarmWalletProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     secretRef.current = null;
+    passKeyRef.current = null;
     setSigner(null);
     setBalances(null);
     setError(null);
@@ -45,10 +53,11 @@ export function SwarmWalletProvider({ children }: { children: ReactNode }) {
     }
     let cancelled = false;
     setStatus("deriving");
-    deriveWalletSecret()
-      .then((secret) => {
+    Promise.all([deriveWalletSecret(), derivePassEncryptionKey()])
+      .then(([secret, passKey]) => {
         if (cancelled) return;
         secretRef.current = secret;
+        passKeyRef.current = passKey;
         setSigner(swarmSigner(secret));
         setStatus("ready");
       })
@@ -76,10 +85,18 @@ export function SwarmWalletProvider({ children }: { children: ReactNode }) {
   }, [refreshBalances]);
 
   const revealPrivateKey = useCallback(() => (secretRef.current ? secretToPrivateKey(secretRef.current) : null), []);
+  const sealPassSecret = useCallback(async (secret: Hex) => {
+    if (!passKeyRef.current) throw new Error("Your Swarm wallet is not ready yet.");
+    return encryptPassSecret(secret, passKeyRef.current);
+  }, []);
+  const openPassSecret = useCallback(async (blob: string) => {
+    if (!passKeyRef.current) throw new Error("Your Swarm wallet is not ready yet.");
+    return decryptPassSecret(blob, passKeyRef.current);
+  }, []);
 
   const value = useMemo<SwarmWallet>(
-    () => ({ status, address: signer?.address ?? null, signer, balances, error, refreshBalances, revealPrivateKey }),
-    [status, signer, balances, error, refreshBalances, revealPrivateKey],
+    () => ({ status, address: signer?.address ?? null, signer, balances, error, refreshBalances, revealPrivateKey, sealPassSecret, openPassSecret }),
+    [status, signer, balances, error, refreshBalances, revealPrivateKey, sealPassSecret, openPassSecret],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

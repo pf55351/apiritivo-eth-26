@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/lib/session";
 import { useProviderServices } from "@/lib/use-services";
 import { useProviderSales } from "@/lib/use-access";
-import { formatPriceUsdc, sumUsdc } from "@apiperitivo/shared";
-import { explorerTxUrl } from "@apiperitivo/payments";
+import { formatPriceUsdc, sumUsdc } from "@apiritivo/shared";
+import Link from "next/link";
+import { arkivEntityUrl } from "@apiritivo/arkiv";
+import { explorerTxUrl } from "@apiritivo/payments";
 import { SwarmWalletPanel } from "@/components/swarm-wallet-panel";
+import { SwarmDriveChip } from "@/components/swarm-drive-chip";
+import { LiveSales } from "@/components/live-sales";
+import { PrivateGrantsPanel } from "@/components/private-grants-panel";
 import { ContractPanel } from "@/components/contract-panel";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
 import { AuthGate } from "@/components/auth-gate";
@@ -19,6 +24,7 @@ type WriterStatus = {
   balance?: string;
   funded?: boolean;
   explorerUrl?: string;
+  dataExplorerUrl?: string;
   faucetUrl: string;
 } | null;
 
@@ -60,6 +66,14 @@ function Dashboard() {
   const earnedByService = new Map<string, string>();
   for (const svc of services) earnedByService.set(svc.serviceId, sumUsdc(salesList.filter((x) => x.serviceId === svc.serviceId).map((x) => x.paidUsdc)));
   const swarmWallet = useSwarmWallet();
+  const [chainTick, setChainTick] = useState(0);
+  // A sale lands on chain first; the server writes the Arkiv receipt right after
+  // verifying it, so refresh Arkiv-backed lists a moment later (twice, to be safe).
+  const onChainSale = useCallback(() => {
+    setChainTick((n) => n + 1);
+    setTimeout(() => sales.reload(), 4_000);
+    setTimeout(() => sales.reload(), 15_000);
+  }, [sales]);
 
   return (
     <div className="space-y-8">
@@ -88,6 +102,7 @@ function Dashboard() {
           <Badge tone={session.canUpload ? "accent" : "warn"}>
             {session.canUpload ? `Swarm upload ✓${session.uploadMode === "subsidised" ? " · subsidised" : session.uploadMode === "user-stamp" ? " · own stamp" : ""}` : "Swarm upload unavailable"}
           </Badge>
+          <SwarmDriveChip />
           {writer ? (
             <Badge tone={writer.writerConfigured && writer.funded !== false ? "accent" : "warn"}>
               {!writer.writerConfigured ? "Arkiv writer not configured" : writer.funded === false ? "Arkiv writer unfunded" : "Arkiv writer ✓"}
@@ -99,7 +114,7 @@ function Dashboard() {
       {!session.canUpload ? (
         <ErrorNotice
           tone="warn"
-          message="Swarm upload unavailable for this identity. You can browse and view your dashboard, but publishing requires Swarm upload capability (a postage stamp, or the subsidised gateway configured in NEXT_PUBLIC_SWARM_SUBSIDISED_GATEWAY_URL)."
+          message="Swarm upload unavailable for this identity. You can browse and view your dashboard, but publishing requires Swarm upload capability: add a drive in Swarm ID (Storage → Add drive, or import an existing batch), or configure the subsidised gateway in NEXT_PUBLIC_SWARM_SUBSIDISED_GATEWAY_URL."
           detail={session.uploadUnavailableReason ? `uploadMode=${session.uploadMode ?? "?"} reason=${session.uploadUnavailableReason}` : undefined}
         />
       ) : null}
@@ -116,7 +131,12 @@ function Dashboard() {
             </a>
             {writer.explorerUrl ? (
               <a href={writer.explorerUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded-full border border-amber-300/40 px-3 text-xs text-amber-100 hover:bg-amber-300/10">
-                Writer on Arkiv explorer ↗
+                Balance on Tiramisu explorer ↗
+              </a>
+            ) : null}
+            {writer.dataExplorerUrl ? (
+              <a href={writer.dataExplorerUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded-full border border-amber-300/40 px-3 text-xs text-amber-100 hover:bg-amber-300/10">
+                Entities on Arkiv Data Explorer ↗
               </a>
             ) : null}
           </div>
@@ -125,10 +145,18 @@ function Dashboard() {
       {writer && writer.writerConfigured && writer.funded ? (
         <p className="text-xs text-ink-400">
           Arkiv writer <span className="break-all font-mono text-ink-300">{writer.address}</span> · {Number(writer.balance).toFixed(4)} GLM ·{" "}
-          {writer.explorerUrl ? (
-            <a href={writer.explorerUrl} target="_blank" rel="noreferrer" className="text-spritz-300 hover:underline">
-              view on Tiramisu explorer ↗
+          {writer.dataExplorerUrl ? (
+            <a href={writer.dataExplorerUrl} target="_blank" rel="noreferrer" className="text-spritz-300 hover:underline">
+              entities on Arkiv Data Explorer ↗
             </a>
+          ) : null}
+          {writer.explorerUrl ? (
+            <>
+              {" · "}
+              <a href={writer.explorerUrl} target="_blank" rel="noreferrer" className="text-spritz-300 hover:underline">
+                balance on Tiramisu explorer ↗
+              </a>
+            </>
           ) : null}
         </p>
       ) : null}
@@ -147,8 +175,10 @@ function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SwarmWalletPanel />
-        <ContractPanel provider={swarmWallet.address ?? undefined} title="Your on-chain revenue" />
+        <ContractPanel provider={swarmWallet.address ?? undefined} title="Your on-chain revenue" refreshKey={chainTick} />
       </div>
+      <LiveSales provider={swarmWallet.address ?? undefined} onSale={onChainSale} />
+      <PrivateGrantsPanel services={services} sales={salesList} />
 
       {loading ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -190,11 +220,23 @@ function SalesList({ providerId }: { providerId: string }) {
       <ul className="divide-y divide-white/10 rounded-2xl border border-white/15 bg-ink-900/40">
         {list.slice(0, 20).map((x) => (
           <li key={x.saleKey} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
-            <span className="font-mono text-xs text-ink-300">{x.serviceId}</span>
+            <Link href={`/services/${x.serviceId}`} className="font-mono text-xs text-ink-300 hover:text-spritz-300">
+              {x.serviceId}
+            </Link>
             <span className="font-semibold text-olive-400">+{formatPriceUsdc(x.paidUsdc)}</span>
-            <a href={explorerTxUrl(x.txHash)} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-ink-400 hover:text-ink-100">
-              {x.txHash.slice(0, 10)}… ↗
-            </a>
+            <span className="flex flex-wrap gap-2 font-mono text-[11px] text-ink-400">
+              <a href={arkivEntityUrl(x.saleKey)} target="_blank" rel="noreferrer" title="Sale receipt on Arkiv" className="hover:text-ink-100">
+                receipt ↗
+              </a>
+              {x.passKey ? (
+                <a href={arkivEntityUrl(x.passKey)} target="_blank" rel="noreferrer" title="Access pass on Arkiv" className="hover:text-ink-100">
+                  pass ↗
+                </a>
+              ) : null}
+              <a href={explorerTxUrl(x.txHash)} target="_blank" rel="noreferrer" title="Payment on SnowTrace" className="hover:text-ink-100">
+                {x.txHash.slice(0, 10)}… ↗
+              </a>
+            </span>
           </li>
         ))}
       </ul>

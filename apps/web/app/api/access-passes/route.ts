@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { issueAccessPassInputSchema } from "@apiperitivo/shared";
-import { findSaleByTxHash, getService } from "@apiperitivo/arkiv";
-import { issueAccessPass, isWriterConfigured } from "@apiperitivo/arkiv/server";
-import { PAYMENT_CHAIN_ID } from "@apiperitivo/payments";
-import { verifyPayment } from "@apiperitivo/payments/server";
+import { issueAccessPassInputSchema } from "@apiritivo/shared";
+import { findSaleByTxHash, getService } from "@apiritivo/arkiv";
+import { issueAccessPass, isWriterConfigured } from "@apiritivo/arkiv/server";
+import { PAYMENT_CHAIN_ID } from "@apiritivo/payments";
+import { verifyPayment } from "@apiritivo/payments/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,10 +12,12 @@ export const dynamic = "force-dynamic";
  * POST /api/access-passes — mint an access pass after a verified USDC payment.
  *
  * Trust model: the payment is verified on Avalanche Fuji. Contract mode: a
- * `Purchased(provider, serviceId)` event of APIperitivoPayments with amount >=
+ * `Purchased(provider, serviceId)` event of APIritivoPayments with amount >=
  * price. Direct mode: a USDC Transfer to the provider's payout address. In
  * both cases the tx must not have been used before (sale receipt on Arkiv).
- * `buyerId` (Swarm ID) is taken from the client as in Phase 1.
+ * `buyerId` (Swarm ID) is taken from the client as in Phase 1. The client also
+ * sends keccak256(secret) and the secret encrypted for itself: the server
+ * stores both and never learns the secret (see packages/arkiv pass-secret.ts).
  */
 export async function POST(request: Request) {
   let body: unknown;
@@ -65,6 +67,9 @@ export async function POST(request: Request) {
       txHash: input.txHash,
       paidUsdc: verification.amountUsdc,
       chainId: PAYMENT_CHAIN_ID,
+      secretHash: input.secretHash,
+      encryptedSecret: input.encryptedSecret,
+      buyerPublicKey: input.buyerPublicKey,
     });
     return NextResponse.json(result, { status: 201 });
   } catch (err) {

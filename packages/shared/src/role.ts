@@ -7,7 +7,7 @@ export function isRole(value: unknown): value is Role {
 
 /** localStorage key: role is a per-identity app preference, not a security boundary. */
 export function roleStorageKey(identityId: string): string {
-  return `apiperitivo:role:${identityId}`;
+  return `apiritivo:role:${identityId}`;
 }
 
 export const ROLE_HOME: Record<Role, string> = {

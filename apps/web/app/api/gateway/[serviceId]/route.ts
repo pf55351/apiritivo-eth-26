@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { botRequestSchema, manifestFromBytes } from "@apiperitivo/shared";
-import { getService } from "@apiperitivo/arkiv";
+import { botRequestSchema, manifestFromBytes } from "@apiritivo/shared";
+import { getService } from "@apiritivo/arkiv";
 import { requireAccessPass, runDemoOperation } from "@/lib/server/access";
 
 export const runtime = "nodejs";
@@ -9,10 +9,10 @@ export const dynamic = "force-dynamic";
 const GATEWAY = (process.env.NEXT_PUBLIC_SWARM_GATEWAY_URL || "https://api.gateway.ethswarm.org").replace(/\/+$/, "");
 
 /**
- * Zero-code layer for providers: APIperitivo verifies the access pass on
+ * Zero-code layer for providers: APIritivo verifies the access pass on
  * Arkiv, then forwards the call to the `endpoint` declared in the provider's
  * Swarm manifest. Providers only need to trust the forwarded headers
- * (`x-apiperitivo-*`) from this gateway. Without an endpoint the demo bot answers.
+ * (`x-apiritivo-*`) from this gateway. Without an endpoint the demo bot answers.
  */
 export async function POST(request: Request, context: { params: Promise<{ serviceId: string }> }) {
   const { serviceId } = await context.params;
@@ -53,10 +53,10 @@ export async function POST(request: Request, context: { params: Promise<{ servic
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-apiperitivo-service": serviceId,
-        "x-apiperitivo-pass": gate.check.pass.passKey,
-        "x-apiperitivo-buyer": gate.check.pass.buyerId,
-        "x-apiperitivo-expires-block": gate.check.expiresAtBlock,
+        "x-apiritivo-service": serviceId,
+        "x-apiritivo-pass": gate.check.pass.passKey,
+        "x-apiritivo-buyer": gate.check.pass.buyerId,
+        "x-apiritivo-expires-block": gate.check.expiresAtBlock,
       },
       body: JSON.stringify(parsed.data),
       signal: AbortSignal.timeout(20_000),

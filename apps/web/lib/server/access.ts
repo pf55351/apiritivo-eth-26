@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifyAccessPass, type AccessCheck } from "@apiperitivo/arkiv";
-import type { BotVerification } from "@apiperitivo/shared";
+import { verifyAccessPass, type AccessCheck } from "@apiritivo/arkiv";
+import type { BotVerification } from "@apiritivo/shared";
 
 /** Shared by /api/bot and /api/gateway: check the bearer pass against Arkiv. */
 export async function requireAccessPass(request: Request, serviceId: string): Promise<{ check: AccessCheck & { ok: true }; verification: BotVerification } | NextResponse> {
@@ -40,5 +40,5 @@ export async function runDemoOperation(operation: string, input: Record<string, 
     const json = (await res.json()) as Record<string, { usd?: number }>;
     return { symbol, priceUsd: json[id]?.usd ?? null, source: "coingecko", at: new Date().toISOString() };
   }
-  return { operation, input, answer: `Hello from the APIperitivo demo bot. You called "${operation}".`, at: new Date().toISOString() };
+  return { operation, input, answer: `Hello from the APIritivo demo bot. You called "${operation}".`, at: new Date().toISOString() };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ACCESS_DURATIONS,
   SERVICE_CATEGORIES,
@@ -17,13 +17,14 @@ import {
   validateManifest,
   type OperationDraft,
   type PublishServiceResult,
+  type PrivateAttachment,
   type ServiceManifest,
-} from "@apiperitivo/shared";
-import { swarmReferenceUrl, uploadServiceManifest } from "@apiperitivo/swarm";
-import { arkivEntityUrl, arkivTxUrl } from "@apiperitivo/arkiv";
-import { PAYMENT_CHAIN_NAME, explorerAddressUrl } from "@apiperitivo/payments";
+} from "@apiritivo/shared";
+import { swarmReferenceUrl, uploadPrivateFile, uploadServiceManifest } from "@apiritivo/swarm";
+import { arkivEntityUrl, arkivTxUrl } from "@apiritivo/arkiv";
+import { PAYMENT_CHAIN_NAME, explorerAddressUrl } from "@apiritivo/payments";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
-import { ProofPanel } from "@/components/proofs";
+import { ProofPanel, type ProofLink } from "@/components/proofs";
 import { useSession } from "@/lib/session";
 import { toFriendlyError, type FriendlyError } from "@/lib/errors";
 import { AuthGate } from "@/components/auth-gate";
@@ -31,19 +32,23 @@ import { ManifestOperations } from "@/components/manifest-view";
 import { OperationsBuilder, emptyOperation } from "@/components/operations-builder";
 import { Button, CategoryPill, ErrorNotice, ProofChip, SectionTitle } from "@/components/ui";
 
-type Step = "idle" | "uploading" | "publishing" | "done";
+type Step = "idle" | "uploading" | "uploading-private" | "publishing" | "done";
 
 type Progress = {
   step: Step;
   manifestRef?: string;
   manifestBytes?: number;
   manifestVia?: "swarm-id" | "gateway";
+  privateFile?: PrivateAttachment;
   result?: PublishServiceResult;
   error?: FriendlyError & { at: "swarm" | "arkiv" | "form" };
 };
 
+/** Private files travel through the Swarm ID iframe as one message; keep them small. */
+const PRIVATE_FILE_MAX_BYTES = 512 * 1024;
+
 const fieldCls =
-  "h-11 w-full rounded-xl border border-white/15 bg-ink-900/70 px-4 text-sm text-ink-100 placeholder:text-ink-400 focus:border-spritz-400/60 focus:outline-none";
+  "field-control";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -82,17 +87,14 @@ function PublishForm() {
   const [priceUsdc, setPriceUsdc] = useState("0.50");
   const [accessSeconds, setAccessSeconds] = useState<number>(7 * 86400);
   const swarmWallet = useSwarmWallet();
-  const [payoutAddress, setPayoutAddress] = useState<string>("");
-  const [payoutTouched, setPayoutTouched] = useState(false);
-  useEffect(() => {
-    if (!payoutTouched && swarmWallet.address) setPayoutAddress(swarmWallet.address);
-  }, [swarmWallet.address, payoutTouched]);
-  const [endpoint, setEndpoint] = useState("");
+  // Payout wallet is always the wallet derived from the Swarm ID: same identity, same address, no typing.
+  const payoutAddress = swarmWallet.address ?? "";
   const [operations, setOperations] = useState<OperationDraft[]>([emptyOperation("getQuote")]);
+  const [privateFile, setPrivateFile] = useState<File | null>(null);
   const [progress, setProgress] = useState<Progress>({ step: "idle" });
 
   const effectiveCategory = category === "custom" ? slugify(customCategory) : category;
-  const manifest = useMemo(() => buildManifest(operations, endpoint), [operations, endpoint]);
+  const manifest = useMemo(() => buildManifest(operations), [operations]);
   const manifestValidation = useMemo(() => validateManifest(manifest), [manifest]);
   const stats = manifestStats(manifest);
 
@@ -126,7 +128,7 @@ function PublishForm() {
   }, [name, description, effectiveCategory, identity.id, identity.name, manifestValidation, priceUsdc, accessSeconds, payoutAddress]);
 
   const canPublish = formIssues.length === 0 && session.canUpload && progress.step === "idle";
-  const busy = progress.step === "uploading" || progress.step === "publishing";
+  const busy = progress.step === "uploading" || progress.step === "uploading-private" || progress.step === "publishing";
 
   async function publish() {
     if (!manifestValidation.ok) return;
@@ -148,8 +150,29 @@ function PublishForm() {
       return;
     }
 
+    // 1b) Optional private file: encrypted on Swarm with ACT, nobody can read it yet.
+    let privateAttachment: PrivateAttachment | undefined;
+    if (privateFile) {
+      setProgress({ step: "uploading-private", manifestRef, manifestBytes, manifestVia });
+      try {
+        const bytes = new Uint8Array(await privateFile.arrayBuffer());
+        const uploaded = await uploadPrivateFile(bytes);
+        privateAttachment = {
+          name: privateFile.name,
+          bytes: uploaded.bytes,
+          contentType: privateFile.type || undefined,
+          encryptedRef: uploaded.encryptedRef,
+          historyRef: uploaded.historyRef,
+          publisherPubKey: uploaded.publisherPubKey,
+        };
+      } catch (err) {
+        setProgress({ step: "idle", manifestRef, manifestBytes, manifestVia, error: { ...toFriendlyError(err, "Private file upload failed."), at: "swarm" } });
+        return;
+      }
+    }
+
     // 2) Publish the service entity to Arkiv via the server writer.
-    setProgress({ step: "publishing", manifestRef, manifestBytes, manifestVia });
+    setProgress({ step: "publishing", manifestRef, manifestBytes, manifestVia, privateFile: privateAttachment });
     const body = {
       serviceId,
       category: effectiveCategory,
@@ -161,6 +184,7 @@ function PublishForm() {
       priceUsdc: priceUsdc.trim(),
       accessSeconds,
       payoutAddress: payoutAddress.trim(),
+      privateAttachment,
     };
     try {
       const res = await fetch("/api/services", {
@@ -189,6 +213,7 @@ function PublishForm() {
         manifestRef,
         manifestBytes,
         manifestVia,
+        privateFile: privateAttachment,
         result: { entityKey: json.entityKey, txHash: json.txHash, serviceId: json.serviceId ?? serviceId },
       });
     } catch (err) {
@@ -206,6 +231,7 @@ function PublishForm() {
           <p className="mt-2 text-sm text-ink-300">Manifest stored on Swarm, service registered on Arkiv.</p>
           <ul className="mx-auto mt-6 max-w-xs space-y-2 text-left">
             <StepRow label="Uploading manifest to Swarm" state="done" />
+            {progress.privateFile ? <StepRow label="Encrypting private file on Swarm (ACT)" state="done" /> : null}
             <StepRow label="Publishing service to Arkiv" state="done" />
           </ul>
           <div className="mt-6 flex justify-center gap-2">
@@ -220,6 +246,9 @@ function PublishForm() {
             { network: "Swarm · public gateway", label: `manifestRef · ${progress.manifestBytes ?? 0} bytes · via ${progress.manifestVia === "gateway" ? "public gateway" : "Swarm ID"}`, value: progress.manifestRef ?? "", href: swarmReferenceUrl(progress.manifestRef ?? ""), hrefLabel: "Swarm gateway" },
             { network: "Arkiv · Tiramisu testnet", label: "entity key", value: progress.result.entityKey, href: arkivEntityUrl(progress.result.entityKey), hrefLabel: "Arkiv explorer" },
             { network: "Arkiv · Tiramisu testnet", label: "transaction", value: progress.result.txHash, href: arkivTxUrl(progress.result.txHash), hrefLabel: "Transaction" },
+            ...(progress.privateFile
+              ? [{ network: "Swarm · public gateway", label: `private file · ${progress.privateFile.name} · ${progress.privateFile.bytes} bytes · ACT encrypted, no public link`, value: progress.privateFile.encryptedRef } satisfies ProofLink]
+              : []),
             { network: "Arkiv · Tiramisu testnet", label: "serviceId", value: progress.result.serviceId },
             { network: "Arkiv · Tiramisu testnet", label: "access terms", value: `${formatPriceUsdc(priceUsdc.trim())} · ${formatAccessDuration(accessSeconds)}` },
           ]}
@@ -328,24 +357,16 @@ function PublishForm() {
             </Field>
           </div>
           <Field label="Payout wallet" hint={`USDC on ${PAYMENT_CHAIN_NAME}`}>
-            <input
-              className={`${fieldCls} font-mono`}
-              placeholder="0x…"
-              value={payoutAddress}
-              onChange={(e) => {
-                setPayoutTouched(true);
-                setPayoutAddress(e.target.value);
-              }}
-              spellCheck={false}
-            />
-            <p className="mt-1.5 text-[11px] text-ink-400">
-              Default is your Swarm wallet, derived from your Swarm ID
+            <div className={`${fieldCls} flex items-center justify-between gap-2 font-mono`}>
+              <span className="truncate text-ink-100">{swarmWallet.address ?? (swarmWallet.status === "deriving" ? "Deriving from your Swarm ID…" : "Swarm wallet unavailable")}</span>
               {swarmWallet.address ? (
-                <>
-                  {" "}(<a href={explorerAddressUrl(swarmWallet.address)} target="_blank" rel="noreferrer" className="hover:text-ink-200">Snowtrace ↗</a>)
-                </>
+                <a href={explorerAddressUrl(swarmWallet.address)} target="_blank" rel="noreferrer" className="shrink-0 text-[11px] text-ink-400 hover:text-ink-200">
+                  explorer ↗
+                </a>
               ) : null}
-              . You can withdraw from it or export its key in the provider dashboard. Or paste any other EVM address.
+            </div>
+            <p className="mt-1.5 text-[11px] text-ink-400">
+              Your Swarm wallet, derived from your Swarm ID. Same identity, same address on every device. Withdraw or export its key from the provider dashboard.
             </p>
           </Field>
         </section>
@@ -356,16 +377,39 @@ function PublishForm() {
             <h2 className="mt-1 text-xl font-semibold">How does a machine call it?</h2>
             <p className="mt-1 text-sm text-ink-300">Each operation has a name and typed input fields. This becomes the Swarm manifest.</p>
           </div>
-          <Field label="Endpoint URL" hint="optional · stored in the manifest">
-            <input
-              className={`${fieldCls} font-mono`}
-              placeholder="https://your-bot.example/api  (leave empty to use the APIperitivo demo bot)"
-              value={endpoint}
-              onChange={(e) => setEndpoint(e.target.value)}
-              spellCheck={false}
-            />
-          </Field>
           <OperationsBuilder operations={operations} onChange={setOperations} />
+        </section>
+
+        <section className="card space-y-4 rounded-3xl p-6">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">3b · Private file <span className="text-ink-400">· optional</span></p>
+            <h2 className="mt-1 text-xl font-semibold">Something only buyers should read?</h2>
+            <p className="mt-1 text-sm text-ink-300">
+              Full docs, examples, a data sample. It is encrypted on Swarm with an Access Control Trie: nobody can read it until you grant a buyer&apos;s Swarm key from your dashboard. Max {Math.round(PRIVATE_FILE_MAX_BYTES / 1024)} KB.
+            </p>
+          </div>
+          <Field label="File" hint="stays encrypted on Swarm">
+            <input
+              type="file"
+              className="block w-full text-sm text-ink-300 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink-100 hover:file:bg-white/15"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                if (f && f.size > PRIVATE_FILE_MAX_BYTES) {
+                  setProgress({ step: "idle", error: { message: `Private file is too large (${Math.round(f.size / 1024)} KB, max ${Math.round(PRIVATE_FILE_MAX_BYTES / 1024)} KB).`, at: "form" } });
+                  e.target.value = "";
+                  setPrivateFile(null);
+                  return;
+                }
+                setPrivateFile(f);
+              }}
+            />
+            {privateFile ? (
+              <p className="mt-1.5 text-[11px] text-ink-400">
+                {privateFile.name} · {privateFile.size < 1024 ? `${privateFile.size} B` : `${Math.round(privateFile.size / 1024)} KB`} · {privateFile.type || "unknown type"}{" "}
+                <button type="button" className="underline hover:text-ink-200" onClick={() => setPrivateFile(null)}>remove</button>
+              </p>
+            ) : null}
+          </Field>
         </section>
 
         <section className="card space-y-4 rounded-3xl p-6">
@@ -409,13 +453,14 @@ function PublishForm() {
           {busy ? (
             <ul className="space-y-2 rounded-2xl border border-white/15 bg-ink-900/60 p-4">
               <StepRow label="Uploading manifest to Swarm" state={progress.step === "uploading" ? "active" : "done"} />
+              {privateFile ? <StepRow label="Encrypting private file on Swarm (ACT)" state={progress.step === "uploading-private" ? "active" : progress.step === "publishing" ? "done" : "todo"} /> : null}
               <StepRow label="Publishing service to Arkiv" state={progress.step === "publishing" ? "active" : "todo"} />
             </ul>
           ) : null}
 
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" size="lg" disabled={!canPublish || busy}>
-              {progress.step === "uploading" ? "Uploading to Swarm…" : progress.step === "publishing" ? "Publishing to Arkiv…" : "Publish service"}
+              {progress.step === "uploading" ? "Uploading to Swarm…" : progress.step === "uploading-private" ? "Encrypting private file…" : progress.step === "publishing" ? "Publishing to Arkiv…" : "Publish service"}
             </Button>
             <Link href="/provider" className="text-sm text-ink-400 hover:text-ink-100">
               Cancel

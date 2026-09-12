@@ -3,14 +3,16 @@
  * Exposes OUR functions only; the Arkiv SDK never leaks into React.
  */
 import { createPublicClient, type PublicArkivClient } from "@arkiv-network/sdk";
+import { checkPassSecret, parsePassBearer } from "./pass-secret";
+export * from "./pass-secret";
 import { and, eq } from "@arkiv-network/sdk/query";
-import { ACCESS_PASS_ENTITY_TYPE, APP_ID, SALE_ENTITY_TYPE, SERVICE_ENTITY_TYPE, type AccessPass, type ArkivService, type Sale } from "@apiperitivo/shared";
+import { ACCESS_PASS_ENTITY_TYPE, APP_ID, GRANT_ENTITY_TYPE, SALE_ENTITY_TYPE, SERVICE_ENTITY_TYPE, type AccessPass, type ArkivService, type Grant, type Sale } from "@apiritivo/shared";
 import { http } from "viem";
 import { resolveChain, resolveReadRpcUrl } from "./config";
-import { ATTR, parseAccessPassEntity, parseSaleEntity, parseServiceEntity, type RawServiceEntity } from "./entity";
+import { ATTR, parseAccessPassEntity, parseGrantEntity, parseSaleEntity, parseServiceEntity, type RawServiceEntity } from "./entity";
 
-export type { AccessPass, ArkivService, Sale } from "@apiperitivo/shared";
-export { ATTR, parseAccessPassEntity, parseSaleEntity, parseServiceEntity } from "./entity";
+export type { AccessPass, ArkivService, Grant, Sale } from "@apiritivo/shared";
+export { ATTR, parseAccessPassEntity, parseGrantEntity, parseSaleEntity, parseServiceEntity } from "./entity";
 
 let cachedClient: PublicArkivClient | undefined;
 
@@ -81,7 +83,13 @@ export async function listServicesByProvider(providerId: string): Promise<ArkivS
   return queryServices([eq(ATTR.providerId, providerId)]);
 }
 
-const EXPLORER_URL = "https://tiramisu.explorer.arkiv.network";
+/** Tiramisu block explorer: transactions and address balances (browser-safe). */
+export const ARKIV_EXPLORER_URL = "https://tiramisu.explorer.arkiv.network";
+const EXPLORER_URL = ARKIV_EXPLORER_URL;
+
+/** Arkiv Data Explorer: entities and queries. `chain=tiramisu` pins the testnet. */
+export const ARKIV_DATA_EXPLORER_URL = "https://data.arkiv.network";
+export const ARKIV_CHAIN_SLUG = "tiramisu";
 
 /* ---------- Phase 2: access passes & sales ---------- */
 
@@ -147,6 +155,19 @@ export async function listSalesByProvider(providerId: string): Promise<Sale[]> {
   return queryEntities(SALE_ENTITY_TYPE, [eq(ATTR.providerId, providerId)], parseSaleEntity);
 }
 
+/** Grants of a service's private file, newest first (the newest history ref is the live ACT). */
+export async function listGrantsForService(serviceId: string): Promise<Grant[]> {
+  const grants = await queryEntities(GRANT_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId)], parseGrantEntity);
+  return grants.sort((a, b) => (BigInt(b.createdAtBlock ?? "0") > BigInt(a.createdAtBlock ?? "0") ? 1 : -1));
+}
+
+/** The grant a buyer holds for a service's private file, if any. */
+export async function findGrant(serviceId: string, buyerId: string): Promise<Grant | null> {
+  const grants = await queryEntities(GRANT_ENTITY_TYPE, [eq(ATTR.serviceId, serviceId), eq(ATTR.buyerId, buyerId)], parseGrantEntity);
+  grants.sort((a, b) => (BigInt(b.createdAtBlock ?? "0") > BigInt(a.createdAtBlock ?? "0") ? 1 : -1));
+  return grants[0] ?? null;
+}
+
 /** Sale receipt for a payment tx (replay protection). */
 export async function findSaleByTxHash(txHash: string): Promise<Sale | null> {
   const sales = await queryEntities(SALE_ENTITY_TYPE, [eq(ATTR.txHash, txHash.toLowerCase())], parseSaleEntity);
@@ -179,25 +200,46 @@ export type AccessCheck =
  * for `serviceId`? Reads Arkiv directly; expired passes are gone from Arkiv,
  * so "not found" means "no access".
  */
-export async function verifyAccessPass(passKey: string | null | undefined, serviceId: string): Promise<AccessCheck> {
-  const key = (passKey ?? "").replace(/^Bearer\s+/i, "").trim();
-  if (!/^0x[0-9a-fA-F]{64}$/.test(key)) {
-    return { ok: false, status: 401, error: "Missing access pass. Send `Authorization: Bearer <passKey>`." };
+export async function verifyAccessPass(authorization: string | null | undefined, serviceId: string): Promise<AccessCheck> {
+  const bearer = parsePassBearer(authorization);
+  if (!bearer) {
+    return { ok: false, status: 401, error: "Missing access pass. Send `Authorization: Bearer <passKey>.<secret>`." };
   }
-  const [pass, timing] = await Promise.all([getAccessPass(key), getBlockTiming()]);
+  const [pass, timing] = await Promise.all([getAccessPass(bearer.passKey), getBlockTiming()]);
   if (!pass) return { ok: false, status: 403, error: "Access pass not found on Arkiv or expired." };
   if (pass.serviceId !== serviceId) return { ok: false, status: 403, error: "This pass is for a different service." };
   const secondsRemaining = secondsUntilBlock(pass.expiresAtBlock, timing);
   if (secondsRemaining <= 0) return { ok: false, status: 403, error: "Access pass expired." };
+  // Ownership: the entity key is public, the secret is not.
+  const owned = checkPassSecret(pass, bearer.secret);
+  if (!owned.ok) return owned;
   return { ok: true, pass, expiresAtBlock: pass.expiresAtBlock, currentBlock: timing.currentBlock.toString(), secondsRemaining };
 }
 
-/** Explorer link for an entity key (informational). */
-export function arkivEntityUrl(entityKey: string): string {
-  return `${EXPLORER_URL}/entity/${entityKey}`;
+/** Data Explorer link for an arbitrary Arkiv query, e.g. `$key = key(0x…)` or `$owner = addr(0x…)`. */
+export function arkivQueryUrl(query: string): string {
+  return `${ARKIV_DATA_EXPLORER_URL}/?q=${encodeURIComponent(query)}&chain=${ARKIV_CHAIN_SLUG}`;
 }
 
-/** Explorer link for a transaction hash (informational). */
+/** Data Explorer link for an entity key (informational). */
+export function arkivEntityUrl(entityKey: string): string {
+  return arkivQueryUrl(`$key = key(${entityKey})`);
+}
+
+/** Data Explorer link for every entity owned by an address (e.g. the app writer). */
+export function arkivOwnerUrl(address: string): string {
+  return arkivQueryUrl(`$owner = addr(${address})`);
+}
+
+/** Data Explorer landing page on Tiramisu (no query). */
+export function arkivDataExplorerUrl(): string {
+  return `${ARKIV_DATA_EXPLORER_URL}/?chain=${ARKIV_CHAIN_SLUG}`;
+}
+
+/**
+ * Block explorer link for a transaction hash. The Data Explorer has no
+ * transaction view, so tx proofs stay on the Tiramisu block explorer.
+ */
 export function arkivTxUrl(txHash: string): string {
   return `${EXPLORER_URL}/tx/${txHash}`;
 }
