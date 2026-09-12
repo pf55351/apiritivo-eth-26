@@ -1,9 +1,18 @@
-# @apiperitivo/payments
+# @apiritivo/payments
 
-USDC payments on Avalanche Fuji (chain 43113, Circle testnet USDC `0x5425…Bc65`, 6 decimals).
+USDC payments on Avalanche Fuji (chain 43113, Circle testnet USDC `0x5425…Bc65`, 6 decimals) and the `APIritivoPayments` contract, deployed at `0x4e98f464dc8c667e3b0fd3092e0f2d4585702fa3`.
 
-- `@apiperitivo/payments` — chain definition, USDC address, `usdcToUnits`/`unitsToUsdc`, Snowtrace links, `serviceKey(serviceId)` (= Solidity `keccak256`), `paymentsContractAddress()` from `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS`, contract ABI.
-- `@apiperitivo/payments/browser` — signers (`swarmSigner(secret)` derived from Swarm ID, `injectedSigner()` for MetaMask/Core), `payForAccess` (contract mode: approve + `buy`; direct mode: `transfer`), `waitForPayment`, `claimEarnings`, `transferUsdc`, `getBalances`, `readProviderStats`, `readServiceStats`, `readRecentPurchases`.
-- `@apiperitivo/payments/server` — `verifyPayment`: checks the `Purchased` event of `APIperitivoPayments` (contract mode) or a USDC `Transfer` to the payout address (direct mode) before an access pass is minted.
+- `@apiritivo/payments` — chain definition, USDC address, `usdcToUnits` / `unitsToUsdc`, Snowtrace links, `serviceKey(serviceId)` (= Solidity `keccak256`), `paymentsContractAddress()` and `isContractMode()` from `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS`, contract ABI, `saleFromPurchasedLog` / `saleFromTransferLog` (pure log → `LiveSale` mapping).
+- `@apiritivo/payments/browser` — signers (`swarmSigner(secret)` derived from Swarm ID, `injectedSigner()` for MetaMask/Core), `payForAccess` (contract mode: `approve` + `buy`; direct mode: `transfer`), `waitForPayment`, `claimEarnings(signer, to)` (`claim(to, 0)` = everything), `transferUsdc`, `getBalances`, `readProviderStats` (`claimable`, `totalEarned`), `readServiceStats`, `readRecentPurchases`, `watchSales` (polls `Purchased` events, or USDC `Transfer` logs in direct mode, for a provider address).
+- `@apiritivo/payments/server` — `verifyPayment`: checks the `Purchased` event (contract mode) or a USDC `Transfer` to the payout address (direct mode), returns the paying wallet and the amount, before an access pass is minted.
 
-Contract source and tests live in `/contracts`.
+## Who holds the money
+
+| Mode | On `buy` | Provider gets paid by |
+| --- | --- | --- |
+| contract (`NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS` set) | USDC moves into the contract, `claimable[payout_address] += net` | calling `claim` from the `payout_address` wallet (the Swarm wallet in the app) |
+| direct (variable empty) | USDC goes straight to `payout_address` | nothing to do |
+
+The contract ledger is keyed by EVM address only. The link to a Swarm ID is the deterministic wallet derivation in `@apiritivo/swarm`.
+
+Contract source and tests live in `/contracts`. Tests here: `bun test` (units, explorer URLs, log mapping, verification against the deployed contract).

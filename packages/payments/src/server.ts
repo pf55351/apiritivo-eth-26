@@ -1,9 +1,9 @@
 /**
  * Server side: verify that a payment really happened on Fuji before an access
  * pass is issued. Contract mode checks the `Purchased` event of
- * APIperitivoPayments; direct mode checks a plain USDC `Transfer`.
+ * APIritivoPayments; direct mode checks a plain USDC `Transfer`.
  */
-import { createPublicClient, erc20Abi, http, parseEventLogs, type Address, type Hash } from "viem";
+import { createPublicClient, erc20Abi, http, parseEventLogs, type Address, type Hash, type Log } from "viem";
 import { PAYMENT_CHAIN, USDC_ADDRESS, unitsToUsdc, usdcToUnits } from "./index";
 import { paymentsAbi, paymentsContractAddress, serviceKey } from "./contract";
 
@@ -25,10 +25,14 @@ async function receiptOf(txHash: Hash) {
   }
 }
 
-/** Direct mode: a USDC Transfer to `to` of at least `minUsdc`. */
-export async function verifyUsdcPayment(params: { txHash: Hash; to: Address; minUsdc: string }): Promise<PaymentVerification> {
-  const receipt = await receiptOf(params.txHash);
-  if (!receipt) return { ok: false, reason: "Transaction not found on Avalanche Fuji (not mined yet, or wrong network)." };
+/** The parts of a transaction receipt the verifiers look at (pure, testable). */
+export type ReceiptLike = { status: "success" | "reverted"; blockNumber: bigint; logs: Log[] };
+
+const NOT_FOUND = "Transaction not found on Avalanche Fuji (not mined yet, or wrong network).";
+
+/** Direct mode, pure: a USDC Transfer to `to` of at least `minUsdc` inside `receipt`. */
+export function verifyUsdcReceipt(receipt: ReceiptLike | null, params: { to: Address; minUsdc: string }): PaymentVerification {
+  if (!receipt) return { ok: false, reason: NOT_FOUND };
   if (receipt.status !== "success") return { ok: false, reason: "Transaction reverted." };
 
   const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: receipt.logs }).filter(
@@ -42,12 +46,18 @@ export async function verifyUsdcPayment(params: { txHash: Hash; to: Address; min
   return { ok: true, mode: "direct", from: transfers[0]!.args.from, to: params.to, amountUsdc: unitsToUsdc(total), blockNumber: receipt.blockNumber };
 }
 
-/** Contract mode: a `Purchased(provider, serviceId)` event from our contract of at least `minUsdc`. */
-export async function verifyContractPurchase(params: { txHash: Hash; provider: Address; serviceId: string; minUsdc: string }): Promise<PaymentVerification> {
-  const contract = paymentsContractAddress();
-  if (!contract) return { ok: false, reason: "Payments contract not configured." };
-  const receipt = await receiptOf(params.txHash);
-  if (!receipt) return { ok: false, reason: "Transaction not found on Avalanche Fuji (not mined yet, or wrong network)." };
+/** Direct mode: fetches the receipt, then `verifyUsdcReceipt`. */
+export async function verifyUsdcPayment(params: { txHash: Hash; to: Address; minUsdc: string }): Promise<PaymentVerification> {
+  return verifyUsdcReceipt(await receiptOf(params.txHash), params);
+}
+
+/** Contract mode, pure: a `Purchased(provider, serviceId)` event emitted by `contract` of at least `minUsdc`. */
+export function verifyContractReceipt(
+  receipt: ReceiptLike | null,
+  contract: Address,
+  params: { provider: Address; serviceId: string; minUsdc: string },
+): PaymentVerification {
+  if (!receipt) return { ok: false, reason: NOT_FOUND };
   if (receipt.status !== "success") return { ok: false, reason: "Transaction reverted." };
 
   const key = serviceKey(params.serviceId).toLowerCase();
@@ -71,6 +81,13 @@ export async function verifyContractPurchase(params: { txHash: Hash; provider: A
     blockNumber: receipt.blockNumber,
     purchaseId: Number(p.args.purchaseId),
   };
+}
+
+/** Contract mode: fetches the receipt, then `verifyContractReceipt` against the configured contract. */
+export async function verifyContractPurchase(params: { txHash: Hash; provider: Address; serviceId: string; minUsdc: string }): Promise<PaymentVerification> {
+  const contract = paymentsContractAddress();
+  if (!contract) return { ok: false, reason: "Payments contract not configured." };
+  return verifyContractReceipt(await receiptOf(params.txHash), contract, params);
 }
 
 /** Picks contract mode when the contract is configured, direct mode otherwise. */

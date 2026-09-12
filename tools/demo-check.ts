@@ -8,7 +8,7 @@ import { tiramisu } from "@arkiv-network/sdk/chains";
 import { and, eq } from "@arkiv-network/sdk/query";
 import { createPublicClient, erc20Abi, formatEther, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { PAYMENT_CHAIN, USDC_ADDRESS, paymentsAbi, unitsToUsdc } from "@apiperitivo/payments";
+import { PAYMENT_CHAIN, USDC_ADDRESS, paymentsAbi, unitsToUsdc } from "@apiritivo/payments";
 
 const envPath = new URL("../apps/web/.env.local", import.meta.url).pathname;
 const env: Record<string, string> = {};
@@ -27,7 +27,7 @@ const fail = (label: string, detail = "") => {
   console.log(`  ✗ ${label}${detail ? `  ${detail}` : ""}`);
 };
 
-console.log("\nAPIperitivo demo check\n");
+console.log("\nAPIritivo demo check\n");
 
 // 1. env
 console.log("Environment (apps/web/.env.local)");
@@ -48,11 +48,11 @@ try {
     const glm = Number(formatEther(bal));
     (glm > 0.01 ? ok : fail)("writer funded", `${writer.address} · ${glm.toFixed(4)} GLM${glm <= 0.01 ? " → https://hub.arkiv.network/faucet" : ""}`);
   }
-  const services = await arkiv.select({ key: true, attributes: true }).where(and(eq("app", "apiperitivo"), eq("entity_type", "service"))).limit(50).fetch();
+  const services = await arkiv.select({ key: true, attributes: true }).where(and(eq("app", "apiritivo"), eq("entity_type", "service"))).limit(50).fetch();
   (services.entities.length > 0 ? ok : warn)("services published", `${services.entities.length} (publish one from /provider/new if 0)`);
   const missingPayout = services.entities.filter((e) => !e.attributes?.payout_address).length;
   if (missingPayout > 0) warn("services without payout wallet", `${missingPayout} (not purchasable, republish them)`);
-  const passes = await arkiv.select({ key: true }).where(and(eq("app", "apiperitivo"), eq("entity_type", "access_pass"))).limit(50).fetch();
+  const passes = await arkiv.select({ key: true }).where(and(eq("app", "apiritivo"), eq("entity_type", "access_pass"))).limit(50).fetch();
   ok("live access passes", String(passes.entities.length));
 } catch (err) {
   fail("Arkiv unreachable", (err as Error).message.split("\n")[0]);
@@ -84,7 +84,7 @@ try {
     const token = await fuji.readContract({ address: contract as `0x${string}`, abi: paymentsAbi, functionName: "token" });
     const count = await fuji.readContract({ address: contract as `0x${string}`, abi: paymentsAbi, functionName: "purchaseCount" });
     const fees = await fuji.readContract({ address: contract as `0x${string}`, abi: paymentsAbi, functionName: "feesAccrued" });
-    (token.toLowerCase() === USDC_ADDRESS.toLowerCase() ? ok : fail)("APIperitivoPayments", `${contract} · ${count} purchases · fees ${unitsToUsdc(fees)} USDC`);
+    (token.toLowerCase() === USDC_ADDRESS.toLowerCase() ? ok : fail)("APIritivoPayments", `${contract} · ${count} purchases · fees ${unitsToUsdc(fees)} USDC`);
   } else {
     warn("contract not configured", "direct-transfer mode (deploy with contracts/script/Deploy.s.sol when ready)");
   }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {APIperitivoPayments, IERC20} from "../src/APIperitivoPayments.sol";
+import {APIritivoPayments, IERC20} from "../src/APIritivoPayments.sol";
 
 /// @dev 6-decimal ERC-20 that behaves like USDC (returns bool, reverts on insufficient funds/allowance).
 contract MockUSDC is IERC20 {
@@ -72,10 +72,10 @@ contract NoReturnToken {
 
 /// @dev Malicious token that re-enters `claim` during a transfer.
 contract ReentrantToken is MockUSDC {
-    APIperitivoPayments public target;
+    APIritivoPayments public target;
     bool private attacking;
 
-    function setTarget(APIperitivoPayments t) external {
+    function setTarget(APIritivoPayments t) external {
         target = t;
     }
 
@@ -88,9 +88,9 @@ contract ReentrantToken is MockUSDC {
     }
 }
 
-contract APIperitivoPaymentsTest is Test {
+contract APIritivoPaymentsTest is Test {
     MockUSDC usdc;
-    APIperitivoPayments payments;
+    APIritivoPayments payments;
 
     address owner = makeAddr("owner");
     address provider = makeAddr("provider");
@@ -114,7 +114,7 @@ contract APIperitivoPaymentsTest is Test {
 
     function setUp() public {
         usdc = new MockUSDC();
-        payments = new APIperitivoPayments(IERC20(address(usdc)), owner, 0);
+        payments = new APIritivoPayments(IERC20(address(usdc)), owner, 0);
         usdc.mint(buyer, 1_000_000_000); // 1000 USDC
     }
 
@@ -135,18 +135,18 @@ contract APIperitivoPaymentsTest is Test {
     }
 
     function test_constructor_rejectsZeroToken() public {
-        vm.expectRevert(APIperitivoPayments.ZeroAddress.selector);
-        new APIperitivoPayments(IERC20(address(0)), owner, 0);
+        vm.expectRevert(APIritivoPayments.ZeroAddress.selector);
+        new APIritivoPayments(IERC20(address(0)), owner, 0);
     }
 
     function test_constructor_rejectsZeroOwner() public {
-        vm.expectRevert(APIperitivoPayments.ZeroAddress.selector);
-        new APIperitivoPayments(IERC20(address(usdc)), address(0), 0);
+        vm.expectRevert(APIritivoPayments.ZeroAddress.selector);
+        new APIritivoPayments(IERC20(address(usdc)), address(0), 0);
     }
 
     function test_constructor_rejectsFeeAboveMax() public {
-        vm.expectRevert(abi.encodeWithSelector(APIperitivoPayments.FeeTooHigh.selector, 1001, 1000));
-        new APIperitivoPayments(IERC20(address(usdc)), owner, 1001);
+        vm.expectRevert(abi.encodeWithSelector(APIritivoPayments.FeeTooHigh.selector, 1001, 1000));
+        new APIritivoPayments(IERC20(address(usdc)), owner, 1001);
     }
 
     // ------------------------------------------------------------------ buy
@@ -162,7 +162,7 @@ contract APIperitivoPaymentsTest is Test {
         assertEq(payments.servicePurchases(SERVICE), 1);
         assertEq(payments.purchaseCount(), 1);
 
-        APIperitivoPayments.Purchase memory p = payments.getPurchase(0);
+        APIritivoPayments.Purchase memory p = payments.getPurchase(0);
         assertEq(p.buyer, buyer);
         assertEq(p.provider, provider);
         assertEq(p.serviceId, SERVICE);
@@ -191,19 +191,19 @@ contract APIperitivoPaymentsTest is Test {
 
     function test_buy_revertsOnZeroAmount() public {
         vm.prank(buyer);
-        vm.expectRevert(APIperitivoPayments.ZeroAmount.selector);
+        vm.expectRevert(APIritivoPayments.ZeroAmount.selector);
         payments.buy(provider, SERVICE, 0, WEEK);
     }
 
     function test_buy_revertsOnZeroProvider() public {
         vm.prank(buyer);
-        vm.expectRevert(APIperitivoPayments.ZeroAddress.selector);
+        vm.expectRevert(APIritivoPayments.ZeroAddress.selector);
         payments.buy(address(0), SERVICE, PRICE, WEEK);
     }
 
     function test_buy_revertsWithoutApproval() public {
         vm.prank(buyer);
-        vm.expectRevert(APIperitivoPayments.TransferFailed.selector);
+        vm.expectRevert(APIritivoPayments.TransferFailed.selector);
         payments.buy(provider, SERVICE, PRICE, WEEK);
         assertEq(payments.claimable(provider), 0);
         assertEq(payments.purchaseCount(), 0);
@@ -211,21 +211,21 @@ contract APIperitivoPaymentsTest is Test {
 
     function test_buy_revertsWhenTokenReturnsFalse() public {
         FalseReturningToken bad = new FalseReturningToken();
-        APIperitivoPayments p2 = new APIperitivoPayments(IERC20(address(bad)), owner, 0);
+        APIritivoPayments p2 = new APIritivoPayments(IERC20(address(bad)), owner, 0);
         bad.mint(buyer, PRICE);
         vm.startPrank(buyer);
         bad.approve(address(p2), PRICE);
         p2.buy(provider, SERVICE, PRICE, WEEK); // transferFrom is fine on this mock
         vm.stopPrank();
         vm.prank(provider);
-        vm.expectRevert(APIperitivoPayments.TransferFailed.selector);
+        vm.expectRevert(APIritivoPayments.TransferFailed.selector);
         p2.claim(payout, 0); // transfer returns false -> must revert, balance untouched
         assertEq(p2.claimable(provider), PRICE);
     }
 
     function test_buy_worksWithNoReturnToken() public {
         NoReturnToken t = new NoReturnToken();
-        APIperitivoPayments p2 = new APIperitivoPayments(IERC20(address(t)), owner, 0);
+        APIritivoPayments p2 = new APIritivoPayments(IERC20(address(t)), owner, 0);
         t.mint(buyer, PRICE);
         vm.startPrank(buyer);
         t.approve(address(p2), PRICE);
@@ -275,34 +275,34 @@ contract APIperitivoPaymentsTest is Test {
     function test_claim_revertsAboveBalance() public {
         _buy(PRICE);
         vm.prank(provider);
-        vm.expectRevert(abi.encodeWithSelector(APIperitivoPayments.InsufficientBalance.selector, PRICE + 1, PRICE));
+        vm.expectRevert(abi.encodeWithSelector(APIritivoPayments.InsufficientBalance.selector, PRICE + 1, PRICE));
         payments.claim(payout, PRICE + 1);
     }
 
     function test_claim_revertsWhenNothingToClaim() public {
         vm.prank(provider);
-        vm.expectRevert(APIperitivoPayments.ZeroAmount.selector);
+        vm.expectRevert(APIritivoPayments.ZeroAmount.selector);
         payments.claim(payout, 0);
     }
 
     function test_claim_revertsToZeroAddress() public {
         _buy(PRICE);
         vm.prank(provider);
-        vm.expectRevert(APIperitivoPayments.ZeroAddress.selector);
+        vm.expectRevert(APIritivoPayments.ZeroAddress.selector);
         payments.claim(address(0), 0);
     }
 
     function test_claim_otherAccountCannotTakeProviderFunds() public {
         _buy(PRICE);
         vm.prank(buyer);
-        vm.expectRevert(APIperitivoPayments.ZeroAmount.selector); // buyer has nothing claimable
+        vm.expectRevert(APIritivoPayments.ZeroAmount.selector); // buyer has nothing claimable
         payments.claim(buyer, 0);
         assertEq(payments.claimable(provider), PRICE);
     }
 
     function test_claim_blocksReentrancy() public {
         ReentrantToken evil = new ReentrantToken();
-        APIperitivoPayments p2 = new APIperitivoPayments(IERC20(address(evil)), owner, 0);
+        APIritivoPayments p2 = new APIritivoPayments(IERC20(address(evil)), owner, 0);
         evil.setTarget(p2);
         evil.mint(buyer, PRICE);
         vm.startPrank(buyer);
@@ -313,7 +313,7 @@ contract APIperitivoPaymentsTest is Test {
         // The nested claim reverts with Reentrancy(); the outer call bubbles it up as TransferFailed
         // because the token call as a whole failed. Either way: no double withdrawal.
         vm.prank(provider);
-        vm.expectRevert(APIperitivoPayments.TransferFailed.selector);
+        vm.expectRevert(APIritivoPayments.TransferFailed.selector);
         p2.claim(payout, 0);
         assertEq(p2.claimable(provider), PRICE);
     }
@@ -337,19 +337,19 @@ contract APIperitivoPaymentsTest is Test {
 
     function test_setFee_onlyOwner() public {
         vm.prank(buyer);
-        vm.expectRevert(APIperitivoPayments.NotOwner.selector);
+        vm.expectRevert(APIritivoPayments.NotOwner.selector);
         payments.setFee(100, buyer);
     }
 
     function test_setFee_rejectsAboveMax() public {
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(APIperitivoPayments.FeeTooHigh.selector, 1001, 1000));
+        vm.expectRevert(abi.encodeWithSelector(APIritivoPayments.FeeTooHigh.selector, 1001, 1000));
         payments.setFee(1001, owner);
     }
 
     function test_withdrawFees_revertsWhenEmpty() public {
         vm.prank(owner);
-        vm.expectRevert(APIperitivoPayments.ZeroAmount.selector);
+        vm.expectRevert(APIritivoPayments.ZeroAmount.selector);
         payments.withdrawFees();
     }
 
@@ -358,7 +358,7 @@ contract APIperitivoPaymentsTest is Test {
         payments.transferOwnership(payout);
         assertEq(payments.owner(), payout);
         vm.prank(owner);
-        vm.expectRevert(APIperitivoPayments.NotOwner.selector);
+        vm.expectRevert(APIritivoPayments.NotOwner.selector);
         payments.setFee(1, owner);
     }
 
@@ -366,7 +366,7 @@ contract APIperitivoPaymentsTest is Test {
 
     function test_getPurchases_pagesNewestFirst() public {
         for (uint256 i = 1; i <= 5; i++) _buy(i * 1000);
-        APIperitivoPayments.Purchase[] memory page = payments.getPurchases(0, 2);
+        APIritivoPayments.Purchase[] memory page = payments.getPurchases(0, 2);
         assertEq(page.length, 2);
         assertEq(page[0].amount, 5000);
         assertEq(page[1].amount, 4000);

@@ -1,5 +1,5 @@
 {
-  "name": "@apiperitivo/web",
+  "name": "@apiritivo/web",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -8,17 +8,17 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "echo 'web tests pending'"
+    "test": "bun test"
   },
   "dependencies": {
-    "@apiperitivo/arkiv": "workspace:*",
-    "@apiperitivo/shared": "workspace:*",
-    "@apiperitivo/swarm": "workspace:*",
+    "@apiritivo/arkiv": "workspace:*",
+    "@apiritivo/shared": "workspace:*",
+    "@apiritivo/swarm": "workspace:*",
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "zod": "^4.1.0",
-    "@apiperitivo/payments": "workspace:*",
+    "@apiritivo/payments": "workspace:*",
     "viem": "^2.21.0"
   },
   "devDependencies": {

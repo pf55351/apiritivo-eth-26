@@ -3,6 +3,14 @@ export function shortRef(value: string, head = 6, tail = 4): string {
   return `${value.slice(0, head)}…${value.slice(-tail)}`;
 }
 
+/** Human "time left" for a Swarm drive: "under 1 hour", "5 h", "4 days". */
+export function formatTtl(seconds: number): string {
+  if (seconds < 3_600) return "under 1 hour";
+  if (seconds < 86_400) return `${Math.floor(seconds / 3_600)} h`;
+  const days = Math.floor(seconds / 86_400);
+  return `${days} ${days === 1 ? "day" : "days"}`;
+}
+
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";

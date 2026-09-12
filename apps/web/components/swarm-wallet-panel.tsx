@@ -1,20 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
-import { formatPriceUsdc } from "@apiperitivo/shared";
-import { AVAX_FAUCET_URL, USDC_FAUCET_URL, explorerAddressUrl, explorerTxUrl, isContractMode, PAYMENT_CHAIN_NAME } from "@apiperitivo/payments";
-import { claimEarnings, readProviderStats, transferUsdc, type ProviderStats } from "@apiperitivo/payments/browser";
+import { formatPriceUsdc } from "@apiritivo/shared";
+import { AVAX_FAUCET_URL, USDC_FAUCET_URL, explorerAddressUrl, explorerTokenUrl, explorerTxUrl, isContractMode, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
+import { claimEarnings, readProviderStats, transferUsdc, type ProviderStats } from "@apiritivo/payments/browser";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
 import { copyText } from "@/lib/format";
 import { Button, ErrorNotice } from "./ui";
 
-const fieldCls = "h-10 w-full rounded-xl border border-white/15 bg-ink-900/70 px-3 font-mono text-sm text-ink-100 placeholder:text-ink-400 focus:border-spritz-400/60 focus:outline-none";
+const fieldCls = "field-control font-mono";
 
 /**
  * Provider wallet section: the EVM account derived from the Swarm ID.
- * Shows balances, lets the provider reveal/export the private key, withdraw
- * USDC anywhere, and claim contract earnings.
+ * Shows balances, lets the provider reveal/export the private key, claim
+ * contract earnings into this wallet (contract mode) and send USDC anywhere.
  */
 export function SwarmWalletPanel() {
   const wallet = useSwarmWallet();
@@ -23,9 +23,12 @@ export function SwarmWalletPanel() {
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState<"withdraw" | "claim" | null>(null);
-  const [tx, setTx] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [claimTx, setClaimTx] = useState<string | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const [sendTx, setSendTx] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [stats, setStats] = useState<ProviderStats | null>(null);
+  const contractMode = isContractMode();
 
   const copy = async (label: string, value: string) => {
     if (await copyText(value)) {
@@ -34,22 +37,28 @@ export function SwarmWalletPanel() {
     }
   };
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     if (!wallet.address) return;
     setStats(await readProviderStats(wallet.address).catch(() => null));
-  };
+  }, [wallet.address]);
+
+  // Contract mode: show what is waiting in the contract as soon as the wallet is known.
+  useEffect(() => {
+    if (contractMode) void loadStats();
+  }, [contractMode, loadStats]);
 
   async function withdraw() {
     if (!wallet.signer) return;
     setBusy("withdraw");
-    setError(null);
-    setTx(null);
+    setSendError(null);
+    setSendTx(null);
     try {
       const hash = await transferUsdc(wallet.signer, to.trim() as Address, amount.trim());
-      setTx(hash);
+      setSendTx(hash);
+      setAmount("");
       await wallet.refreshBalances();
     } catch (err) {
-      setError((err as Error).message);
+      setSendError((err as Error).message);
     } finally {
       setBusy(null);
     }
@@ -58,14 +67,15 @@ export function SwarmWalletPanel() {
   async function claim() {
     if (!wallet.signer) return;
     setBusy("claim");
-    setError(null);
-    setTx(null);
+    setClaimError(null);
+    setClaimTx(null);
     try {
-      const hash = await claimEarnings(wallet.signer, (to.trim() || wallet.address) as Address);
-      setTx(hash);
+      // Always pull contract earnings into the Swarm wallet; moving them elsewhere is the next step.
+      const hash = await claimEarnings(wallet.signer, wallet.address as Address);
+      setClaimTx(hash);
       await Promise.all([wallet.refreshBalances(), loadStats()]);
     } catch (err) {
-      setError((err as Error).message);
+      setClaimError((err as Error).message);
     } finally {
       setBusy(null);
     }
@@ -96,7 +106,9 @@ export function SwarmWalletPanel() {
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-ink-400">USDC</p>
+                <a href={explorerTokenUrl()} target="_blank" rel="noreferrer" className="text-[11px] uppercase tracking-wider text-ink-400 hover:text-ink-200">
+                  USDC ↗
+                </a>
                 <p className="font-semibold text-olive-400">{wallet.balances ? formatPriceUsdc(wallet.balances.usdc) : "…"}</p>
               </div>
               <div>
@@ -120,7 +132,7 @@ export function SwarmWalletPanel() {
               </Button>
             </div>
             <p className="mt-1 text-[11px] text-rose-200/80">
-              Import it into MetaMask to control this wallet outside APIperitivo. Anyone with this key controls the funds. Testnet only.
+              Import it into MetaMask to control this wallet outside APIritivo. Anyone with this key controls the funds. Testnet only.
             </p>
             {revealed ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -132,32 +144,54 @@ export function SwarmWalletPanel() {
             ) : null}
           </div>
 
-          {/* Withdraw / claim */}
+          {/* Step 1 (contract mode): contract -> Swarm wallet */}
+          {contractMode ? (
+            <div className="rounded-2xl border border-spritz-300/30 bg-spritz-300/5 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold">Earnings held by the contract</p>
+                <p className="font-semibold text-olive-400">{stats ? formatPriceUsdc(stats.claimableUsdc) : "…"}</p>
+              </div>
+              <p className="mt-1 text-[11px] text-ink-400">
+                Sales go into the payments contract. Claim moves them to this Swarm wallet, signed with its key.
+                {stats ? ` Lifetime earned: ${formatPriceUsdc(stats.totalEarnedUsdc)}.` : ""}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={claim} disabled={busy !== null || !stats || Number(stats.claimableUsdc) <= 0}>
+                  {busy === "claim" ? "Claiming…" : "Claim to my Swarm wallet"}
+                </Button>
+                <button type="button" onClick={() => void loadStats()} className="text-xs text-ink-400 underline hover:text-ink-200">refresh</button>
+              </div>
+              {claimTx ? (
+                <a href={explorerTxUrl(claimTx)} target="_blank" rel="noreferrer" className="mt-2 block break-all font-mono text-[11px] text-olive-400 hover:underline">
+                  tx {claimTx} ↗
+                </a>
+              ) : null}
+              {claimError ? <p className="mt-2 text-xs text-rose-300">{claimError}</p> : null}
+            </div>
+          ) : null}
+
+          {/* Step 2: Swarm wallet -> any address */}
           <div className="rounded-2xl border border-white/15 bg-ink-900/40 p-3">
-            <p className="text-sm font-semibold">Move funds</p>
+            <p className="text-sm font-semibold">Send USDC from this wallet</p>
+            <p className="mt-1 text-[11px] text-ink-400">Signed with the Swarm wallet key. Use it to move funds to MetaMask or any other address.</p>
             <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               <input className={fieldCls} placeholder="destination 0x… (e.g. your MetaMask)" value={to} onChange={(e) => setTo(e.target.value)} spellCheck={false} />
               <input className={fieldCls} placeholder="amount USDC" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button size="sm" onClick={withdraw} disabled={busy !== null || !/^0x[0-9a-fA-F]{40}$/.test(to.trim()) || !/^\d+(\.\d{1,6})?$/.test(amount.trim())}>
-                {busy === "withdraw" ? "Sending…" : "Withdraw USDC"}
+                {busy === "withdraw" ? "Sending…" : "Send USDC"}
               </Button>
-              {isContractMode() ? (
-                <Button size="sm" variant="ghost" onClick={claim} disabled={busy !== null}>
-                  {busy === "claim" ? "Claiming…" : `Claim contract earnings${stats ? ` · ${formatPriceUsdc(stats.claimableUsdc)}` : ""}`}
-                </Button>
-              ) : null}
-              {isContractMode() && !stats ? (
-                <button type="button" onClick={loadStats} className="text-xs text-ink-400 underline hover:text-ink-200">check claimable</button>
+              {wallet.balances && Number(wallet.balances.usdc) > 0 ? (
+                <button type="button" onClick={() => setAmount(wallet.balances!.usdc)} className="text-xs text-ink-400 underline hover:text-ink-200">send all</button>
               ) : null}
             </div>
-            {tx ? (
-              <a href={explorerTxUrl(tx)} target="_blank" rel="noreferrer" className="mt-2 block break-all font-mono text-[11px] text-olive-400 hover:underline">
-                tx {tx} ↗
+            {sendTx ? (
+              <a href={explorerTxUrl(sendTx)} target="_blank" rel="noreferrer" className="mt-2 block break-all font-mono text-[11px] text-olive-400 hover:underline">
+                tx {sendTx} ↗
               </a>
             ) : null}
-            {error ? <p className="mt-2 text-xs text-rose-300">{error}</p> : null}
+            {sendError ? <p className="mt-2 text-xs text-rose-300">{sendError}</p> : null}
           </div>
         </div>
       ) : null}

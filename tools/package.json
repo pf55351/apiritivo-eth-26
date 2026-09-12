@@ -1,17 +1,18 @@
 {
-  "name": "@apiperitivo/tools",
+  "name": "@apiritivo/tools",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "demo:check": "bun demo-check.ts",
+    "call": "bun call-service.ts",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "build": "tsc --noEmit",
     "test": "echo 'no tests'"
   },
   "dependencies": {
-    "@apiperitivo/payments": "workspace:*",
+    "@apiritivo/payments": "workspace:*",
     "@arkiv-network/sdk": "^0.8.1",
     "viem": "^2.21.0"
   },

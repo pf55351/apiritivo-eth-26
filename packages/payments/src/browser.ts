@@ -7,7 +7,7 @@
  *  - "injected": MetaMask / Core / Rabby through window.ethereum.
  *
  * Two payment modes, picked automatically:
- *  - contract: approve + `APIperitivoPayments.buy` (when NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS is set)
+ *  - contract: approve + `APIritivoPayments.buy` (when NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS is set)
  *  - direct:   plain USDC `transfer` to the provider's payout address
  */
 import {
@@ -185,6 +185,56 @@ export async function readRecentPurchases(limit = 20): Promise<OnChainPurchase[]
     accessSeconds: Number(r.accessSeconds),
     timestamp: Number(r.timestamp),
   }));
+}
+
+/* ------------------------------------------------------------------ live */
+
+import { saleFromPurchasedLog, saleFromTransferLog, type LiveSale } from "./live";
+export { liveSaleKey, saleFromPurchasedLog, saleFromTransferLog, type LiveSale } from "./live";
+
+/**
+ * Listen for new sales as they land on Avalanche Fuji. The public RPC has no
+ * websocket, so viem polls `eth_getLogs` every `pollingIntervalMs`.
+ *  - contract mode: `Purchased` events of APIritivoPayments filtered by provider
+ *  - direct mode:   USDC `Transfer` events to the provider's payout address
+ * Returns the unsubscribe function.
+ */
+export function watchSales(params: { provider: Address; onSale: (sale: LiveSale) => void; onError?: (err: Error) => void; pollingIntervalMs?: number }): () => void {
+  const contract = paymentsContractAddress();
+  const client = publicClient();
+  const pollingInterval = params.pollingIntervalMs ?? 4_000;
+  if (contract) {
+    return client.watchContractEvent({
+      address: contract,
+      abi: paymentsAbi,
+      eventName: "Purchased",
+      args: { provider: params.provider },
+      poll: true,
+      pollingInterval,
+      onError: params.onError,
+      onLogs: (logs) => {
+        for (const log of logs) {
+          const sale = saleFromPurchasedLog(log);
+          if (sale) params.onSale(sale);
+        }
+      },
+    });
+  }
+  return client.watchContractEvent({
+    address: USDC_ADDRESS,
+    abi: erc20Abi,
+    eventName: "Transfer",
+    args: { to: params.provider },
+    poll: true,
+    pollingInterval,
+    onError: params.onError,
+    onLogs: (logs) => {
+      for (const log of logs) {
+        const sale = saleFromTransferLog(log);
+        if (sale) params.onSale(sale);
+      }
+    },
+  });
 }
 
 /* ------------------------------------------------------------------ writes */

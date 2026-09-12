@@ -8,8 +8,8 @@ interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
 }
 
-/// @title APIperitivoPayments
-/// @notice Pull-payment ledger for APIperitivo service access purchases.
+/// @title APIritivoPayments
+/// @notice Pull-payment ledger for APIritivo service access purchases.
 ///
 /// A client pays `amount` of the payment token (USDC) for access to `serviceId`
 /// published by `provider`. The contract keeps the funds and credits the
@@ -24,7 +24,7 @@ interface IERC20 {
 ///    Swarm ID, or any wallet they chose at publish time).
 ///  - `serviceId` is `keccak256(bytes(serviceId))` of the Arkiv service id.
 ///  - No upgradeability, no pausing: what is deposited can always be claimed.
-contract APIperitivoPayments {
+contract APIritivoPayments {
     // ---------------------------------------------------------------------
     // Types
     // ---------------------------------------------------------------------

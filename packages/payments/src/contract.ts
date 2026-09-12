@@ -1,5 +1,5 @@
 /**
- * APIperitivoPayments contract binding (see contracts/src/APIperitivoPayments.sol).
+ * APIritivoPayments contract binding (see contracts/src/APIritivoPayments.sol).
  * The address comes from NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS; when unset the app
  * falls back to direct USDC transfers.
  */
@@ -31,7 +31,7 @@ export function isContractMode(): boolean {
   return paymentsContractAddress() !== undefined;
 }
 
-/** Same hashing as `APIperitivoPayments.serviceKey`. */
+/** Same hashing as `APIritivoPayments.serviceKey`. */
 export function serviceKey(serviceId: string): Hex {
   return keccak256(toBytes(serviceId));
 }

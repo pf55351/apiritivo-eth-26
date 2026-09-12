@@ -5,7 +5,7 @@ import { copyText } from "@/lib/format";
 
 export type ProofLink = {
   /** Where the proof lives. */
-  network: "Arkiv · Tiramisu testnet" | "Swarm · public gateway";
+  network: "Arkiv · Tiramisu testnet" | "Swarm · public gateway" | "Avalanche Fuji · SnowTrace";
   /** What the value is. */
   label: string;
   value: string;
@@ -16,10 +16,13 @@ export type ProofLink = {
 function ProofRow({ proof }: { proof: ProofLink }) {
   const [copied, setCopied] = useState(false);
   const arkiv = proof.network.startsWith("Arkiv");
+  const avalanche = proof.network.startsWith("Avalanche");
+  const labelCls = arkiv ? "text-spritz-300" : avalanche ? "text-rose-300" : "text-olive-400";
+  const btnCls = arkiv ? "bg-spritz-500 text-ink-950 hover:bg-spritz-400" : avalanche ? "bg-rose-400 text-ink-950 hover:bg-rose-300" : "bg-olive-400 text-ink-950 hover:bg-olive-500";
   return (
     <div className="rounded-2xl border border-white/15 bg-ink-900/70 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${arkiv ? "text-spritz-300" : "text-olive-400"}`}>
+        <span className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${labelCls}`}>
           {proof.network}
         </span>
         <span className="text-[11px] text-ink-400">{proof.label}</span>
@@ -33,9 +36,7 @@ function ProofRow({ proof }: { proof: ProofLink }) {
             href={proof.href}
             target="_blank"
             rel="noreferrer"
-            className={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-semibold transition ${
-              arkiv ? "bg-spritz-500 text-ink-950 hover:bg-spritz-400" : "bg-olive-400 text-ink-950 hover:bg-olive-500"
-            }`}
+            className={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-semibold transition ${btnCls}`}
           >
             {proof.hrefLabel ?? "Open"} ↗
           </a>
