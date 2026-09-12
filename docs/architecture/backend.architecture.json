@@ -1,0 +1,288 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "APIritivo \u00b7 Backend architecture",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/pf55351/apiritivo-eth-26",
+      "revision": "d7c00fcf0cb0537a478369d01f84b89eac3f3c56"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      50,
+      75
+    ],
+    "cols": 3,
+    "cellW": 245,
+    "cellH": 86,
+    "gapX": 225,
+    "gapY": 190
+  },
+  "components": [
+    {
+      "id": "swarm-identity",
+      "type": "security",
+      "label": "Swarm ID",
+      "sublabel": "Identity + derived browser keys",
+      "row": 0,
+      "col": 0,
+      "sources": [
+        {
+          "path": "packages/swarm/src/index.ts",
+          "label": "Identity and key adapter"
+        }
+      ],
+      "size": [
+        245,
+        86
+      ]
+    },
+    {
+      "id": "browser-client",
+      "type": "frontend",
+      "label": "Browser / API client",
+      "sublabel": "Publish \u00b7 purchase \u00b7 call",
+      "row": 1,
+      "col": 0,
+      "sources": [
+        {
+          "path": "apps/web/components/buy-access.tsx",
+          "label": "Purchase and secret creation"
+        },
+        {
+          "path": "apps/web/app/provider/new/page.tsx",
+          "label": "Manifest before listing"
+        }
+      ],
+      "size": [
+        245,
+        86
+      ]
+    },
+    {
+      "id": "api-runtime",
+      "type": "backend",
+      "label": "Next.js API routes",
+      "sublabel": "Zod \u00b7 payment check \u00b7 pass guard",
+      "tag": "Node.js \u00b7 5 routes",
+      "row": 1,
+      "col": 1,
+      "sources": [
+        {
+          "path": "apps/web/app/api/access-passes/route.ts",
+          "label": "Verify payment, then issue"
+        },
+        {
+          "path": "apps/web/lib/server/access.ts",
+          "label": "Shared access guard and demo"
+        },
+        {
+          "path": "apps/web/app/api/grants/route.ts",
+          "label": "Record browser ACT grants"
+        }
+      ],
+      "size": [
+        245,
+        86
+      ]
+    },
+    {
+      "id": "arkiv-registry",
+      "type": "database",
+      "label": "Arkiv \u00b7 Tiramisu",
+      "sublabel": "service \u00b7 access_pass \u00b7 sale \u00b7 grant",
+      "tag": "Only access_pass expires",
+      "row": 1,
+      "col": 2,
+      "sources": [
+        {
+          "path": "packages/arkiv/src/server.ts",
+          "label": "App-owned entity writer"
+        },
+        {
+          "path": "packages/arkiv/src/index.ts",
+          "label": "Queries and pass verification"
+        }
+      ],
+      "size": [
+        245,
+        86
+      ]
+    },
+    {
+      "id": "swarm-manifests",
+      "type": "cloud",
+      "label": "Swarm / Bee gateway",
+      "sublabel": "Manifest bytes + private ACT files",
+      "row": 0,
+      "col": 1,
+      "sources": [
+        {
+          "path": "packages/swarm/src/index.ts",
+          "label": "Browser upload, download and ACT"
+        },
+        {
+          "path": "apps/web/app/api/gateway/[serviceId]/route.ts",
+          "label": "Server manifest resolution"
+        }
+      ],
+      "size": [
+        245,
+        86
+      ]
+    },
+    {
+      "id": "provider-upstream",
+      "type": "external",
+      "label": "Provider endpoint",
+      "sublabel": "Optional URL in the manifest",
+      "row": 0,
+      "col": 2,
+      "sources": [
+        {
+          "path": "apps/web/app/api/gateway/[serviceId]/route.ts",
+          "label": "Forward request and access headers"
+        }
+      ],
+      "size": [
+        245,
+        86
+      ]
+    },
+    {
+      "id": "fuji-payments",
+      "type": "external",
+      "label": "Avalanche Fuji \u00b7 USDC",
+      "sublabel": "APIritivoPayments / direct transfer",
+      "row": 2,
+      "col": 1,
+      "sources": [
+        {
+          "path": "packages/payments/src/server.ts",
+          "label": "Verify Purchased or Transfer logs"
+        },
+        {
+          "path": "contracts/src/APIritivoPayments.sol",
+          "label": "Buy and provider claim ledger"
+        },
+        {
+          "path": "packages/payments/src/browser.ts",
+          "label": "Browser signs payments and claims"
+        }
+      ],
+      "size": [
+        245,
+        86
+      ]
+    },
+    {
+      "id": "demo-price-source",
+      "type": "external",
+      "label": "CoinGecko",
+      "sublabel": "Price source for demo getQuote",
+      "row": 2,
+      "col": 2,
+      "sources": [
+        {
+          "path": "apps/web/lib/server/access.ts",
+          "label": "Demo quote fetch; other calls echo"
+        }
+      ],
+      "size": [
+        245,
+        86
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-identity",
+      "from": "browser-client",
+      "to": "swarm-identity",
+      "label": "login / derive keys",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "variant": "security"
+    },
+    {
+      "id": "client-api",
+      "from": "browser-client",
+      "to": "api-runtime",
+      "label": "HTTP JSON / bearer",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-arkiv",
+      "from": "api-runtime",
+      "to": "arkiv-registry",
+      "label": "RPC reads / signed writes",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-manifest",
+      "from": "api-runtime",
+      "to": "swarm-manifests",
+      "label": "GET /bytes/{ref}",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "api-payment-receipt",
+      "from": "api-runtime",
+      "to": "fuji-payments",
+      "label": "verify receipt via RPC",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        643,
+        451
+      ]
+    },
+    {
+      "id": "gateway-provider",
+      "from": "api-runtime",
+      "to": "provider-upstream",
+      "label": "POST \u00b7 20 s timeout",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "demo-price-fetch",
+      "from": "api-runtime",
+      "to": "demo-price-source",
+      "label": "demo getQuote \u00b7 GET",
+      "fromSide": "right",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Browser responsibilities",
+      "items": [
+        "Upload manifests and manage ACT on Swarm; read Arkiv directly.",
+        "Sign USDC buy / claim; send tx hash, secret hash and encrypted secret to the API."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Access and execution",
+      "items": [
+        "Bearer = <passKey>.<secret>. Check entity, service, expiry block and keccak256(secret).",
+        "Gateway resolves a manifest endpoint; no usable endpoint runs the built-in demo."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Current trust boundary",
+      "items": [
+        "The server owns the Arkiv writer. Caller identity fields are unsigned.",
+        "Sale lookup precedes two separate writes: pass, then receipt. This is not atomic."
+      ]
+    }
+  ]
+}

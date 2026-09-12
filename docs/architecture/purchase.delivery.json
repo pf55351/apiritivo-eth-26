@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/purchase.sequence.json",
+  "output": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/purchase.html",
+  "specification": {
+    "sha256": "89f22fb41813be10a0295fe8015fbc27404111b7e5ec49ccdeb56afbc34d17c8",
+    "bytes": 3923
+  },
+  "artifact": {
+    "sha256": "61693ae72b766a53e84915a10a65aa63d963050274f6e1e9ca730df22efaa16d",
+    "bytes": 714372
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

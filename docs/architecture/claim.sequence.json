@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "APIritivo \u00b7 Claim and withdraw USDC",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1060,
+      500
+    ]
+  },
+  "participants": [
+    {
+      "id": "provider",
+      "type": "frontend",
+      "label": "Provider wallet",
+      "sublabel": "Signs with payout account"
+    },
+    {
+      "id": "ledger",
+      "type": "external",
+      "label": "APIritivoPayments",
+      "sublabel": "claimable[msg.sender]"
+    },
+    {
+      "id": "usdc",
+      "type": "external",
+      "label": "USDC",
+      "sublabel": "ERC-20 transfer"
+    },
+    {
+      "id": "rpc",
+      "type": "cloud",
+      "label": "Fuji RPC",
+      "sublabel": "Transaction receipts"
+    }
+  ],
+  "messages": [
+    {
+      "id": "balance",
+      "from": "provider",
+      "to": "ledger",
+      "y": 160,
+      "label": "claimable(provider)",
+      "variant": "default"
+    },
+    {
+      "id": "available",
+      "from": "ledger",
+      "to": "provider",
+      "y": 190,
+      "label": "available USDC base units",
+      "variant": "return"
+    },
+    {
+      "id": "claim",
+      "from": "provider",
+      "to": "ledger",
+      "y": 220,
+      "label": "claim(to, 0)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "payout",
+      "from": "ledger",
+      "to": "usdc",
+      "y": 250,
+      "label": "transfer(to, withdrawn)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "wait-claim",
+      "from": "provider",
+      "to": "rpc",
+      "y": 280,
+      "label": "waitForTransactionReceipt(claimTx)",
+      "variant": "default"
+    },
+    {
+      "id": "claimed",
+      "from": "rpc",
+      "to": "provider",
+      "y": 310,
+      "label": "success + Claimed(provider, to, amount)",
+      "variant": "return"
+    },
+    {
+      "id": "send",
+      "from": "provider",
+      "to": "usdc",
+      "y": 340,
+      "label": "optional: transfer(destination, A)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "wait-send",
+      "from": "provider",
+      "to": "rpc",
+      "y": 370,
+      "label": "waitForTransactionReceipt(transferTx)",
+      "variant": "default"
+    },
+    {
+      "id": "sent",
+      "from": "rpc",
+      "to": "provider",
+      "y": 400,
+      "label": "success + Transfer log",
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "orange",
+      "title": "Signer ownership",
+      "items": [
+        "claim spends claimable[msg.sender]; amount = 0 means all.",
+        "The dashboard claims to the provider\u2019s Swarm wallet."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Contract accounting",
+      "items": [
+        "Reduce claimable before transfer; nonReentrant protects the call.",
+        "Lifetime totalEarned and serviceRevenue remain unchanged."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Separate transactions",
+      "items": [
+        "Claim: contract to wallet. Send: wallet to destination.",
+        "AVAX pays gas. Arkiv passes remain unchanged."
+      ]
+    }
+  ]
+}

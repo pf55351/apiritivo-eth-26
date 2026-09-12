@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "workflow",
+  "input": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/provider.workflow.json",
+  "output": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/provider.html",
+  "specification": {
+    "sha256": "71061e6f351d07430d7a19801e561e2642e8ec0f60ac1a7106d750420e920672",
+    "bytes": 4680
+  },
+  "artifact": {
+    "sha256": "e83f9dbcab8b42066131244ef16a4234cd6a2fceccafd41b1c8ed43167c28bf5",
+    "bytes": 716275
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

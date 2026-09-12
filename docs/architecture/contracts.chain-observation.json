@@ -1,0 +1,26 @@
+{
+  "observedAt": "2026-09-12T16:18:09.384Z",
+  "rpc": "https://api.avax-test.network/ext/bc/C/rpc",
+  "paymentsAddress": "0x4e98f464dc8c667e3b0fd3092e0f2d4585702fa3",
+  "usdcAddress": "0x5425890298aed601595a70AB815c96711a31Bc65",
+  "blockNumber": "58334879",
+  "status": "verified",
+  "results": {
+    "chainId": 43113,
+    "paymentsCode": {
+      "present": true,
+      "bytes": 4624
+    },
+    "usdcCode": {
+      "present": true,
+      "bytes": 1852
+    },
+    "token": "0x5425890298aed601595a70AB815c96711a31Bc65",
+    "owner": "0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C",
+    "feeRecipient": "0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C",
+    "feeBps": 0,
+    "purchaseCount": "3",
+    "usdcDecimals": 6,
+    "usdcSymbol": "USDC"
+  }
+}

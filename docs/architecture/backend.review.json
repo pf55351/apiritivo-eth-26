@@ -1,0 +1,21 @@
+{
+  "diagram_type": "architecture",
+  "output": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/backend.html",
+  "specification_sha256": "6b9a971360067a1cc59e328a80ccca44d7e24bc29b6a035e312f33b62627c552",
+  "artifact_sha256": "57a9e6d93e0c9c2d4210b68ea7ac94086cd43370e9c080aa6fb0fc156037fa47",
+  "validation": "9/9 showcase, 0 errors, 0 warnings",
+  "visual_review": "passed",
+  "correction_rounds": 0,
+  "inspected_screenshots": [
+    "backend.visual-check.1440x900.light.png",
+    "backend.visual-check.1440x900.dark.png",
+    "backend.visual-check.2048x1320.light.png",
+    "backend.visual-check.2048x1320.dark.png"
+  ],
+  "containment": "Passed at 1440x900, 1600x1000, 1920x1080 and 2048x1320.",
+  "observations": [
+    "Inspected light and dark READ views at the smallest and largest sizes.",
+    "No clipped cards, crossed relationships or masked routes; the panel and supporting cards fill the desktop composition."
+  ],
+  "application_tests": "Not run; this change adds architecture artifacts and documentation only."
+}

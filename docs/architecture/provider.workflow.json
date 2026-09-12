@@ -1,0 +1,194 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "APIritivo \u00b7 Provider workflow",
+    "locale": "en",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "provider",
+      "label": "PROVIDER \u00b7 browser and wallet"
+    },
+    {
+      "id": "swarm",
+      "label": "SWARM \u00b7 manifest and private files"
+    },
+    {
+      "id": "server",
+      "label": "SERVER \u00b7 app-owned Arkiv writer"
+    },
+    {
+      "id": "fuji",
+      "label": "FUJI \u00b7 payment contracts"
+    }
+  ],
+  "mainPath": [
+    "provider-login",
+    "configure-service",
+    "upload-manifest",
+    "publish-listing",
+    "observe-revenue",
+    "claim-earnings",
+    "send-usdc"
+  ],
+  "nodes": [
+    {
+      "id": "provider-login",
+      "lane": "provider",
+      "col": 0,
+      "type": "security",
+      "label": "Connect provider",
+      "sublabel": "Swarm ID derives payout wallet",
+      "width": 160
+    },
+    {
+      "id": "configure-service",
+      "lane": "provider",
+      "col": 1,
+      "type": "frontend",
+      "label": "Define service",
+      "sublabel": "Operations, price, access duration",
+      "width": 160
+    },
+    {
+      "id": "upload-manifest",
+      "lane": "swarm",
+      "col": 2,
+      "type": "cloud",
+      "label": "Upload manifest",
+      "sublabel": "uploadData; optional ACT file",
+      "width": 160
+    },
+    {
+      "id": "publish-listing",
+      "lane": "server",
+      "col": 3,
+      "type": "database",
+      "label": "Publish listing",
+      "sublabel": "POST /api/services; createEntity",
+      "width": 160
+    },
+    {
+      "id": "observe-revenue",
+      "lane": "provider",
+      "col": 4,
+      "type": "frontend",
+      "label": "Monitor sales",
+      "sublabel": "Purchased logs + Arkiv receipts",
+      "width": 160
+    },
+    {
+      "id": "claim-earnings",
+      "lane": "fuji",
+      "col": 5,
+      "type": "external",
+      "label": "Claim earnings",
+      "sublabel": "Provider signs claim(wallet, 0)",
+      "width": 160
+    },
+    {
+      "id": "send-usdc",
+      "lane": "provider",
+      "col": 5,
+      "type": "frontend",
+      "label": "Send USDC",
+      "sublabel": "Optional transfer(to, amount)",
+      "width": 160
+    },
+    {
+      "id": "client-purchase",
+      "lane": "fuji",
+      "col": 4,
+      "type": "external",
+      "label": "Client buys access",
+      "sublabel": "buy credits provider claimable",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "provider-configures",
+      "from": "provider-login",
+      "to": "configure-service",
+      "label": "set terms",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "provider-uploads",
+      "from": "configure-service",
+      "to": "upload-manifest",
+      "label": "upload bytes",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "manifest-published",
+      "from": "upload-manifest",
+      "to": "publish-listing",
+      "label": "manifestRef first",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "listing-dashboard",
+      "from": "publish-listing",
+      "to": "observe-revenue",
+      "label": "listing created",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "provider-claims",
+      "from": "observe-revenue",
+      "to": "claim-earnings",
+      "label": "claimable > 0",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "claim-to-send",
+      "from": "claim-earnings",
+      "to": "send-usdc",
+      "label": "claim confirmed",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "buyer-sale-event",
+      "from": "client-purchase",
+      "to": "observe-revenue",
+      "label": "poll Purchased",
+      "role": "async",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "orange",
+      "title": "Provider responsibility",
+      "items": [
+        "Publish capabilities and terms; monitor purchases; claim earned USDC.",
+        "The client signs buy. The provider signs claim from the credited payout wallet."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Money flow",
+      "items": [
+        "buy credits claimable[provider]. claim(wallet, 0) sends all available USDC from the contract.",
+        "Send USDC is a separate wallet transfer. Sale receipts outlive access passes."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Optional private access",
+      "items": [
+        "Provider browser: actAddGrantees(buyer key), then POST /api/grants records the new history ref.",
+        "Only the publisher grants ACT access. It is separate from payment and pass expiry."
+      ]
+    }
+  ]
+}

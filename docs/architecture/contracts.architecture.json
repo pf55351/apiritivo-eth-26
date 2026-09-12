@@ -1,0 +1,309 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "APIritivo \u00b7 Contract integration",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/pf55351/apiritivo-eth-26",
+      "revision": "d7c00fcf0cb0537a478369d01f84b89eac3f3c56"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      45,
+      70
+    ],
+    "cols": 3,
+    "cellW": 230,
+    "cellH": 80,
+    "gapX": 200,
+    "gapY": 150
+  },
+  "components": [
+    {
+      "id": "wallet",
+      "type": "frontend",
+      "label": "Wallet signer",
+      "sublabel": "Swarm-derived account / injected wallet",
+      "row": 0,
+      "col": 0,
+      "size": [
+        230,
+        80
+      ],
+      "sources": [
+        {
+          "path": "packages/payments/src/browser.ts",
+          "label": "Signer and contract transactions"
+        }
+      ]
+    },
+    {
+      "id": "ledger",
+      "type": "external",
+      "label": "APIritivoPayments",
+      "sublabel": "buy \u00b7 claim \u00b7 provider revenue ledger",
+      "row": 0,
+      "col": 1,
+      "size": [
+        230,
+        80
+      ],
+      "sources": [
+        {
+          "path": "contracts/src/APIritivoPayments.sol",
+          "label": "Solidity ledger and events"
+        },
+        {
+          "path": "packages/payments/src/contract.ts",
+          "label": "App ABI and configured address"
+        }
+      ]
+    },
+    {
+      "id": "token",
+      "type": "external",
+      "label": "USDC contract",
+      "sublabel": "ERC-20 \u00b7 6 decimals \u00b7 Fuji 43113",
+      "row": 0,
+      "col": 2,
+      "size": [
+        230,
+        80
+      ],
+      "sources": [
+        {
+          "path": "packages/payments/src/index.ts",
+          "label": "Token address and chain"
+        },
+        {
+          "path": "packages/payments/src/browser.ts",
+          "label": "approve, allowance and transfer"
+        }
+      ]
+    },
+    {
+      "id": "purchase-route",
+      "type": "backend",
+      "label": "POST /api/access-passes",
+      "sublabel": "Listing terms \u00b7 replay check \u00b7 buyer check",
+      "row": 1,
+      "col": 0,
+      "size": [
+        230,
+        80
+      ],
+      "sources": [
+        {
+          "path": "apps/web/app/api/access-passes/route.ts",
+          "label": "Purchase orchestration"
+        }
+      ]
+    },
+    {
+      "id": "payment-verifier",
+      "type": "backend",
+      "label": "verifyPayment()",
+      "sublabel": "Validate Purchased / Transfer receipt",
+      "row": 1,
+      "col": 1,
+      "size": [
+        230,
+        80
+      ],
+      "sources": [
+        {
+          "path": "packages/payments/src/server.ts",
+          "label": "Receipt fetch and log checks"
+        }
+      ]
+    },
+    {
+      "id": "fuji-rpc",
+      "type": "cloud",
+      "label": "Fuji JSON-RPC",
+      "sublabel": "eth_getTransactionReceipt \u00b7 read-only",
+      "row": 1,
+      "col": 2,
+      "size": [
+        230,
+        80
+      ],
+      "sources": [
+        {
+          "path": "packages/payments/src/server.ts",
+          "label": "Server transport"
+        },
+        {
+          "path": "packages/payments/src/index.ts",
+          "label": "Fuji network configuration"
+        }
+      ]
+    },
+    {
+      "id": "entity-writer",
+      "type": "backend",
+      "label": "issueAccessPass()",
+      "sublabel": "App-owned signer \u00b7 pass then sale",
+      "row": 2,
+      "col": 0,
+      "size": [
+        230,
+        80
+      ],
+      "sources": [
+        {
+          "path": "packages/arkiv/src/server.ts",
+          "label": "Two createEntity calls"
+        }
+      ]
+    },
+    {
+      "id": "arkiv-state",
+      "type": "database",
+      "label": "Arkiv Tiramisu",
+      "sublabel": "service terms \u00b7 pass TTL \u00b7 permanent sale",
+      "row": 2,
+      "col": 1,
+      "size": [
+        230,
+        80
+      ],
+      "sources": [
+        {
+          "path": "packages/arkiv/src/index.ts",
+          "label": "Service and replay queries"
+        },
+        {
+          "path": "packages/arkiv/src/server.ts",
+          "label": "Entity persistence"
+        },
+        {
+          "path": "packages/arkiv/src/config.ts",
+          "label": "Arkiv chain configuration"
+        }
+      ]
+    },
+    {
+      "id": "pass-guard",
+      "type": "security",
+      "label": "verifyAccessPass()",
+      "sublabel": "Bot + gateway \u00b7 bearer secret + expiry",
+      "row": 2,
+      "col": 2,
+      "size": [
+        230,
+        80
+      ],
+      "sources": [
+        {
+          "path": "packages/arkiv/src/index.ts",
+          "label": "Live pass guard"
+        },
+        {
+          "path": "apps/web/lib/server/access.ts",
+          "label": "Execution route integration"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "wallet-buy-claim",
+      "from": "wallet",
+      "to": "ledger",
+      "label": "buy(...) / claim(to, 0)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ledger-token",
+      "from": "ledger",
+      "to": "token",
+      "label": "transferFrom / transfer",
+      "variant": "emphasis"
+    },
+    {
+      "id": "wallet-purchase-api",
+      "from": "wallet",
+      "to": "purchase-route",
+      "label": "POST txHash + sealed secret",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        160,
+        164
+      ]
+    },
+    {
+      "id": "purchase-verify",
+      "from": "purchase-route",
+      "to": "payment-verifier",
+      "label": "await verifyPayment()",
+      "variant": "emphasis"
+    },
+    {
+      "id": "verifier-rpc",
+      "from": "payment-verifier",
+      "to": "fuji-rpc",
+      "label": "getTransactionReceipt()"
+    },
+    {
+      "id": "purchase-issue",
+      "from": "purchase-route",
+      "to": "entity-writer",
+      "label": "issue after verified payer",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "emphasis",
+      "labelAt": [
+        160,
+        394
+      ]
+    },
+    {
+      "id": "write-pass-sale",
+      "from": "entity-writer",
+      "to": "arkiv-state",
+      "label": "createEntity(pass, sale)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "guard-read",
+      "from": "pass-guard",
+      "to": "arkiv-state",
+      "label": "getEntity + getBlockTiming",
+      "fromSide": "left",
+      "toSide": "right",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "orange",
+      "title": "Contracts on Fuji",
+      "items": [
+        "APIritivoPayments: 0x4e98f464dc8c667e3b0fd3092e0f2d4585702fa3",
+        "USDC: 0x5425890298aed601595a70AB815c96711a31Bc65"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Wallet and contract calls",
+      "items": [
+        "USDC allowance(buyer, ledger); approve(ledger, amount) only when needed.",
+        "buy(provider, keccak256(serviceId), amount, accessSeconds). Provider signs claim(to, 0)."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Cross-chain handoff",
+      "items": [
+        "The route reads service terms and sale(txHash) from Arkiv before verification.",
+        "The server bridges a Fuji receipt to two Arkiv writes. The contract itself issues no pass."
+      ]
+    }
+  ]
+}

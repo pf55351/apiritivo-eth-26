@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/claim.sequence.json",
+  "output": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/claim.html",
+  "specification": {
+    "sha256": "e3f8c2a2b8d0ae8bd1d93f121adb37fd81e9945416ea7f6c3abbc59313efb048",
+    "bytes": 3081
+  },
+  "artifact": {
+    "sha256": "d4e213c5df83bd785cfed853b43f0a1005c4dcdc41590ebf01218a606951aae1",
+    "bytes": 709364
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

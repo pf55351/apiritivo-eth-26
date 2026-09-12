@@ -1,0 +1,192 @@
+APIritivo — tester / judge walkthrough
+=======================================
+
+What you are testing
+--------------------
+A marketplace where a CREATOR publishes an API (manifest on Swarm, listing on Arkiv)
+and a BUYER pays USDC on Avalanche Fuji to get a timed access pass stored on Arkiv.
+The API key combines the pass entity key and a secret: <passKey>.<secret>.
+When the pass expires, Arkiv deletes it and the API stops answering.
+
+Everything is testnet. Nothing costs real money. Total time: about 20 minutes.
+
+Networks and identities involved
+--------------------------------
+  Swarm ID          login identity (no wallet, no seed phrase). https://swarm-id.snaha.net
+  Swarm             stores the technical manifest (bytes). Public gateway: https://api.gateway.ethswarm.org
+  Arkiv (Tiramisu)  registry: service listings, access passes, sale receipts. Explorer: https://data.arkiv.network/?chain=tiramisu
+  Avalanche Fuji    payments in USDC through the APIritivoPayments contract
+                    contract: https://testnet.snowtrace.io/address/0x4e98f464dc8c667e3b0fd3092e0f2d4585702fa3
+                    USDC:     0x5425890298aed601595a70AB815c96711a31Bc65
+
+Assets you need (all free, testnet)
+-----------------------------------
+  1. Arkiv GLM for the app writer     already funded in the shipped key. If "Arkiv writer unfunded" appears:
+                                       https://hub.arkiv.network/faucet -> address 0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C
+  2. Fuji AVAX (gas) for the buyer     https://core.app/tools/testnet-faucet/  (pick "Fuji (C-Chain)")
+  3. Fuji USDC for the buyer           https://faucet.circle.com/  (pick "Avalanche Fuji")
+  4. Fuji AVAX (gas) for the creator   only if you want to claim earnings (step 7). Same faucet as 2.
+
+You do NOT need MetaMask. Every Swarm ID gets its own EVM wallet derived from the identity
+("Swarm wallet"). The app shows its address; you send faucet funds to that address.
+MetaMask is optional as an alternative payment method.
+
+
+STEP 0 — Run the app
+---------------------
+  Requirements: Git, Bun >= 1.3 (https://bun.sh), and Node.js >= 20.
+  Foundry is optional, for contract tests.
+
+    git clone https://github.com/pf55351/apiritivo-eth-26
+    cd apiritivo-eth-26
+    bun install
+    cp .env.example apps/web/.env.local     # Arkiv writer key, gateways and contract address are pre-filled
+    bun demo:check                          # must end with "READY"
+    bun dev                                 # open http://localhost:3000
+
+  If bun demo:check says "services published 0", that is normal: you will publish the first one.
+
+  Optional quality checks:
+    bun typecheck && bun lint && bun test   # TypeScript, ESLint, unit tests
+    bun test:contracts                      # 28 Foundry tests for APIritivoPayments
+
+
+STEP 1 — Create the CREATOR identity (Swarm ID)
+-----------------------------------------------
+  1. Open http://localhost:3000 and click "Enter with Swarm ID".
+  2. A dialog opens with the Swarm ID widget. Click its button; a popup opens on swarm-id.snaha.net.
+     Create a new identity (or sign in to one you already have). No wallet, no seed phrase.
+     If nothing appears, your browser blocked the popup: allow it and click "retry".
+  3. Back in the app, choose "I'm a Provider". This is only a preference; both areas stay reachable.
+
+  You land on /provider. Check the status chips at the top:
+    - Swarm ID: your identity name and id
+    - Upload mode: "subsidised" (no postage stamp needed) or your own drive
+    - Arkiv writer: green with a GLM balance
+  Under "Your Swarm wallet" you see the creator's EVM address and USDC / AVAX balances (0 is fine for now).
+
+
+STEP 2 — CREATOR publishes an API  (Swarm + Arkiv)
+--------------------------------------------------
+  1. Click "Publish a service" (or open /provider/new).
+  2. Fill in:
+       Name          e.g. "Judge test API"
+       Description   anything
+       Category      Market Data
+       Price         0.50 USDC
+       Duration      1 hour       (short, so you can also watch it expire)
+       Payout wallet fixed: your Swarm wallet address (shown, not editable)
+       Operations    add one: name getQuote, input symbol : string
+  3. Click "Publish". Watch the steps: manifest -> Swarm upload -> Arkiv entity.
+  4. Success screen. Two proof links:
+       Swarm gateway   raw manifest bytes at <gateway>/bytes/<ref>
+       Arkiv           the listing in the Arkiv Data Explorer, query "$key = key(0x...)"
+     Open both. On Arkiv you see attributes: app=apiritivo, entity_type=service, service_id,
+     price_usdc, access_seconds, payout_address, manifest_ref.
+  5. Note the service id (in the URL of the service page, e.g. judge-test-api-1a2b).
+
+  Order matters and is enforced in code: manifest goes to Swarm first, Arkiv gets the Swarm reference.
+
+
+STEP 3 — Create the BUYER identity and fund it
+----------------------------------------------
+  Use a second browser profile or a private window, so both identities stay logged in.
+  (You can also buy with the creator identity; it works, but the demo is clearer with two.)
+
+  1. Open http://localhost:3000, "Enter with Swarm ID", create a SECOND identity. Choose "I'm a Client".
+  2. Open /marketplace, click the service you published. The listing is a live Arkiv query.
+  3. In the "Access" card on the right, under "Pay with: Swarm wallet", copy the buyer's wallet address.
+  4. Fund it:
+       AVAX  https://core.app/tools/testnet-faucet/   (gas for approve + buy; 0.1 AVAX is plenty)
+       USDC  https://faucet.circle.com/               (at least 0.50; the faucet gives 10)
+  5. Click "refresh" next to the balances until both show up (about a minute).
+
+
+STEP 4 — BUYER pays and gets an access pass  (Fuji + Arkiv)
+-----------------------------------------------------------
+  1. Click "Buy access - 0.50 USDC".
+  2. Steps you will see: approve USDC -> buy() on the contract -> confirmation -> mint on Arkiv.
+     Two Fuji transactions signed by the Swarm wallet (no popup, the key is in the browser),
+     then the server verifies the Purchased event and writes two Arkiv entities:
+       access_pass   expires after the duration; carries secret_hash and the encrypted secret
+       sale          permanent receipt: buyer_id, buyer_address, tx_hash, paid_usdc, pass_key
+  3. Success. The green box shows "Unlocked - 59m left" and the pass key.
+     Below it: "Your API key" = <passKey>.<secret>. Click Copy. This is the credential.
+     The secret was generated in your browser and stored on Arkiv encrypted for your Swarm ID only.
+  4. Proof links: pass on Arkiv, sale receipt on Arkiv, payment tx on Snowtrace.
+
+
+STEP 5 — BUYER calls the API
+----------------------------
+  In the browser:
+    Scroll down to "Try the bot". Operation getQuote, symbol BTC, Run.
+    Expect: "Pass verified on Arkiv" with expiry block and seconds left, and a live BTC price.
+
+  From a terminal (what a script or an agent would do):
+    bun tools/call-service.ts <serviceId> "<passKey>.<secret>" getQuote '{"symbol":"ETH"}'
+    Expect HTTP 200, "pass verified on Arkiv", upstream=demo-bot, and the price.
+
+  Negative checks (should all be refused):
+    no header                                  -> 401 Missing access pass
+    wrong secret (same passKey, other 64 hex)  -> 403 Pass secret does not match
+    valid key against another serviceId        -> 403 This pass is for a different service
+    after the 1 hour duration                  -> 403 Access pass not found on Arkiv or expired
+                                                  (Arkiv deleted the entity; nothing to revoke)
+
+  "My passes" in the nav bar lists every live pass of this identity with a countdown,
+  on any device you log into with the same Swarm ID.
+
+
+STEP 6 — CREATOR sees the sale
+------------------------------
+  Back in the creator profile, open /provider.
+    - "Live on chain" pill: the dashboard watches Fuji logs; a toast appears when a sale lands.
+    - Earnings: 0.50 USDC, computed from permanent sale receipts on Arkiv.
+    - Recent sales: buyer id, amount, Fuji tx, "Sale receipt on Arkiv" link.
+  Open the receipt in the Data Explorer: this is the public proof of who bought what.
+
+
+STEP 7 — CREATOR claims the money  (contract -> Swarm wallet -> anywhere)
+------------------------------------------------------------------------
+  The contract holds the USDC and credits the creator's payout address (the Swarm wallet).
+  Gas is needed: send a little Fuji AVAX to the creator's Swarm wallet address (faucet in "Assets").
+
+  In "Your Swarm wallet" on /provider:
+    1. "Earnings held by the contract" shows 0.50 claimable. Click "Claim to my Swarm wallet".
+       The Swarm wallet signs claim(); USDC balance goes up. Tx link to Snowtrace appears.
+    2. Optional: "Send USDC from this wallet" to any address (e.g. your MetaMask) to show the funds are yours.
+    3. Optional: "Reveal private key" to import the Swarm wallet into MetaMask.
+
+
+STEP 8 — Verify everything without the app
+------------------------------------------
+  Arkiv Data Explorer (Tiramisu):
+    one entity            $key = key(0x<entity key>)
+    all app entities      $owner = addr(0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C)
+  Snowtrace (Fuji):
+    contract              https://testnet.snowtrace.io/address/0x4e98f464dc8c667e3b0fd3092e0f2d4585702fa3
+    Purchased / Claimed events under "Events"
+  Swarm gateway:
+    manifest bytes        https://api.gateway.ethswarm.org/bytes/<manifest_ref>
+
+
+What to look at in the code (5 minutes)
+---------------------------------------
+  packages/swarm/src/index.ts          Swarm ID login, manifest upload/download, wallet + key derivation
+  packages/arkiv/src/server.ts         publishService, issueAccessPass (the only writes)
+  packages/arkiv/src/index.ts          typed Arkiv queries, verifyAccessPass, explorer links
+  packages/arkiv/src/pass-secret.ts    pass secret: hash on-chain, secret encrypted for the buyer
+  packages/payments/src/server.ts      verifyPayment: Purchased event / USDC Transfer check
+  contracts/src/APIritivoPayments.sol  buy / claim ledger, 28 tests in contracts/test
+  apps/web/app/api/*                   4 routes: services, access-passes, bot, gateway
+
+
+Troubleshooting
+---------------
+  Popup does not open              allow popups for localhost:3000, click "retry" in the sign-in card
+  "Arkiv writer unfunded"          faucet GLM to 0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C, refresh
+  "Swarm upload unavailable"       the app falls back to a direct gateway upload automatically
+  Buy button disabled              USDC or AVAX still 0: wait for the faucet, click "refresh"
+  Marketplace empty                Tiramisu is a testnet and may have been reset: publish again
+  ENOENT .next/... in bun dev      stop bun dev, delete apps/web/.next, start again
+  Changed .env.local               restart bun dev (NEXT_PUBLIC_* values are inlined at start)

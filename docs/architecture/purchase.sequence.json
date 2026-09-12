@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "APIritivo \u00b7 Purchase to access pass",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1420,
+      660
+    ]
+  },
+  "participants": [
+    {
+      "id": "buyer",
+      "type": "frontend",
+      "label": "Buyer browser"
+    },
+    {
+      "id": "usdc",
+      "type": "external",
+      "label": "USDC"
+    },
+    {
+      "id": "payments",
+      "type": "external",
+      "label": "APIritivoPayments"
+    },
+    {
+      "id": "rpc",
+      "type": "cloud",
+      "label": "Fuji RPC"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Next.js API"
+    },
+    {
+      "id": "arkiv",
+      "type": "database",
+      "label": "Arkiv Tiramisu"
+    }
+  ],
+  "messages": [
+    {
+      "id": "allowance",
+      "from": "buyer",
+      "to": "usdc",
+      "y": 160,
+      "label": "allowance(B, P)",
+      "variant": "default"
+    },
+    {
+      "id": "approve",
+      "from": "buyer",
+      "to": "usdc",
+      "y": 192,
+      "label": "approve(P, A) if needed",
+      "variant": "emphasis"
+    },
+    {
+      "id": "buy",
+      "from": "buyer",
+      "to": "payments",
+      "y": 224,
+      "label": "buy(provider, K, A, T)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "pull-usdc",
+      "from": "payments",
+      "to": "usdc",
+      "y": 256,
+      "label": "transferFrom(B, P, A)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "wait-buy",
+      "from": "buyer",
+      "to": "rpc",
+      "y": 288,
+      "label": "waitForTransactionReceipt(buyTx)",
+      "variant": "default"
+    },
+    {
+      "id": "mined-buy",
+      "from": "rpc",
+      "to": "buyer",
+      "y": 320,
+      "label": "successful receipt",
+      "variant": "return"
+    },
+    {
+      "id": "request-pass",
+      "from": "buyer",
+      "to": "api",
+      "y": 352,
+      "label": "POST /api/access-passes",
+      "variant": "emphasis"
+    },
+    {
+      "id": "read-terms-replay",
+      "from": "api",
+      "to": "arkiv",
+      "y": 384,
+      "label": "getService; findSaleByTxHash",
+      "variant": "default"
+    },
+    {
+      "id": "verify-receipt",
+      "from": "api",
+      "to": "rpc",
+      "y": 416,
+      "label": "getTransactionReceipt(txHash)",
+      "variant": "security"
+    },
+    {
+      "id": "receipt-log",
+      "from": "rpc",
+      "to": "api",
+      "y": 448,
+      "label": "success + Purchased log",
+      "variant": "return"
+    },
+    {
+      "id": "create-pass",
+      "from": "api",
+      "to": "arkiv",
+      "y": 480,
+      "label": "createEntity(access_pass, TTL)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "create-sale",
+      "from": "api",
+      "to": "arkiv",
+      "y": 512,
+      "label": "createEntity(sale, permanent)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "read-expiry",
+      "from": "api",
+      "to": "arkiv",
+      "y": 544,
+      "label": "getBlockTiming()",
+      "variant": "default"
+    },
+    {
+      "id": "issued",
+      "from": "api",
+      "to": "buyer",
+      "y": 576,
+      "label": "201: passKey, saleKey, expiry",
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "orange",
+      "title": "Call arguments",
+      "items": [
+        "B = buyer; P = ledger; A = USDC units (6 decimals).",
+        "K = keccak256(serviceId); T = seconds. Await approval before buy."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Payment verification",
+      "items": [
+        "buy pulls tokens, credits net revenue and emits Purchased.",
+        "API checks receipt success, emitter, provider, K, amount and buyer."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Arkiv issuance",
+      "items": [
+        "POST carries a secret hash and buyer-encrypted secret.",
+        "Two writes: expiring pass, permanent sale. TTL uses current listing terms."
+      ]
+    }
+  ]
+}

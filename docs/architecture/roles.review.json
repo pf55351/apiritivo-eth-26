@@ -1,0 +1,38 @@
+{
+  "visual_review": "passed",
+  "diagrams": [
+    {
+      "diagram_type": "workflow",
+      "output": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/client.html",
+      "specification_sha256": "6f14ad6607037d5d247fd189e9f18af68467300475a4c966d69f013fc6482bb0",
+      "artifact_sha256": "829d695bfbde86231defc6b4cff7f80642e7d7d965598f7714e18d9cd4599a3a",
+      "validation": "9/9 showcase, 0 errors, 0 warnings",
+      "visual_review": "passed",
+      "correction_rounds": 0,
+      "inspected_screenshots": [
+        "client.visual-check.1440x900.light.png",
+        "client.visual-check.1440x900.dark.png",
+        "client.visual-check.2048x1320.light.png",
+        "client.visual-check.2048x1320.dark.png"
+      ],
+      "containment": "Passed at 1440x900, 1600x1000, 1920x1080 and 2048x1320."
+    },
+    {
+      "diagram_type": "workflow",
+      "output": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/provider.html",
+      "specification_sha256": "71061e6f351d07430d7a19801e561e2642e8ec0f60ac1a7106d750420e920672",
+      "artifact_sha256": "e83f9dbcab8b42066131244ef16a4234cd6a2fceccafd41b1c8ed43167c28bf5",
+      "validation": "9/9 showcase, 0 errors, 0 warnings",
+      "visual_review": "passed",
+      "correction_rounds": 0,
+      "inspected_screenshots": [
+        "provider.visual-check.1440x900.light.png",
+        "provider.visual-check.1440x900.dark.png",
+        "provider.visual-check.2048x1320.light.png",
+        "provider.visual-check.2048x1320.dark.png"
+      ],
+      "containment": "Passed at 1440x900, 1600x1000, 1920x1080 and 2048x1320."
+    }
+  ],
+  "application_tests": "Not run: changes are architecture diagrams and documentation only."
+}

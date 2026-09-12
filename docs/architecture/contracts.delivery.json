@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/contracts.architecture.json",
+  "output": "/Users/lory/PROGETTI/ETH-Rome/Finale/APIperitivo/docs/architecture/contracts.html",
+  "specification": {
+    "sha256": "990615aabfd1336a1a14908fe2760600837a1960974724c7a91dbf9d619fadc6",
+    "bytes": 7165
+  },
+  "artifact": {
+    "sha256": "6cab6c06d5f53ed8cbc400d0c7b8f87d16bc7ef67f752107eaceab81f5a8fecb",
+    "bytes": 720163
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  },
+  "evidence": {
+    "verified": true,
+    "repository": "https://github.com/pf55351/apiritivo-eth-26",
+    "revision": "d7c00fcf0cb0537a478369d01f84b89eac3f3c56",
+    "references": 15
+  }
+}

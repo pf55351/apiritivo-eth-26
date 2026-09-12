@@ -1,0 +1,227 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "APIritivo \u00b7 Client workflow",
+    "locale": "en",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "client",
+      "label": "CLIENT \u00b7 browser and wallet"
+    },
+    {
+      "id": "fuji",
+      "label": "FUJI \u00b7 payment contracts"
+    },
+    {
+      "id": "server",
+      "label": "SERVER \u00b7 verification and Arkiv"
+    }
+  ],
+  "mainPath": [
+    "client-login",
+    "discover-service",
+    "client-pays",
+    "contract-settles",
+    "request-access",
+    "verify-purchase",
+    "write-access",
+    "call-service",
+    "enforce-access",
+    "client-result"
+  ],
+  "nodes": [
+    {
+      "id": "client-login",
+      "lane": "client",
+      "col": 0,
+      "type": "security",
+      "label": "Connect identity",
+      "sublabel": "Swarm ID + wallet",
+      "width": 140
+    },
+    {
+      "id": "discover-service",
+      "lane": "client",
+      "col": 1,
+      "type": "frontend",
+      "label": "Discover service",
+      "sublabel": "Read Arkiv + Swarm",
+      "width": 140
+    },
+    {
+      "id": "client-pays",
+      "lane": "client",
+      "col": 2,
+      "type": "frontend",
+      "label": "Sign purchase",
+      "sublabel": "approve() + buy()",
+      "width": 140
+    },
+    {
+      "id": "contract-settles",
+      "lane": "fuji",
+      "col": 2,
+      "type": "external",
+      "label": "Settle payment",
+      "sublabel": "transferFrom; Purchased",
+      "width": 140
+    },
+    {
+      "id": "request-access",
+      "lane": "client",
+      "col": 3,
+      "type": "frontend",
+      "label": "Request access",
+      "sublabel": "Create + encrypt secret",
+      "width": 140
+    },
+    {
+      "id": "verify-purchase",
+      "lane": "server",
+      "col": 3,
+      "type": "security",
+      "label": "Verify payment",
+      "sublabel": "Receipt + payer + replay",
+      "width": 140
+    },
+    {
+      "id": "write-access",
+      "lane": "server",
+      "col": 4,
+      "type": "database",
+      "label": "Issue access pass",
+      "sublabel": "TTL pass + sale receipt",
+      "width": 140
+    },
+    {
+      "id": "call-service",
+      "lane": "client",
+      "col": 4,
+      "type": "frontend",
+      "label": "Call paid API",
+      "sublabel": "Bearer <passKey>.<secret>",
+      "width": 140
+    },
+    {
+      "id": "enforce-access",
+      "lane": "server",
+      "col": 5,
+      "type": "security",
+      "label": "Check access",
+      "sublabel": "Entity, TTL, secret hash",
+      "width": 140
+    },
+    {
+      "id": "client-result",
+      "lane": "client",
+      "col": 5,
+      "type": "frontend",
+      "label": "Read result",
+      "sublabel": "Provider / demo bot",
+      "width": 140
+    }
+  ],
+  "edges": [
+    {
+      "id": "connect-discover",
+      "from": "client-login",
+      "to": "discover-service",
+      "label": "read catalog",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "select-purchase",
+      "from": "discover-service",
+      "to": "client-pays",
+      "label": "select terms",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "submit-buy",
+      "from": "client-pays",
+      "to": "contract-settles",
+      "label": "signed Fuji tx",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "payment-confirmed",
+      "from": "contract-settles",
+      "to": "request-access",
+      "label": "receipt success",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "post-access",
+      "from": "request-access",
+      "to": "verify-purchase",
+      "label": "POST /api/access-passes",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "verified-issue",
+      "from": "verify-purchase",
+      "to": "write-access",
+      "label": "verified payer",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "pass-issued",
+      "from": "write-access",
+      "to": "call-service",
+      "label": "201 + passKey",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "call-guard",
+      "from": "call-service",
+      "to": "enforce-access",
+      "label": "gateway / bot",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "respond-client",
+      "from": "enforce-access",
+      "to": "client-result",
+      "label": "valid pass",
+      "role": "main",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Client responsibility",
+      "items": [
+        "Discover, approve USDC, buy access, then call with a bearer secret.",
+        "The client pays the listed provider; it does not publish or claim revenue."
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Contract calls",
+      "items": [
+        "USDC allowance / approve only if needed. APIritivoPayments.buy(provider, key, amount, seconds).",
+        "The backend verifies the receipt and writes the pass; the buyer signs the payment."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Access boundaries",
+      "items": [
+        "Invalid payment stops issuance; missing, expired or wrong-secret passes are denied.",
+        "Private files additionally need a provider ACT grant; the client uses actDownloadData."
+      ]
+    }
+  ]
+}
