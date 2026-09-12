@@ -146,7 +146,7 @@ export function Studio() {
         (!config.ready.publishing ||
           manifest.provider !== config.publisher?.toLowerCase())
       ) {
-        download("apiperitivo-signed-offer.json", signed);
+        download("apiritivo-signed-offer.json", signed);
         notify(
           "Signed draft exported. Publishing requires configured Swarm storage, an Arkiv issuer, and the market operator wallet.",
         );
@@ -225,7 +225,7 @@ export function Studio() {
             </button>
             <button
               className="button secondary"
-              onClick={() => download("apiperitivo-signed-offer.json", draft)}
+              onClick={() => download("apiritivo-signed-offer.json", draft)}
             >
               Export draft ↓
             </button>
@@ -233,7 +233,7 @@ export function Studio() {
               className="text-button"
               disabled={!!busy}
               onClick={() => {
-                download("apiperitivo-signed-offer.json", draft);
+                download("apiritivo-signed-offer.json", draft);
                 localStorage.removeItem(draftKey);
                 setDraft(undefined);
               }}
@@ -464,7 +464,7 @@ export function Studio() {
                 <button
                   className="text-button"
                   onClick={() =>
-                    download("apiperitivo-offer-record.json", offer)
+                    download("apiritivo-offer-record.json", offer)
                   }
                 >
                   Export record ↓

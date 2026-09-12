@@ -1,4 +1,4 @@
-APIperitivo — demo locale
+APIritivo — demo locale
 
 Da questa cartella esegui: pnpm install --frozen-lockfile, poi pnpm demo.
 Apri http://localhost:3002 e scegli Sign in > Enter the demo.

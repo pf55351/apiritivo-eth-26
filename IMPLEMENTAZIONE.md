@@ -1,4 +1,4 @@
-# Implementazione APIperitivo
+# Implementazione APIritivo
 
 Percorso concordato: marketplace di API a tempo. Nessun billing per chiamata. Branch di lavoro: `develop`.
 

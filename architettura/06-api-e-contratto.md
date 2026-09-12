@@ -31,7 +31,7 @@ Una singola rotta `invoke` può rappresentare upstream GET o POST: l’adapter t
 
 Proposta: derivare materiale applicativo con il meccanismo Swarm ID documentato, usarlo come seed per una chiave di firma tramite una libreria consolidata e autenticare una challenge del gateway. Algoritmo, serializzazione e derivazione di `subject` vanno fissati dopo lo spike e condivisi tra client/server. Non inviare il seed al backend.
 
-La challenge include nonce, audience/origine APIperitivo, scopo e scadenza. Il backend verifica la firma, consuma il nonce e rilascia una sessione tramite cookie HttpOnly, Secure in produzione, con protezione CSRF per le mutazioni. Una chiave inventata dal client non può usare acquisti legati a un altro subject.
+La challenge include nonce, audience/origine APIritivo, scopo e scadenza. Il backend verifica la firma, consuma il nonce e rilascia una sessione tramite cookie HttpOnly, Secure in produzione, con protezione CSRF per le mutazioni. Una chiave inventata dal client non può usare acquisti legati a un altro subject.
 
 Per lo script agente: bearer token casuale, conservato come hash, vincolato a subject, purchaseId, operazioni e scadenza breve. La credenziale non può comprare, rinnovare, accedere al vault o emettere altre credenziali. Anche un token non ancora scaduto richiede un pass Arkiv valido a ogni chiamata.
 

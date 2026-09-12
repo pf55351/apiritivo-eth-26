@@ -1,4 +1,4 @@
-# APIperitivo
+# APIritivo
 
 Marketplace per acquistare accesso temporaneo a API premium: un pagamento, una finestra di utilizzo, nessun addebito per singola chiamata.
 
@@ -79,4 +79,4 @@ APIperitivo/
 └── architettura/          # Specifica e roadmap del progetto completo
 ```
 
-Il nome pubblico è **APIperitivo**; il namespace tecnico è `apiperitivo`.
+Il nome pubblico è **APIritivo**; il namespace tecnico è `apiperitivo`.

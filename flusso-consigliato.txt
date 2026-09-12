@@ -1,4 +1,4 @@
-APIperitivo — flusso originale
+APIritivo — flusso originale
 
 1. Il provider pubblica il manifest su Swarm; il piano su Avalanche e la scheda su Arkiv contengono la sua reference.
 2. L'utente entra con Swarm ID, cerca il servizio nel catalogo Arkiv e legge le condizioni da Swarm.

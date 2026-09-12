@@ -7,7 +7,7 @@ flowchart LR
     U[Utente o agente] --> W[Web app / client API]
     W --> I[Swarm ID]
     W -->|wallet: acquisto| F[Avalanche Fuji / AccessMarket]
-    W -->|sessione o credenziale delegata| G[Gateway APIperitivo]
+    W -->|sessione o credenziale delegata| G[Gateway APIritivo]
     G -->|query di autorizzazione| A[Arkiv / catalogo e pass]
     G -->|chiamata autenticata| P[Provider API]
     F -->|evento verificato| J[Worker di attivazione]

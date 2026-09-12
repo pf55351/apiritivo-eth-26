@@ -39,7 +39,7 @@ La scadenza del pass blocca nuove chiamate. Non cancella copie già scaricate, n
 
 Issuer, gateway e provider rimangono fidati. Le ricevute d’uso sono attestazioni dell’issuer/gateway; il pagamento è verificabile su Fuji. La soluzione non certifica il risultato dell’API e non offre settlement atomico con Arkiv.
 
-Il provider deve essere autorizzato a offrire il servizio tramite APIperitivo e dichiarare eventuali restrizioni sui risultati. La selezione di 2–3 provider si chiude dopo gli spike, senza introdurre un proxy aperto o un servizio di scraping arbitrario nell’MVP.
+Il provider deve essere autorizzato a offrire il servizio tramite APIritivo e dichiarare eventuali restrizioni sui risultati. La selezione di 2–3 provider si chiude dopo gli spike, senza introdurre un proxy aperto o un servizio di scraping arbitrario nell’MVP.
 
 ## Verifica minima prima della demo
 

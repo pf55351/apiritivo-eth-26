@@ -2,7 +2,7 @@
 
 ## Proposta di valore
 
-APIperitivo permette a persone e agenti software di affittare accesso a endpoint API premium per il tempo necessario a un task. L’acquisto non richiede un abbonamento e non genera un pagamento per ogni chiamata.
+APIritivo permette a persone e agenti software di affittare accesso a endpoint API premium per il tempo necessario a un task. L’acquisto non richiede un abbonamento e non genera un pagamento per ogni chiamata.
 
 Esempio illustrativo: un utente compra un’ora di accesso a un servizio di estrazione dati, lo usa da dashboard o script e perde la possibilità di invocarlo quando il pass scade. Le ricevute e i risultati archiviati restano accessibili secondo le condizioni di conservazione dichiarate.
 
@@ -13,7 +13,7 @@ Esempio illustrativo: un utente compra un’ora di accesso a un servizio di estr
 | Consumer | Cerca servizi, acquista un piano, usa le operazioni ammesse, conserva ricevute |
 | Agente software | Usa una credenziale delegata a uno specifico pass e alle sue operazioni |
 | Provider | Offre un servizio, dichiara condizioni e protegge il proprio endpoint |
-| Operatore APIperitivo | Registra i provider ammessi, gestisce gateway e issuer, riceve la fee |
+| Operatore APIritivo | Registra i provider ammessi, gestisce gateway e issuer, riceve la fee |
 
 Il pagatore e il beneficiario possono essere diversi. L’acquisto deve vincolare il `subject` del beneficiario; il wallet pagante non viene usato implicitamente come identità del consumer.
 

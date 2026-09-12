@@ -149,7 +149,7 @@ export function App() {
         instance = new SwarmIdClient({
           iframeOrigin: config.swarmIdUrl,
           metadata: {
-            name: "APIperitivo",
+            name: "APIritivo",
             description: "Timed access to useful APIs",
           },
         });
@@ -337,10 +337,10 @@ export function App() {
         )}
       </div>
       <header className="site-header wrap">
-        <a className="brand" href="#/explore" aria-label="APIperitivo home">
+        <a className="brand" href="#/explore" aria-label="APIritivo home">
           <Mark small />
           <span>
-            API<span className="brand-serif">peritivo</span>
+            API<span className="brand-serif">ritivo</span>
             <span className="brand-dot">.</span>
           </span>
         </a>
@@ -501,7 +501,7 @@ export function App() {
       <footer className="wrap site-footer">
         <span className="footer-brand">Good APIs. No long-term strings.</span>
         <span>
-          Made for the moment <span className="orange">✳</span> APIperitivo
+          Made for the moment <span className="orange">✳</span> APIritivo
         </span>
         <span>
           {config!.mode === "demo"

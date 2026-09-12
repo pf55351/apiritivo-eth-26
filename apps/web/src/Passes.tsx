@@ -137,7 +137,7 @@ export function Passes() {
         reference: result.reference,
       };
       // Export the reference as well: clearing browser storage must not silently lose the only pointer.
-      download(`apiperitivo-swarm-${short(pass.purchaseId)}.json`, entry);
+      download(`apiritivo-swarm-${short(pass.purchaseId)}.json`, entry);
       const updated = [
         ...archives.filter((a) => a.purchaseId !== pass.purchaseId),
         entry,
@@ -161,7 +161,7 @@ export function Passes() {
       if ((await swarmIdentity(client)).subject !== subject)
         throw new Error("Connect the Swarm identity that owns this session.");
       download(
-        "apiperitivo-receipt.json",
+        "apiritivo-receipt.json",
         await readPrivateReceipt(client, reference),
       );
       notify("Receipt verified and downloaded.");
@@ -240,7 +240,7 @@ export function Passes() {
                       "Only discard this intent if your wallet confirms that no purchase transaction was sent. If a transaction exists, cancel and recover it using its hash.",
                     )
                   ) {
-                    download("apiperitivo-purchase-recovery.json", pending);
+                    download("apiritivo-purchase-recovery.json", pending);
                     setPending(undefined);
                   }
                 }}
@@ -336,7 +336,7 @@ export function Passes() {
             <button
               className="button secondary"
               onClick={() =>
-                download("apiperitivo-vault-references.json", archives)
+                download("apiritivo-vault-references.json", archives)
               }
             >
               Back up all references ↓
@@ -534,7 +534,7 @@ function Playground({
             </span>
             <button
               className="text-button"
-              onClick={() => download("apiperitivo-result.json", output)}
+              onClick={() => download("apiritivo-result.json", output)}
             >
               Export JSON ↓
             </button>
@@ -559,7 +559,7 @@ function Playground({
               onClick={() =>
                 void run("Preparing your final receipt…", async () => {
                   download(
-                    `apiperitivo-receipt-${short(pass.purchaseId)}.json`,
+                    `apiritivo-receipt-${short(pass.purchaseId)}.json`,
                     await api(`/purchases/${pass.purchaseId}/receipt`, {}),
                   );
                   notify("Your signed receipt has been downloaded.");
@@ -616,7 +616,7 @@ function Playground({
           <>
             <pre
               tabIndex={0}
-            >{`curl '${location.origin}/api/passes/${pass.purchaseId}/invoke/${operation}' \\\n  -H 'Authorization: Bearer ${credential.token}' \\\n  -H 'Content-Type: application/json' \\\n  --data '${operation === "text.analyze" ? '{"text":"Hello, APIperitivo!"}' : '{"records":[{"name":"Spritz"}],"select":["name"]}'}`}</pre>
+            >{`curl '${location.origin}/api/passes/${pass.purchaseId}/invoke/${operation}' \\\n  -H 'Authorization: Bearer ${credential.token}' \\\n  -H 'Content-Type: application/json' \\\n  --data '${operation === "text.analyze" ? '{"text":"Hello, APIritivo!"}' : '{"records":[{"name":"Spritz"}],"select":["name"]}'}`}</pre>
             <button
               className="text-button"
               disabled={!!busy}

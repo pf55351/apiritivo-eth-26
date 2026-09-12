@@ -1,4 +1,4 @@
-# Architettura APIperitivo
+# Architettura APIritivo
 
 Base progettuale del marketplace di accesso temporaneo a API premium. Scope aggiornato il 12 settembre 2026: un pagamento acquista una finestra di utilizzo; ogni chiamata verifica il pass, senza nuovi addebiti.
 

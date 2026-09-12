@@ -1,4 +1,4 @@
-# APIperitivo — analisi e proposta di implementazione
+# APIritivo — analisi e proposta di implementazione
 
 Verifica delle fonti: 12 settembre 2026, Europe/Rome. Base: documento di flow fornito dall’utente. La cartella di progetto era vuota: questa è un’analisi di progetto, non una verifica di codice o integrazioni già funzionanti. Le scelte tecniche sotto sono proposte; nessun deploy, upload o test di rete applicativo è stato eseguito.
 
@@ -40,7 +40,7 @@ Il contenuto web presenta differenze e placeholder: le conferme organizzative re
 | Swarm | Manifest versionato, risultati scelti dall’utente, ricevute firmate | Upload e recupero dagli hash, anche a pass scaduto |
 | Avalanche Fuji | Acquisto, prezzo e split provider/treasury | Transazione, evento e trasferimenti test USDC |
 | Arkiv | Catalogo interrogabile e pass con scadenza nativa | Filtro composto e scomparsa del pass dalle query |
-| Gateway APIperitivo | Autenticazione, controllo del pass, limiti tecnici, invocazione API | Risposta consentita/rifiutata dal server |
+| Gateway APIritivo | Autenticazione, controllo del pass, limiti tecnici, invocazione API | Risposta consentita/rifiutata dal server |
 | Worker di attivazione | Verifica pagamento Fuji e scrittura Arkiv | Stato pending recuperabile e attivazione unica |
 
 Il vantaggio Arkiv da sostenere non è che una scadenza sia impossibile in SQL: è avere un registro condiviso, firmato e interrogabile, dal quale più gateway autorizzati possano leggere gli stessi pass senza replicare un database privato. Nell’MVP issuer e gateway restano componenti fidati: chiamarlo protocollo interamente trustless sarebbe prematuro.
@@ -99,7 +99,7 @@ Il content hash prova l’integrità dei byte, non chi li ha prodotti né la cor
 
 “Receipt permanente” va sostituito con “ricevuta indipendente dalla durata del pass, conservata su Swarm”. Il finanziamento e la durata del postage batch condizionano la disponibilità dello storage. [Postage batches](https://docs.ethswarm.org/docs/develop/tools-and-features/buy-a-stamp-batch/)
 
-Per rafforzare il prodotto, permettere di salvare risultati API consentiti nel vault dell’utente, con possibilità di ritrovarli da un indice/feed personale o da un export delle referenze. Il test significativo è recuperare un risultato a pass scaduto senza dipendere dal gateway di autorizzazione APIperitivo. L’archiviazione non è automatica per ogni risposta: dipende dalla scelta dell’utente e dalle condizioni del servizio.
+Per rafforzare il prodotto, permettere di salvare risultati API consentiti nel vault dell’utente, con possibilità di ritrovarli da un indice/feed personale o da un export delle referenze. Il test significativo è recuperare un risultato a pass scaduto senza dipendere dal gateway di autorizzazione APIritivo. L’archiviazione non è automatica per ogni risposta: dipende dalla scelta dell’utente e dalle condizioni del servizio.
 
 Non pubblicare documenti personali, chiavi API o segreti in Arkiv. Un commitment riduce l’esposizione diretta, ma non garantisce anonimato e può restare collegabile al pagamento. Cifrare i risultati prima dell’upload e tenere le chiavi sotto il controllo dell’utente. Se si usano referenze Swarm cifrate, la referenza completa può includere la chiave: non inserirla nel catalogo pubblico o in un explorer link. [Cifratura Swarm](https://docs.ethswarm.org/docs/develop/tools-and-features/store-with-encryption/)
 
@@ -124,7 +124,7 @@ Query di autorizzazione concettuale:
 ```text
 creatore = issuer fidato
 AND proprietario = issuer previsto
-AND app = APIperitivo
+AND app = apiperitivo
 AND entityType = entitlement
 AND subject = identità autenticata
 AND serviceId = servizio richiesto
@@ -172,4 +172,4 @@ Il pannello tecnico per i giudici dovrebbe collegare `purchaseId`, transazione F
 
 **Fuori MVP:** marketplace permissionless completo, più modelli AI, GPU marketplace, NFT trasferibili, L1 personalizzata, bridge, escrow complesso, revoca di dati già scaricati e garanzia di storage perpetuo. La qualità da raggiungere è un percorso riproducibile, con le integrazioni realmente responsabili delle funzioni dichiarate.
 
-**Pitch proposto:** “APIperitivo permette a persone e agenti di acquistare una finestra di accesso alle API con stablecoin. Avalanche regola il pagamento, Arkiv rende verificabile l’accesso temporaneo e Swarm conserva termini e risultati sotto il controllo dell’utente.”
+**Pitch proposto:** “APIritivo permette a persone e agenti di acquistare una finestra di accesso alle API con stablecoin. Avalanche regola il pagamento, Arkiv rende verificabile l’accesso temporaneo e Swarm conserva termini e risultati sotto il controllo dell’utente.”

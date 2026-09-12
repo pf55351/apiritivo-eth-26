@@ -1,4 +1,4 @@
-# Backend APIperitivo
+# Backend APIritivo
 
 Il flow segue il TXT iniziale: identità → discovery Arkiv → manifest Swarm → pagamento Fuji → pass Arkiv → gateway → scadenza → ricevuta Swarm. La modifica concordata elimina il billing e il limite totale per chiamata. Frequenza, concorrenza, dimensione e timeout proteggono il servizio.
 
@@ -51,7 +51,7 @@ pnpm services:publish percorso/manifest.json
 
 Gli esempi in `examples/` contengono indirizzi dimostrativi: sostituirli con provider e treasury reali della demo. Una modifica ai termini richiede un **nuovo planId**.
 
-Se hai **già una reference Swarm** di un documento `{ manifest, signature }` nel formato APIperitivo:
+Se hai **già una reference Swarm** di un documento `{ manifest, signature }` nel formato APIritivo:
 
 ```sh
 pnpm services:publish --reference 0xREFERENCE_DI_64_CARATTERI_HEX
