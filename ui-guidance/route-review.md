@@ -52,6 +52,8 @@ Prompt:
 
 ## Artwork clarity update
 
+Edge fix: the earlier off-center radial mask remained opaque at the top and right clipping boundaries. Replaced it with intersecting horizontal and vertical gradients that reach zero alpha before every edge. Removed the desktop upward offset so the artwork starts below the navbar. The foreground veil now references `--ui-canvas` directly in both themes. Preserved artwork scale, image quality, entrance, and scroll fade. Source review and whitespace check only; no browser verification or tests run.
+
 Current asset: [api-flow-hd.png](../apps/web/public/images/api-flow-hd.png), 3072 × 2048. Built-in ImageGen cleaned the approved strands but returned 1536 × 1024 despite the requested dimensions. Resized the cleaner output with macOS `sips` to the requested delivery dimensions. This is an upscale, not native 3K detail.
 
 The landing image now requests quality 100, uses auto height to preserve the source ratio, and declares responsive sizes including its minimum cover width. Its new filename avoids reuse of the old image URL. Oversized placement, foreground veil, edge masking, scroll fade, and reduced motion behavior remain. No blur or sharpen filter added. Source and asset inspection only; no tests or browser flows run.

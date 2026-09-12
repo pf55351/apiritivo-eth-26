@@ -11,6 +11,7 @@ import { ApiExample } from "@/components/api-example";
 import { ETHROME_SPONSORS_URL, SponsorLogos } from "@/components/sponsor-logos";
 import { Button, ErrorNotice, Eyebrow } from "@/components/ui";
 import { publicEnv } from "@/lib/env";
+import { useInjectedWallet } from "@/lib/injected-wallet";
 import { useSession } from "@/lib/session";
 
 const contractAddress = paymentsContractAddress();
@@ -40,6 +41,7 @@ const JOURNEYS = {
 
 export default function HomePage() {
   const session = useSession();
+  const wallet = useInjectedWallet();
   const router = useRouter();
   const pendingLogin = useRef(false);
 
@@ -86,23 +88,27 @@ export default function HomePage() {
           <h1 className="landing-title mt-5">
             {isProvider ? (
               <>
-                Your APIs.<span className="block text-accent">Ready to earn.</span>
+                Your APIs.<span className="block font-semibold text-accent-heading">Ready to earn.</span>
               </>
             ) : (
               <>
-                APIs for the<span className="block text-accent">agent era.</span>
+                Timed access for<span className="block font-bold text-accent-heading">the AI era.</span>
               </>
             )}
           </h1>
           <p className="mt-6 max-w-sm text-base leading-relaxed text-muted">
-            {isProvider ? "Publish your API, price your access, and earn USDC." : "Discover APIs. Buy access with USDC. Build with a single key."}
+            {isProvider ? "Publish your API, price your access, and earn USDC." : "Discover services. Buy a pass with USDC. Send your task, get the result until the pass expires."}
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" href={isProvider ? "/provider/new" : "/marketplace"}>
               {isProvider ? "Publish API" : "Explore APIs"}
               <span aria-hidden="true">↗</span>
             </Button>
-            {!loggedIn ? (
+            {!isProvider && !wallet.address ? (
+              <Button size="lg" variant="ghost" onClick={() => void wallet.connect()} disabled={wallet.available === false || wallet.status === "connecting"}>
+                {wallet.status === "connecting" ? "Confirm in wallet" : "Connect wallet"}
+              </Button>
+            ) : isProvider && !loggedIn ? (
               <Button size="lg" variant="ghost" onClick={session.connect} disabled={session.status !== "ready" || session.connecting}>
                 {session.status !== "ready" ? "Connecting…" : session.connecting ? "Complete sign in" : "Sign in"}
               </Button>

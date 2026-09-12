@@ -31,8 +31,10 @@ All original download names begin with `ChatGPT Image Sep 12, 2026, `.
 Public asset URLs begin with `/brand/`, for example
 `/brand/logos/apiritivo-logo-dark.png`.
 
-`../../app/icon.png` is an identical copy of `icons/apiritivo-symbol.png`.
+`../../app/icon.png` is a 512 × 512 favicon derived from `icons/apiritivo-symbol.png`.
+The original is center cropped to 1046 × 1046, then resized so the mark fills
+about 96% of the icon width. Transparency, colors, and proportions are preserved.
 Next.js App Router discovers this file and adds the browser icon metadata
-automatically. Keep both copies in sync when replacing the primary symbol.
+automatically. Rebuild this tightly framed variant when replacing the primary symbol.
 
 The supplied exports are PNG files. SVG and ICO exports were not supplied.

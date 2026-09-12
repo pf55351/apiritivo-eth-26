@@ -4,9 +4,9 @@ import { AVAX_FAUCET_URL, USDC_FAUCET_URL } from "@apiritivo/payments";
 import { getSwarmDrive, type SwarmDrive } from "@apiritivo/swarm";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { publicEnv } from "@/lib/env";
+import { useActiveAccount } from "@/lib/identity";
 import { buildChecks, type ReadinessCheck, type ReadinessInput, stateLabel, summarize } from "@/lib/readiness";
 import { useSession } from "@/lib/session";
-import { useSwarmWallet } from "@/lib/swarm-wallet";
 
 const GLM_FAUCET_URL = "https://hub.arkiv.network/faucet";
 const REFRESH_MS = 30_000;
@@ -57,16 +57,16 @@ function useDrive(identityId: string | null, ownStamp: boolean, tick: number): S
 }
 
 const DOT: Record<ReturnType<typeof summarize>["tone"], string> = {
-  ok: "bg-olive-400",
-  warn: "bg-amber-300",
-  block: "bg-rose-400",
-  loading: "bg-ink-400",
+  ok: "bg-success",
+  warn: "bg-warning",
+  block: "bg-danger",
+  loading: "bg-subtle",
 };
 
 const STATE_TONE: Record<ReadinessCheck["state"], string> = {
-  ok: "text-olive-400",
-  low: "text-amber-200",
-  missing: "text-rose-400",
+  ok: "text-success",
+  low: "text-warning",
+  missing: "text-danger",
   info: "text-subtle",
   loading: "text-subtle",
   unknown: "text-subtle",
@@ -88,8 +88,8 @@ const STATE_MARK: Record<ReadinessCheck["state"], string> = {
  */
 export function ReadinessBeacon() {
   const session = useSession();
-  const wallet = useSwarmWallet();
-  const identityId = session.identity?.id ?? null;
+  const account = useActiveAccount();
+  const identityId = account.identity?.id ?? null;
   const view = session.role ?? "client";
   const [open, setOpen] = useState(false);
   const [tick, setTick] = useState(0);
@@ -99,14 +99,14 @@ export function ReadinessBeacon() {
   const panelId = useId();
 
   const writer = useWriter(identityId, tick);
-  const drive = useDrive(identityId, session.uploadMode === "user-stamp", tick);
+  const drive = useDrive(session.identity?.id ?? null, session.uploadMode === "user-stamp", tick);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
-    await wallet.refreshBalances();
+    await account.refreshBalances();
     setTick((t) => t + 1);
     setRefreshing(false);
-  }, [wallet]);
+  }, [account]);
 
   // Balances change outside the app (faucets, wallet transfers): poll gently.
   useEffect(() => {
@@ -138,7 +138,7 @@ export function ReadinessBeacon() {
 
   const checks = buildChecks({
     view,
-    wallet: { status: wallet.status, balances: wallet.balances },
+    wallet: { status: account.status, balances: account.balances },
     writer,
     drive: {
       mode: session.uploadMode,

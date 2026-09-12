@@ -6,9 +6,9 @@ import type { AccessPass } from "@apiritivo/shared";
 import { formatRemaining } from "@apiritivo/shared";
 import Link from "next/link";
 import { ApiKeyBox } from "@/components/api-key-box";
-import { AuthGate } from "@/components/auth-gate";
+import { WalletGate } from "@/components/auth-gate";
 import { Button, Disclosure, EmptyState, ErrorNotice, SectionTitle, Skeleton } from "@/components/ui";
-import { useSession } from "@/lib/session";
+import { useActiveIdentity } from "@/lib/identity";
 import { remainingSeconds, useMyPasses } from "@/lib/use-access";
 import { usePassBearer } from "@/lib/use-pass-bearer";
 
@@ -18,8 +18,8 @@ function PassApiKey({ pass }: { pass: AccessPass }) {
 }
 
 function PassesList() {
-  const session = useSession();
-  const { data, loading, error, timing, reload } = useMyPasses(session.identity?.id ?? null);
+  const identity = useActiveIdentity();
+  const { data, loading, error, timing, reload } = useMyPasses(identity?.id ?? null);
   const passes = data ?? [];
   return (
     <div className="space-y-8">
@@ -49,7 +49,7 @@ function PassesList() {
                   <Link href={`/services/${p.serviceId}`} className="break-words text-lg font-medium hover:text-accent-text">
                     {p.serviceName ?? p.serviceId}
                   </Link>
-                  <span className={`text-xs font-semibold ${left !== null && left > 0 ? "text-olive-400" : "text-ink-400"}`}>
+                  <span className={`text-xs font-semibold ${left !== null && left > 0 ? "text-success" : "text-subtle"}`}>
                     {left === null ? "Checking expiry…" : left <= 0 ? "Expired" : `${formatRemaining(left)} left`}
                   </span>
                 </div>
@@ -84,8 +84,8 @@ function PassesList() {
 
 export default function PassesPage() {
   return (
-    <AuthGate title="Sign in for your passes">
+    <WalletGate title="Connect a wallet for your passes">
       <PassesList />
-    </AuthGate>
+    </WalletGate>
   );
 }

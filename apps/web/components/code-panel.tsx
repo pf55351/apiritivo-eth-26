@@ -65,10 +65,10 @@ export function CodePanel({
           </button>
         </div>
       </div>
-      <CodeBlock label={title} className="overflow-auto p-5 font-mono text-sm leading-6 text-ink-200">
+      <CodeBlock label={title} className="overflow-auto p-5 font-mono text-sm leading-6 text-content-secondary">
         <code>{code}</code>
       </CodeBlock>
-      <span role="status" className={copyState === "failed" ? "block px-4 pb-3 text-xs text-rose-400" : "sr-only"}>
+      <span role="status" className={copyState === "failed" ? "block px-4 pb-3 text-xs text-danger" : "sr-only"}>
         {copyState === "copied" ? "Code copied to clipboard." : copyState === "failed" ? "Copy unavailable. Select the code to copy it manually." : ""}
       </span>
       {footer ? <div className="border-t border-line px-4 py-3 text-xs leading-relaxed text-subtle">{footer}</div> : null}

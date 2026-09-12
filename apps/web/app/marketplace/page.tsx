@@ -40,7 +40,7 @@ export default function MarketplacePage() {
       <SectionTitle
         title="Explore APIs"
         right={
-          <div className="flex items-center gap-2 text-xs text-ink-400">
+          <div className="flex items-center gap-2 text-xs text-subtle">
             <Button variant="ghost" size="sm" onClick={reload} disabled={loading}>
               Refresh
             </Button>

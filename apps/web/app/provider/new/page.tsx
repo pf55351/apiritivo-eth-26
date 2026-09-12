@@ -57,9 +57,9 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: the control is rendered as children
     <label className="block">
-      <span className="mb-1.5 flex items-baseline justify-between text-xs text-ink-300">
+      <span className="mb-1.5 flex items-baseline justify-between text-xs text-muted">
         <span>{label}</span>
-        {hint ? <span className="text-[11px] text-ink-400">{hint}</span> : null}
+        {hint ? <span className="text-[11px] text-subtle">{hint}</span> : null}
       </span>
       {children}
     </label>
@@ -68,7 +68,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 function StepRow({ label, state }: { label: string; state: "todo" | "active" | "done" | "error" }) {
   const icon = state === "done" ? "✓" : state === "error" ? "✕" : state === "active" ? "…" : "○";
-  const tone = state === "done" ? "text-olive-400" : state === "error" ? "text-rose-400" : state === "active" ? "text-spritz-300" : "text-ink-400";
+  const tone = state === "done" ? "text-success" : state === "error" ? "text-danger" : state === "active" ? "text-accent-text" : "text-subtle";
   return (
     <li className={`flex items-center gap-3 text-sm ${tone}`}>
       <span className={`flex h-6 w-6 items-center justify-center rounded-full border border-current font-mono text-xs ${state === "active" ? "animate-pulse" : ""}`}>{icon}</span>
@@ -230,10 +230,10 @@ function PublishForm() {
     return (
       <div className="mx-auto max-w-2xl space-y-6 animate-fade-up">
         <div className="py-8 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-olive-400/15 text-3xl text-olive-400">✓</div>
-          <p className="mt-4 text-xs font-normal text-olive-400">API published</p>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/15 text-3xl text-success">✓</div>
+          <p className="mt-4 text-xs font-normal text-success">API published</p>
           <h2 className="mt-1 break-words text-3xl font-medium">{name}</h2>
-          <p className="mt-2 text-sm text-ink-300">Your API is now in the marketplace.</p>
+          <p className="mt-2 text-sm text-muted">Your API is now in the marketplace.</p>
           {progress.privateFile ? <p className="mt-2 text-xs text-subtle">Private file encrypted. Grant access after each purchase.</p> : null}
         </div>
         <div className="flex flex-wrap justify-center gap-3">
@@ -330,7 +330,7 @@ function PublishForm() {
             <Field label="Price per access">
               <div className="relative">
                 <input className={`${fieldCls} pr-16 font-mono`} inputMode="decimal" placeholder="0.50" value={priceUsdc} onChange={(e) => setPriceUsdc(e.target.value)} />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink-400">USDC</span>
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-subtle">USDC</span>
               </div>
             </Field>
             <Field label="Access duration">
@@ -346,16 +346,16 @@ function PublishForm() {
           <div>
             <p className="mb-2 text-xs text-muted">Payout wallet · {PAYMENT_CHAIN_NAME}</p>
             <div className="flex min-w-0 items-center justify-between gap-2 font-mono text-xs">
-              <span className="truncate text-ink-100">
+              <span className="truncate text-content">
                 {swarmWallet.address ?? (swarmWallet.status === "deriving" ? "Deriving from your Swarm ID…" : "Swarm wallet unavailable")}
               </span>
               {swarmWallet.address ? (
-                <a href={explorerAddressUrl(swarmWallet.address)} target="_blank" rel="noreferrer" className="shrink-0 text-[11px] text-ink-400 hover:text-ink-200">
+                <a href={explorerAddressUrl(swarmWallet.address)} target="_blank" rel="noreferrer" className="shrink-0 text-[11px] text-subtle hover:text-content-secondary">
                   explorer ↗
                 </a>
               ) : null}
             </div>
-            <p className="mt-1.5 text-[11px] text-ink-400">Payments go to your Swarm wallet.</p>
+            <p className="mt-1.5 text-[11px] text-subtle">Payments go to your Swarm wallet.</p>
           </div>
           <Field label="ENS name" hint="optional">
             <input
@@ -368,7 +368,7 @@ function PublishForm() {
             />
           </Field>
           {ensName.trim() ? (
-            <p className="-mt-3 text-[11px] text-ink-400">
+            <p className="-mt-3 text-[11px] text-subtle">
               Its ETH address record must already point to your Swarm wallet ({swarmWallet.address ? `${swarmWallet.address.slice(0, 6)}…${swarmWallet.address.slice(-4)}` : "…"});
               the server checks it on {ENS_CHAIN_LABEL}. After publishing, the service page lists the two records that make the name resolve to this API.
             </p>
@@ -378,7 +378,7 @@ function PublishForm() {
         <section className="space-y-5 border-t border-line pt-6 first:border-0 first:pt-0">
           <div>
             <h2 className="mt-1 text-xl font-medium">Operations</h2>
-            <p className="mt-1 text-sm text-ink-300">Define operation names and inputs.</p>
+            <p className="mt-1 text-sm text-muted">Define operation names and inputs.</p>
           </div>
           <OperationsBuilder operations={operations} onChange={setOperations} />
         </section>
@@ -388,7 +388,7 @@ function PublishForm() {
           <Field label="File" hint="stays encrypted on Swarm">
             <input
               type="file"
-              className="block w-full text-sm text-ink-300 file:mr-3 file:rounded-control file:border-0 file:bg-surface-raised file:px-3 file:py-2 file:text-xs file:font-medium file:text-content hover:file:bg-ink-800"
+              className="block w-full text-sm text-muted file:mr-3 file:rounded-control file:border-0 file:bg-surface-raised file:px-3 file:py-2 file:text-xs file:font-medium file:text-content hover:file:bg-surface-active"
               onChange={(e) => {
                 const f = e.target.files?.[0] ?? null;
                 if (f && f.size > PRIVATE_FILE_MAX_BYTES) {
@@ -404,9 +404,9 @@ function PublishForm() {
               }}
             />
             {privateFile ? (
-              <p className="mt-1.5 text-[11px] text-ink-400">
+              <p className="mt-1.5 text-[11px] text-subtle">
                 {privateFile.name} · {privateFile.size < 1024 ? `${privateFile.size} B` : `${Math.round(privateFile.size / 1024)} KB`} · {privateFile.type || "unknown type"}{" "}
-                <button type="button" className="underline hover:text-ink-200" onClick={() => setPrivateFile(null)}>
+                <button type="button" className="underline hover:text-content-secondary" onClick={() => setPrivateFile(null)}>
                   remove
                 </button>
               </p>
@@ -416,7 +416,7 @@ function PublishForm() {
 
         <section className="space-y-4 border-t border-line pt-6">
           <h2 className="text-xl font-medium">Ready to publish</h2>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-ink-300">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
             <span>Publishing as</span>
             <span className="font-medium text-content">{identity.name}</span>
           </div>
@@ -441,7 +441,7 @@ function PublishForm() {
           ) : null}
 
           {formIssues.length > 0 && (name || description || operations.some((o) => o.name)) ? (
-            <ul className="space-y-1 text-xs text-amber-200">
+            <ul className="space-y-1 text-xs text-warning">
               {formIssues.map((issue) => (
                 <li key={issue}>• {issue}</li>
               ))}
@@ -471,11 +471,11 @@ function PublishForm() {
                     ? "Publishing to Arkiv…"
                     : "Publish API"}
             </Button>
-            <Link href="/provider" className="text-sm text-ink-400 hover:text-ink-100">
+            <Link href="/provider" className="text-sm text-subtle hover:text-content">
               Cancel
             </Link>
           </div>
-          <p className="text-[11px] text-ink-400">Your listing and API manifest will be public.</p>
+          <p className="text-[11px] text-subtle">Your listing and API manifest will be public.</p>
         </section>
       </form>
 
@@ -485,9 +485,9 @@ function PublishForm() {
           <div className="mt-4 border-t border-line pt-5">
             <CategoryPill slug={effectiveCategory || "utility"} />
             <h3 className="mt-3 break-words text-lg font-medium">{name.trim() || "Your API name"}</h3>
-            <p className="mt-1 line-clamp-2 break-words text-sm text-ink-300">{description.trim() || "Your API description."}</p>
+            <p className="mt-1 line-clamp-2 break-words text-sm text-muted">{description.trim() || "Your API description."}</p>
             <p className="mt-3 break-words text-xs text-subtle">{identity.name}</p>
-            <p className="mt-2 font-mono text-xs text-spritz-300">
+            <p className="mt-2 font-mono text-xs text-accent-text">
               {priceUsdcSchema.safeParse(priceUsdc).success ? formatPriceUsdc(priceUsdc.trim()) : "Enter a price"} · {formatAccessDuration(accessSeconds)}
             </p>
           </div>
@@ -498,7 +498,7 @@ function PublishForm() {
             <ManifestOperations manifest={manifest} compact />
           </Disclosure>
           <details className="ui-disclosure mt-4">
-            <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-ink-300 hover:text-ink-100">
+            <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-muted hover:text-content">
               <span>Manifest JSON</span>
               <span className="text-xs transition-transform group-open:rotate-90">▸</span>
             </summary>
@@ -519,7 +519,7 @@ export default function NewServicePage() {
         <SectionTitle
           title="Publish API"
           right={
-            <Link href="/provider" className="text-sm text-ink-400 hover:text-ink-100">
+            <Link href="/provider" className="text-sm text-subtle hover:text-content">
               ← My APIs
             </Link>
           }

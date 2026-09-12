@@ -75,7 +75,7 @@ export function PrivateGrantsPanel({ services, sales }: { services: ArkivService
   return (
     <section className="min-w-0">
       <h2 className="text-xl font-medium">File access</h2>
-      <p className="mt-1 text-sm text-ink-300">Grant buyers access to their purchased files.</p>
+      <p className="mt-1 text-sm text-muted">Grant buyers access to their purchased files.</p>
       {error ? (
         <div className="mt-3">
           <ErrorNotice message={error.message} detail={error.detail} />
@@ -92,19 +92,19 @@ export function PrivateGrantsPanel({ services, sales }: { services: ArkivService
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold">{service.name}</p>
-                  <p className="text-[11px] text-ink-400">
+                  <p className="text-[11px] text-subtle">
                     {service.privateAttachment!.name} · {grants.length} granted · {rows === null ? "…" : `${pending.length} waiting`}
                   </p>
                 </div>
-                <button type="button" onClick={() => void load()} className="text-xs text-ink-400 underline hover:text-ink-200">
+                <button type="button" onClick={() => void load()} className="text-xs text-subtle underline hover:text-content-secondary">
                   refresh
                 </button>
               </div>
               {pending.length > 0 ? (
-                <ul className="mt-3 divide-y divide-white/10">
+                <ul className="mt-3 divide-y divide-line">
                   {pending.map((sale) => (
                     <li key={sale.saleKey} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
-                      <span className="font-mono text-ink-300">Buyer {sale.buyerId.slice(0, 10)}…</span>
+                      <span className="font-mono text-muted">Buyer {sale.buyerId.slice(0, 10)}…</span>
                       <Button size="sm" onClick={() => grant(service, sale, grants)} disabled={busy !== null}>
                         {busy === sale.saleKey ? "Granting…" : "Grant access"}
                       </Button>
@@ -118,7 +118,7 @@ export function PrivateGrantsPanel({ services, sales }: { services: ArkivService
                     {grants.map((g) => (
                       <li key={g.grantKey}>
                         ✓ buyer {g.buyerId.slice(0, 10)}… ·{" "}
-                        <a href={arkivEntityUrl(g.grantKey)} target="_blank" rel="noreferrer" className="font-mono hover:text-ink-200">
+                        <a href={arkivEntityUrl(g.grantKey)} target="_blank" rel="noreferrer" className="font-mono hover:text-content-secondary">
                           grant {g.grantKey.slice(0, 10)}… ↗
                         </a>
                       </li>
@@ -126,7 +126,7 @@ export function PrivateGrantsPanel({ services, sales }: { services: ArkivService
                   </ul>
                 </Disclosure>
               ) : null}
-              {rows !== null && pending.length === 0 && grants.length === 0 ? <p className="mt-2 text-xs text-ink-400">No buyers yet.</p> : null}
+              {rows !== null && pending.length === 0 && grants.length === 0 ? <p className="mt-2 text-xs text-subtle">No buyers yet.</p> : null}
             </div>
           );
         })}

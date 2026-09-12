@@ -68,7 +68,8 @@ Swarm ID scopes the app secret to the page origin: the same identity gets a diff
 
 | Layer | Responsibility |
 | --- | --- |
-| **Swarm ID** | Identity, derived wallet, and encryption key for pass secrets |
+| **Swarm ID** | Provider identity, derived payout wallet, ACT keys for private files |
+| **Browser wallet** | Client identity (MetaMask, Rabby, Core): pays USDC and seals the API key with one signature |
 | **Swarm** | Immutable API manifests and optional encrypted private files |
 | **Arkiv · Tiramisu** | Permanent listings and sale receipts; access passes with a TTL |
 | **Avalanche · Fuji** | USDC settlement through `APIritivoPayments`: `approve` → `buy` → provider `claim` |
@@ -80,7 +81,7 @@ Swarm ID scopes the app secret to the page origin: the same identity gets a diff
 | Client | Provider |
 | --- | --- |
 | Discover a listing and its manifest | Define operations, price, and access duration |
-| Approve USDC and call `buy()` | Upload the manifest to Swarm, then publish on Arkiv |
+| Connect MetaMask or Rabby on Fuji, approve USDC and call `buy()` | Upload the manifest to Swarm, then publish on Arkiv |
 | Receive an expiring Arkiv access pass after payment verification | Monitor purchases and optionally grant private-file access |
 | Call the gateway with `Bearer <passKey>.<secret>` | Call `claim(wallet, 0)` to withdraw all available earnings |
 | [Explore client workflow →](docs/architecture/client.html) | [Explore provider workflow →](docs/architecture/provider.html) |
@@ -128,3 +129,9 @@ tools             Readiness check and API caller
 Download or clone the repo and open the diagram HTML files locally to use their interactive views.
 
 </details>
+
+## ETHRome sponsors
+
+[![ETHRome 2026 sponsors: Team1, Arkiv, Swarm, and ENS.](docs/images/ethrome-sponsors.svg)](https://www.ethrome.org/#sponsorZone)
+
+Official logos from [ETHRome 2026](https://www.ethrome.org/#sponsorZone). [Asset sources](apps/web/public/brand/sponsors/README.md).

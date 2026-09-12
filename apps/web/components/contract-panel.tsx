@@ -65,12 +65,12 @@ export function ContractPanel({
       ) : (
         <div className="mt-4 space-y-4">
           <div className="min-w-0 py-2">
-            <p className="text-[11px] uppercase tracking-wider text-ink-400">Contract · APIritivoPayments</p>
-            <a href={explorerAddressUrl(contract)} target="_blank" rel="noreferrer" className="mt-1 block break-all font-mono text-xs text-ink-100 hover:text-spritz-300">
+            <p className="text-[11px] uppercase tracking-wider text-subtle">Contract · APIritivoPayments</p>
+            <a href={explorerAddressUrl(contract)} target="_blank" rel="noreferrer" className="mt-1 block break-all font-mono text-xs text-content hover:text-accent-text">
               {contract} ↗
             </a>
-            <p className="mt-2 text-[11px] uppercase tracking-wider text-ink-400">Settlement token · USDC</p>
-            <a href={explorerTokenUrl()} target="_blank" rel="noreferrer" className="mt-1 block break-all font-mono text-xs text-ink-300 hover:text-spritz-300">
+            <p className="mt-2 text-[11px] uppercase tracking-wider text-subtle">Settlement token · USDC</p>
+            <a href={explorerTokenUrl()} target="_blank" rel="noreferrer" className="mt-1 block break-all font-mono text-xs text-muted hover:text-accent-text">
               {USDC_ADDRESS} ↗
             </a>
           </div>
@@ -89,22 +89,22 @@ export function ContractPanel({
             ) : null}
           </div>
           <div>
-            <p className="mb-2 text-[11px] uppercase tracking-wider text-ink-400">Latest purchases</p>
+            <p className="mb-2 text-[11px] uppercase tracking-wider text-subtle">Latest purchases</p>
             {purchases === null ? (
-              <p className="text-xs text-ink-400">Loading…</p>
+              <p className="text-xs text-subtle">Loading…</p>
             ) : purchases.length === 0 ? (
-              <p className="text-xs text-ink-400">No purchases yet.</p>
+              <p className="text-xs text-subtle">No purchases yet.</p>
             ) : (
               <ul className="divide-y divide-line">
                 {purchases.map((p) => (
                   <li key={`${p.purchaseId}-${p.timestamp}`} className="flex flex-wrap items-center justify-between gap-2 py-3 text-xs">
-                    <span className="font-mono text-ink-300">#{p.purchaseId}</span>
-                    <span className="font-semibold text-olive-400">{formatPriceUsdc(p.amountUsdc)}</span>
-                    <span className="text-ink-400">{formatAccessDuration(p.accessSeconds)}</span>
-                    <a href={explorerAddressUrl(p.buyer)} target="_blank" rel="noreferrer" className="font-mono text-ink-400 hover:text-ink-100">
+                    <span className="font-mono text-muted">#{p.purchaseId}</span>
+                    <span className="font-semibold text-success">{formatPriceUsdc(p.amountUsdc)}</span>
+                    <span className="text-subtle">{formatAccessDuration(p.accessSeconds)}</span>
+                    <a href={explorerAddressUrl(p.buyer)} target="_blank" rel="noreferrer" className="font-mono text-subtle hover:text-content">
                       {p.buyer.slice(0, 6)}…{p.buyer.slice(-4)}
                     </a>
-                    <span className="text-ink-400">{new Date(p.timestamp * 1000).toLocaleString()}</span>
+                    <span className="text-subtle">{new Date(p.timestamp * 1000).toLocaleString()}</span>
                   </li>
                 ))}
               </ul>
@@ -119,7 +119,7 @@ export function ContractPanel({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 py-2">
-      <p className="text-[11px] uppercase tracking-wider text-ink-400">{label}</p>
+      <p className="text-[11px] uppercase tracking-wider text-subtle">{label}</p>
       <p className="mt-1 text-lg font-semibold">{value}</p>
     </div>
   );

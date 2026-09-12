@@ -6,12 +6,18 @@ import { CodePanel } from "@/components/code-panel";
 import { Avatar, Badge, BrandLogo, Button, CategoryPill, EmptyState, ErrorNotice, ProfileAvatar, ProofChip, SectionTitle, Skeleton } from "@/components/ui";
 
 const PALETTE = [
-  { name: "Canvas", token: "bg-canvas", hex: "#121311", style: "bg-canvas" },
-  { name: "Surface", token: "bg-surface", hex: "#191a17", style: "bg-surface" },
-  { name: "Raised", token: "bg-surface-raised", hex: "#20211d", style: "bg-surface-raised" },
-  { name: "Orange", token: "bg-accent", hex: "#FF7847", style: "bg-accent" },
-  { name: "Text", token: "text-content", hex: "#F4F3EB", style: "bg-content" },
-  { name: "Muted", token: "text-muted", hex: "#BFC0B5", style: "bg-muted" },
+  { name: "Canvas", token: "bg-canvas", dark: "#121311", light: "#F7F7F2", style: "bg-canvas" },
+  { name: "Surface", token: "bg-surface", dark: "#191A17", light: "#FDFDF9", style: "bg-surface" },
+  { name: "Raised", token: "bg-surface-raised", dark: "#20211D", light: "#EFEFE7", style: "bg-surface-raised" },
+  { name: "Orange", token: "bg-accent", dark: "#FF7847", light: "#FF7847", style: "bg-accent" },
+  { name: "Accent text", token: "text-accent-text", dark: "#FFB28D", light: "#A63B17", style: "bg-accent-text" },
+  { name: "Text", token: "text-content", dark: "#F4F3EB", light: "#20211D", style: "bg-content" },
+  { name: "Muted", token: "text-muted", dark: "#BFC0B5", light: "#505349", style: "bg-muted" },
+  { name: "Subtle", token: "text-subtle", dark: "#A2A399", light: "#64675B", style: "bg-subtle" },
+  { name: "Control border", token: "border-line-strong", dark: "#747569", light: "#828675", style: "bg-line-strong" },
+  { name: "Success", token: "text-success", dark: "#B5D49A", light: "#3D642C", style: "bg-success" },
+  { name: "Warning", token: "text-warning", dark: "#FDE68A", light: "#805410", style: "bg-warning" },
+  { name: "Danger", token: "text-danger", dark: "#F5A1A1", light: "#A82D31", style: "bg-danger" },
 ];
 
 const SECTIONS = [
@@ -36,7 +42,7 @@ export default function DesignSystemPage() {
               <a
                 key={id}
                 href={`#${id}`}
-                className="flex min-h-11 items-center py-2 text-sm text-subtle underline decoration-transparent underline-offset-4 hover:text-content hover:decoration-white"
+                className="flex min-h-11 items-center py-2 text-sm text-subtle underline decoration-transparent underline-offset-4 hover:text-content hover:decoration-content"
               >
                 {name}
               </a>
@@ -48,14 +54,21 @@ export default function DesignSystemPage() {
             <h2 id="foundations-title" className="text-2xl font-medium">
               Typography and color
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">Orange for actions. Charcoal surfaces. Borders only where useful.</p>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">Orange for actions. Warm white or charcoal surfaces. Borders only where useful.</p>
+            <p className="mt-3 text-xs text-subtle">
+              <span className="theme-dark-only">Dark palette</span>
+              <span className="theme-light-only">Light palette</span>
+            </p>
             <div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-3">
               {PALETTE.map((color) => (
                 <div key={color.name}>
                   <div className={`h-20 rounded-control border border-line ${color.style}`} />
                   <div className="mt-2 flex flex-wrap justify-between gap-1 text-xs">
                     <span>{color.name}</span>
-                    <span className="font-mono text-subtle">{color.hex}</span>
+                    <span className="font-mono text-subtle">
+                      <span className="theme-dark-only">{color.dark}</span>
+                      <span className="theme-light-only">{color.light}</span>
+                    </span>
                   </div>
                   <code className="mt-1 block text-[10px] text-subtle">{color.token}</code>
                 </div>
@@ -137,6 +150,7 @@ export default function DesignSystemPage() {
               <CategoryPill slug="market-data" />
               <CategoryPill slug="ai-text" />
               <Badge tone="accent">Provider</Badge>
+              <Badge tone="warn">Pending</Badge>
             </div>
             <p className="mb-3 mt-6 text-xs text-subtle">Verified and unverified references.</p>
             <div className="mb-8 flex flex-wrap gap-2">

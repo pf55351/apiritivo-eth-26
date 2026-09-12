@@ -24,11 +24,11 @@ export function SwarmSignIn() {
       onCancel={session.cancelConnect}
       className="m-auto max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] max-w-md overflow-y-auto rounded-panel border border-line bg-canvas p-6 text-content backdrop:bg-black/70 sm:p-8"
     >
-      <p className="text-xs font-normal text-spritz-300">Swarm ID</p>
+      <p className="text-xs font-normal text-accent-text">Swarm ID</p>
       <h2 id="swarm-sign-in-title" className="mt-2 text-2xl font-medium">
         Sign in
       </h2>
-      <p className="mt-3 text-sm text-ink-300">Use the Swarm ID button below, then approve {publicEnv.appName} in the window that opens.</p>
+      <p className="mt-3 text-sm text-muted">Use the Swarm ID button below, then approve {publicEnv.appName} in the window that opens.</p>
       <div id={SWARM_ID_FRAME_CONTAINER_ID} className="my-6 h-20 w-full" />
       <div className="mt-6 flex justify-end">
         <Button variant="ghost" onClick={session.cancelConnect}>

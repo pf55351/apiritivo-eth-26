@@ -7,7 +7,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useSession } from "@/lib/session";
 import { SwarmSignIn } from "./swarm-sign-in";
+import { ThemeToggle } from "./theme-toggle";
 import { BrandLogo, BrandMark, Button, ProfileAvatar } from "./ui";
+import { WalletMenu } from "./wallet-menu";
 import { WorkspaceSwitch } from "./workspace-switch";
 
 const VIEW_LINKS = {
@@ -47,7 +49,7 @@ function ContractLink({ short = false }: { short?: boolean }) {
       target="_blank"
       rel="noreferrer"
       title={`APIritivoPayments · ${contract}`}
-      className="inline-flex min-h-11 items-center gap-1 text-xs text-subtle underline decoration-transparent underline-offset-4 transition-colors hover:text-content hover:decoration-white"
+      className="inline-flex min-h-11 items-center gap-1 text-xs text-subtle underline decoration-transparent underline-offset-4 transition-colors hover:text-content hover:decoration-content"
     >
       {short ? "Contract" : `Contract ${contract.slice(0, 6)}…${contract.slice(-4)}`} ↗
     </a>
@@ -78,6 +80,9 @@ function IdentityMenu() {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
+
+  // Client workspace: the connected wallet is the identity; Swarm ID stays optional for private files.
+  if ((session.role ?? "client") === "client") return <WalletMenu />;
 
   if (!session.identity) {
     return (
@@ -112,16 +117,16 @@ function IdentityMenu() {
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{identity.name}</p>
               <p className="text-xs text-subtle">{role === "provider" ? "Provider view" : "Client view"}</p>
-              <p className="truncate font-mono text-[11px] text-ink-400" title={identity.id}>
+              <p className="truncate font-mono text-[11px] text-subtle" title={identity.id}>
                 {identity.id}
               </p>
             </div>
           </div>
-          <div className="mx-2 my-1 border-t border-white/15" />
-          <p className="px-3 pt-1 text-xs text-ink-400">Swarm upload: {session.canUpload ? "available" : "unavailable"}</p>
+          <div className="mx-2 my-1 border-t border-line" />
+          <p className="px-3 pt-1 text-xs text-subtle">Swarm upload: {session.canUpload ? "available" : "unavailable"}</p>
           <button
             type="button"
-            className="mt-2 min-h-11 w-full rounded-control px-3 py-2 text-left text-sm text-rose-400 hover:bg-rose-400/10"
+            className="mt-2 min-h-11 w-full rounded-control px-3 py-2 text-left text-sm text-danger hover:bg-danger/10"
             onClick={async () => {
               setOpen(false);
               await session.disconnect();
@@ -149,7 +154,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="app-navbar sticky top-0 z-20 border-b border-line" data-workspace={view}>
-        <div className="mx-auto grid min-h-16 max-w-7xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:gap-x-4 sm:px-6 lg:grid-cols-[auto_1fr_auto_auto] lg:px-8">
+        <div className="mx-auto grid min-h-16 max-w-7xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:gap-x-4 sm:px-6 lg:grid-cols-[auto_1fr_auto_auto_auto] lg:px-8">
           <Link href="/" aria-label="APIritivo home" className="order-1 flex min-h-11 items-center justify-center gap-2.5 sm:justify-start">
             <span className="sm:hidden">
               <BrandMark />
@@ -160,7 +165,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <nav
             aria-label={`${view === "client" ? "Client" : "Provider"} navigation`}
-            className="order-4 col-span-3 flex min-w-0 items-center justify-center gap-1 overflow-x-auto p-1 lg:order-2 lg:col-span-1"
+            className="order-4 col-span-3 col-start-1 row-start-2 flex min-w-0 items-center gap-1 overflow-x-auto p-1 pr-20 lg:order-2 lg:col-span-1 lg:col-start-auto lg:row-start-auto lg:justify-center lg:pr-1"
           >
             {roleLoaded ? (
               VIEW_LINKS[view].map((link) => (
@@ -182,6 +187,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="order-3 justify-self-end lg:order-4">
             <WorkspaceSwitch />
+          </div>
+          <div className="order-5 col-start-3 row-start-2 justify-self-end lg:col-start-auto lg:row-start-auto">
+            <ThemeToggle />
           </div>
         </div>
       </header>

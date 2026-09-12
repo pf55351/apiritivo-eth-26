@@ -159,7 +159,7 @@ export default function DocsPage() {
                 key={id}
                 href={`#${id}`}
                 onClick={() => openSection(id)}
-                className="flex min-h-11 items-center py-2 text-sm text-subtle underline decoration-transparent underline-offset-4 hover:text-content hover:decoration-white"
+                className="flex min-h-11 items-center py-2 text-sm text-subtle underline decoration-transparent underline-offset-4 hover:text-content hover:decoration-content"
               >
                 {name}
               </a>
@@ -423,7 +423,7 @@ bun run build                         # stop bun dev first: both write apps/web/
                 ],
                 [
                   "USDC · Fuji",
-                  "the buyer's Swarm wallet (0.50 per pass; the faucet gives 10)",
+                  "the buyer's wallet, MetaMask or Rabby (0.50 per pass; the faucet gives 10)",
                   <Ext key="c" href="https://faucet.circle.com/">
                     faucet.circle.com
                   </Ext>,
@@ -471,15 +471,20 @@ bun run build                         # stop bun dev first: both write apps/web/
                   title: "Create and fund the buyer",
                   body: (
                     <>
-                      Second profile or private window: new identity, choose Client, open the service from the marketplace, open Fund wallet and copy your address, fund it with
-                      AVAX and USDC from the faucets, click refresh.
+                      Switch to Client and connect MetaMask or Rabby on Avalanche Fuji (the app offers the network). Open the service from the marketplace, open Fund wallet and
+                      copy your address, fund it with AVAX and USDC from the faucets, click refresh.
                     </>
                   ),
                   expect: "USDC ≥ 0.50 and some AVAX",
                 },
                 {
                   title: "Buy access",
-                  body: <>Buy access · 0.50 USDC. Approve, buy() on the contract, confirmation, mint on Arkiv. Two Fuji transactions signed by the Swarm wallet in the browser.</>,
+                  body: (
+                    <>
+                      Buy access · 0.50 USDC. Approve, buy() on the contract, confirmation, mint on Arkiv. Two Fuji transactions signed by your wallet, then one signature that
+                      seals the API key.
+                    </>
+                  ),
                   expect: "Active access with expiry, Use API, and a payment receipt",
                 },
                 {

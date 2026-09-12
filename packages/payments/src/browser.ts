@@ -13,7 +13,7 @@
 import { type Address, createPublicClient, createWalletClient, custom, erc20Abi, formatEther, type Hash, http, toHex, type WalletClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { type OnChainPurchase, paymentsAbi, paymentsContractAddress, serviceKey } from "./contract";
-import { PAYMENT_CHAIN, USDC_ADDRESS, unitsToUsdc, usdcToUnits } from "./index";
+import { keyFromSignature, PASS_KEY_MESSAGE, PAYMENT_CHAIN, USDC_ADDRESS, unitsToUsdc, usdcToUnits } from "./index";
 
 type Eip1193 = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
@@ -114,6 +114,42 @@ export async function injectedSigner(): Promise<Signer> {
   const { address } = await connectInjectedWallet();
   const client = createWalletClient({ account: address, chain: PAYMENT_CHAIN, transport: custom(eth) });
   return { kind: "injected", address, client };
+}
+
+/** Signer for an account the wallet already exposes to this site: no prompt, null when nothing is connected. */
+export async function reconnectInjectedWallet(): Promise<Signer | null> {
+  const eth = (globalThis as { ethereum?: Eip1193 }).ethereum;
+  if (!eth) return null;
+  try {
+    const accounts = (await eth.request({ method: "eth_accounts" })) as string[];
+    const address = accounts[0];
+    if (!address) return null;
+    const client = createWalletClient({ account: address as Address, chain: PAYMENT_CHAIN, transport: custom(eth) });
+    return { kind: "injected", address: address as Address, client };
+  } catch {
+    return null;
+  }
+}
+
+/** Chain the injected wallet is on, or null without a wallet. */
+export async function walletChainId(): Promise<number | null> {
+  const eth = (globalThis as { ethereum?: Eip1193 }).ethereum;
+  if (!eth) return null;
+  try {
+    return Number.parseInt((await eth.request({ method: "eth_chainId" })) as string, 16);
+  } catch {
+    return null;
+  }
+}
+
+/** One `personal_sign` of PASS_KEY_MESSAGE → the account's pass encryption key. */
+export async function signPassKeyMessage(signer: Signer): Promise<Uint8Array> {
+  try {
+    const signature = await signer.client.signMessage({ account: signer.address, message: PASS_KEY_MESSAGE });
+    return keyFromSignature(signature);
+  } catch (err) {
+    throw new WalletError("rejected", "Signature was rejected in the wallet.", err);
+  }
 }
 
 /* ------------------------------------------------------------------ reads */

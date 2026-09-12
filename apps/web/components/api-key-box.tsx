@@ -36,8 +36,8 @@ export function ApiKeyBox({ serviceId, bearer, operation, input }: { serviceId: 
         Unlocking API key…
       </p>
     );
-  if (bearer.status === "legacy") return <p className="text-xs text-amber-200">This older pass is unsupported. Buy access again.</p>;
-  if (bearer.status === "locked") return <p className="text-xs text-amber-200">{bearer.error}</p>;
+  if (bearer.status === "legacy") return <p className="text-xs text-warning">This older pass is unsupported. Buy access again.</p>;
+  if (bearer.status === "locked") return <p className="text-xs text-warning">{bearer.error}</p>;
 
   const curl = curlForService(serviceId, bearer.bearer, operation, input);
   return (

@@ -63,7 +63,7 @@ export function BotConsole({ serviceId, manifest, bearer }: { serviceId: string;
       <h2 className="text-xl font-medium">Try API</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <label className="block">
-          <span className="mb-1 block text-xs text-ink-300">Operation</span>
+          <span className="mb-1 block text-xs text-muted">Operation</span>
           <select className={inputCls} value={operation} onChange={(e) => setOperation(e.target.value)}>
             {operations.map((op) => (
               <option key={op} value={op}>
@@ -73,13 +73,13 @@ export function BotConsole({ serviceId, manifest, bearer }: { serviceId: string;
           </select>
         </label>
         <div className="space-y-2">
-          {inputs.length === 0 ? <p className="pt-6 text-xs text-ink-400">No input fields.</p> : null}
+          {inputs.length === 0 ? <p className="pt-6 text-xs text-subtle">No input fields.</p> : null}
           {inputs.map(([name, type]) => (
             // biome-ignore lint/a11y/noLabelWithoutControl: the control is one of the two conditional branches below
             <label key={name} className="block">
-              <span className="mb-1 flex justify-between text-xs text-ink-300">
+              <span className="mb-1 flex justify-between text-xs text-muted">
                 <span className="min-w-0 break-all">{name}</span>
-                <span className="font-mono text-ink-400">{type}</span>
+                <span className="font-mono text-subtle">{type}</span>
               </span>
               {type === "boolean" ? (
                 <select className={inputCls} value={values[name] ?? "true"} onChange={(e) => setValues({ ...values, [name]: e.target.value })}>
@@ -109,18 +109,18 @@ export function BotConsole({ serviceId, manifest, bearer }: { serviceId: string;
         <Button onClick={run} disabled={busy || !operation || !token}>
           {busy ? "Calling…" : "Run request"}
         </Button>
-        {status !== null ? <span className={`font-mono text-xs ${status < 300 ? "text-olive-400" : "text-rose-400"}`}>HTTP {status}</span> : null}
+        {status !== null ? <span className={`font-mono text-xs ${status < 300 ? "text-success" : "text-danger"}`}>HTTP {status}</span> : null}
       </div>
 
       {response ? (
         <div className="mt-4 space-y-3">
           {response.verification ? (
             <div className="flex flex-wrap gap-2 text-[11px]">
-              <span className="text-olive-400">Pass verified</span>
+              <span className="text-success">Pass verified</span>
               <span className="text-subtle">{formatRemaining(response.verification.secondsRemaining)} left</span>
             </div>
           ) : response.error ? (
-            <p role="alert" className="break-words border-l-2 border-rose-400 pl-3 text-sm text-rose-400">
+            <p role="alert" className="break-words border-l-2 border-danger pl-3 text-sm text-danger">
               {response.error}
             </p>
           ) : null}

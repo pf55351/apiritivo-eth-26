@@ -5,6 +5,7 @@ import type { AccessPass, ArkivService, Grant } from "@apiritivo/shared";
 import { downloadPrivateFile } from "@apiritivo/swarm";
 import { useCallback, useEffect, useState } from "react";
 import { type FriendlyError, toFriendlyError } from "@/lib/errors";
+import { useActiveIdentity } from "@/lib/identity";
 import { useSession } from "@/lib/session";
 import { CodeBlock } from "./code-panel";
 import { Button, Disclosure, ErrorNotice } from "./ui";
@@ -22,13 +23,16 @@ function formatBytes(n: number): string {
  */
 export function PrivateFilesPanel({ service, activePass }: { service: ArkivService; activePass: AccessPass | undefined }) {
   const session = useSession();
+  const identity = useActiveIdentity();
   const file = service.privateAttachment;
-  const buyerId = session.identity?.id ?? null;
+  const buyerId = identity?.id ?? null;
+  // Decryption runs inside Swarm ID; a wallet buyer signs in with Swarm ID only for this.
+  const canDecrypt = Boolean(session.identity);
   const [grant, setGrant] = useState<Grant | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const isProvider = buyerId !== null && buyerId === service.providerId;
+  const isProvider = session.identity?.id === service.providerId;
 
   const loadGrant = useCallback(async () => {
     if (!buyerId || !file) return;
@@ -68,29 +72,32 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
     }
   }
 
-  const canRead = isProvider || (Boolean(activePass) && Boolean(grant));
+  const unlocked = isProvider || (Boolean(activePass) && Boolean(grant));
+  const canRead = unlocked && canDecrypt;
   const state = isProvider
     ? "You published this file."
-    : !session.identity
-      ? "Sign in and buy access to unlock it."
+    : !buyerId
+      ? "Connect and buy access to unlock it."
       : !activePass
         ? "Buy access to unlock it."
         : grant === undefined
           ? "Checking access…"
           : grant
-            ? "Access granted."
+            ? canDecrypt
+              ? "Access granted."
+              : "Access granted. Sign in with Swarm ID to open it."
             : "Waiting for provider approval.";
 
   return (
     <section className="min-w-0 border-t border-line pt-5">
-      <p className="text-xs font-normal text-olive-400">Private file</p>
+      <p className="text-xs font-normal text-success">Private file</p>
       <h2 className="mt-2 break-words text-base font-medium">{file.name}</h2>
-      <p className="mt-1 text-sm text-ink-300">{formatBytes(file.bytes)} · Encrypted</p>
+      <p className="mt-1 text-sm text-muted">{formatBytes(file.bytes)} · Encrypted</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <span className={`inline-flex items-center gap-1.5 text-xs font-normal ${canRead ? "text-olive-400" : "text-subtle"}`}>{canRead ? "🔓 unlocked" : "🔒 locked"}</span>
-        <span className="text-xs text-ink-300">{state}</span>
+        <span className={`inline-flex items-center gap-1.5 text-xs font-normal ${unlocked ? "text-success" : "text-subtle"}`}>{unlocked ? "🔓 unlocked" : "🔒 locked"}</span>
+        <span className="text-xs text-muted">{state}</span>
         {activePass && grant === null && !isProvider ? (
-          <button type="button" onClick={() => void loadGrant()} className="text-xs text-ink-400 underline hover:text-ink-200">
+          <button type="button" onClick={() => void loadGrant()} className="text-xs text-subtle underline hover:text-content-secondary">
             check again
           </button>
         ) : null}
@@ -101,19 +108,25 @@ export function PrivateFilesPanel({ service, activePass }: { service: ArkivServi
             {busy ? "Decrypting…" : "Download file"}
           </Button>
         </div>
+      ) : unlocked ? (
+        <div className="mt-4">
+          <Button onClick={session.connect} disabled={session.status !== "ready" || session.connecting}>
+            Sign in with Swarm ID
+          </Button>
+        </div>
       ) : null}
       <div className="mt-4">
         <Disclosure title="File details">
           {grant ? (
-            <p className="mt-2 text-[11px] text-ink-400">
+            <p className="mt-2 text-[11px] text-subtle">
               grant{" "}
-              <a href={arkivEntityUrl(grant.grantKey)} target="_blank" rel="noreferrer" className="font-mono hover:text-ink-200">
+              <a href={arkivEntityUrl(grant.grantKey)} target="_blank" rel="noreferrer" className="font-mono hover:text-content-secondary">
                 {grant.grantKey.slice(0, 10)}… ↗
               </a>{" "}
               · history {grant.historyRef.slice(0, 10)}…
             </p>
           ) : null}
-          <p className="mt-3 text-[11px] text-ink-400">
+          <p className="mt-3 text-[11px] text-subtle">
             encrypted ref <span className="font-mono">{file.encryptedRef.slice(0, 12)}…</span> · publisher key{" "}
             <span className="font-mono">{file.publisherPubKey.slice(0, 12)}…</span>
           </p>

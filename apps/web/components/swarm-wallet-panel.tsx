@@ -140,12 +140,12 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               </div>
               <p className="mt-2 text-xs text-subtle">Moves earnings to this wallet.</p>
               {claimTx ? (
-                <a href={explorerTxUrl(claimTx)} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-olive-400">
+                <a href={explorerTxUrl(claimTx)} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-success">
                   Claim confirmed ↗
                 </a>
               ) : null}
               {claimError ? (
-                <p role="alert" className="mt-2 text-xs text-rose-400">
+                <p role="alert" className="mt-2 text-xs text-danger">
                   {claimError}
                 </p>
               ) : null}
@@ -174,12 +174,12 @@ export function SwarmWalletPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               ) : null}
             </div>
             {sendTx ? (
-              <a href={explorerTxUrl(sendTx)} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-olive-400">
+              <a href={explorerTxUrl(sendTx)} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-success">
                 Transfer confirmed ↗
               </a>
             ) : null}
             {sendError ? (
-              <p role="alert" className="mt-2 text-xs text-rose-400">
+              <p role="alert" className="mt-2 text-xs text-danger">
                 {sendError}
               </p>
             ) : null}

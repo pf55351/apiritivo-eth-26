@@ -21,7 +21,7 @@ export function OperationsBuilder({ operations, onChange }: { operations: Operat
       {operations.map((op, index) => (
         <div key={op.id} className="border-b border-line pb-5 last:border-0">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-normal text-ink-400">Operation {index + 1}</span>
+            <span className="text-xs font-normal text-subtle">Operation {index + 1}</span>
             <div className="ml-auto">
               <Button
                 variant="subtle"
@@ -35,7 +35,7 @@ export function OperationsBuilder({ operations, onChange }: { operations: Operat
             </div>
           </div>
           <label className="mt-3 block">
-            <span className="mb-1 block text-xs text-ink-300">Operation name</span>
+            <span className="mb-1 block text-xs text-muted">Operation name</span>
             <input
               className={inputCls}
               placeholder="getQuote"
@@ -48,7 +48,7 @@ export function OperationsBuilder({ operations, onChange }: { operations: Operat
           </label>
 
           <div className="mt-4">
-            <span className="mb-2 block text-xs text-ink-300">Input fields</span>
+            <span className="mb-2 block text-xs text-muted">Input fields</span>
             <div className="space-y-2">
               {op.inputs.map((field) => (
                 <div key={field.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
@@ -85,7 +85,7 @@ export function OperationsBuilder({ operations, onChange }: { operations: Operat
                   <button
                     type="button"
                     onClick={() => update(op.id, { inputs: op.inputs.filter((f) => f.id !== field.id) })}
-                    className="flex h-11 w-11 items-center justify-center rounded-control border border-line-strong text-subtle hover:border-rose-400/40 hover:text-rose-400"
+                    className="flex h-11 w-11 items-center justify-center rounded-control border border-line-strong text-subtle hover:border-danger/40 hover:text-danger"
                     aria-label={`Remove ${field.name || "input field"}`}
                     title="Remove field"
                   >

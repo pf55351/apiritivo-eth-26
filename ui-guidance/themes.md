@@ -20,7 +20,7 @@ in components so surfaces, text, states, and focus change together.
 | Muted text | `#BFC0B5` | `#505349` | Supporting text |
 | Subtle text | `#A2A399` | `#64675B` | Metadata and placeholders |
 | Divider | `#34352E` | `#D6D8CC` | Decorative separation |
-| Control border | `#65665B` | `#828675` | Inputs and secondary buttons |
+| Control border | `#747569` | `#828675` | Inputs and secondary buttons |
 | Brand fill | `#FF7847` | `#FF7847` | Primary buttons |
 | Brand hover fill | `#FF9465` | `#FF9465` | Primary hover |
 | Text on brand | `#121311` | `#121311` | Primary labels, colored avatar initials |
@@ -46,17 +46,41 @@ always include text or symbols; color is supplementary.
   avatar, badge, error, loading state, and account menu.
 * Use the supplied light wordmark on light surfaces and the supplied dark
   wordmark on dark surfaces. Keep the original artwork files.
+  Sponsor strips follow the surface palette: warm white with dark wordmarks in
+  Light, charcoal with white wordmarks in Dark. Preserve Team1's red accent.
 * Keep the navbar transparent and blurred. Its underline follows content color.
 * Reuse the hero artwork with theme-specific presentation and the same canvas
   veil; it must dissolve into the light background as well as the dark one.
-* Add a quiet sun / moon appearance switch with a 44px keyboard/touch target.
+* Use an icon-only appearance picker: monitor for Auto (the default), sun for
+  Light, and moon for Dark, with accessible labels and 44px keyboard/touch targets.
   Keep Docs, account, and workspace switch in that relative order.
-* Default to the existing dark appearance. Save the explicit choice separately
-  from workspace and identity preferences and apply it before the first paint.
+* Default to Auto, following the computer's color scheme before the first paint
+  and when it changes. Preserve saved Light and Dark overrides. Save appearance
+  separately from workspace and identity and synchronize it across tabs.
 * Switching appearance must preserve page state and the mounted Swarm ID frame.
   If browser storage is unavailable, switching still works for the current page.
-* `/design-system` previews the active palette and both sets of values. Check
+* `/design-system` previews each palette and its values through the switch. Check
   desktop and narrow screens, keyboard operation, persistence, and both themes.
 
-The palette is ready for implementation after replacing fixed white accents,
-separating orange fill from orange text, and handling the supplied logo and hero.
+## Verification
+
+Implemented with the shared semantic tokens. Automated contrast tests cover text
+on all four surfaces, tinted state badges, control boundaries, and primary
+labels in both themes. Startup tests cover both system appearances with saved,
+invalid, and blocked storage. Runtime tests cover live system changes, manual
+overrides, returning to Auto, cross-tab updates, and listener cleanup.
+
+Browser checks covered light and dark documentation, the light hero, palette
+previews and form controls, Space / Enter switching, input preservation, reload
+persistence, and header fit at 320, 640, 1024, and 1280px. Typecheck, lint, 124
+application tests, 28 offline contract tests, and an isolated production build
+passed. Two live-chain tests were skipped. The build retains a dependency warning
+from `ox` / `viem`; no theme or hydration errors were observed.
+
+The system-theme follow-up passed typecheck, lint, and 137 application tests
+(two live-chain tests skipped). Browser checks confirmed Auto matches the
+computer, Light persists after reload, Dark overrides work, returning to Auto
+persists, disclosures remain open during switching, and arrow keys plus Enter
+operate the selector. The header fits at 320px and 1280px without horizontal
+overflow. No browser errors were observed. Live OS changes and storage edge
+cases are covered by automated tests; the computer's settings were not changed.

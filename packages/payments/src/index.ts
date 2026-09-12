@@ -2,7 +2,7 @@
  * Payment rail for Phase 2: USDC on Avalanche Fuji, paid directly from the
  * client's wallet to the provider's payout address. No contract yet.
  */
-import { type Address, defineChain, formatUnits, type Hash, parseUnits } from "viem";
+import { type Address, defineChain, formatUnits, type Hash, type Hex, hexToBytes, keccak256, parseUnits } from "viem";
 
 /** Avalanche Fuji, defined locally so we do not pull every viem chain into the bundle. */
 export const PAYMENT_CHAIN = defineChain({
@@ -51,3 +51,21 @@ export function toEvmAddress(value: string | undefined | null): Address | undefi
 }
 
 export * from "./contract";
+
+/* ------------------------------------------------------------ wallet pass key */
+
+/**
+ * Fixed message a browser wallet signs once per session. EOA signatures are
+ * deterministic (RFC 6979), so the same account always yields the same key.
+ */
+export const PASS_KEY_MESSAGE = [
+  "APIritivo pass key v1",
+  "",
+  "Sign this message to derive the key that protects your API keys.",
+  "It is free and does not send a transaction.",
+].join("\n");
+
+/** 32-byte AES key from a wallet signature of PASS_KEY_MESSAGE (pure; the signature itself is never stored). */
+export function keyFromSignature(signature: Hex): Uint8Array {
+  return hexToBytes(keccak256(signature));
+}

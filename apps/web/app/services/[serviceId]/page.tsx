@@ -17,6 +17,7 @@ import { PrivateFilesPanel } from "@/components/private-files-panel";
 import { type ProofLink, ProofPanel } from "@/components/proofs";
 import { Avatar, Button, CategoryPill, EmptyState, ErrorNotice, JsonInspector, Skeleton } from "@/components/ui";
 import { type FriendlyError, toFriendlyError } from "@/lib/errors";
+import { useActiveIdentity } from "@/lib/identity";
 import { useSession } from "@/lib/session";
 import { remainingSeconds, usePassesForService } from "@/lib/use-access";
 import { usePassBearer } from "@/lib/use-pass-bearer";
@@ -60,7 +61,8 @@ export default function ServiceDetailPage() {
   const { data: service, loading, error, reload } = useService(serviceId);
   const sessionReady = session.status !== "initializing";
   const manifestState = useManifest(service?.manifestRef ?? null, sessionReady);
-  const passesState = usePassesForService(service?.serviceId ?? null, session.identity?.id ?? null);
+  const identity = useActiveIdentity();
+  const passesState = usePassesForService(service?.serviceId ?? null, identity?.id ?? null);
   const passes = passesState.data ?? [];
   const activePass = passes.find((p) => {
     const left = remainingSeconds(p, passesState.timing);
@@ -106,36 +108,56 @@ export default function ServiceDetailPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
-      <Link href={workspaceHref} className="text-sm text-ink-400 hover:text-ink-100">
+      <Link href={workspaceHref} className="text-sm text-subtle hover:text-content">
         ← {isProviderView ? "My APIs" : "Marketplace"}
       </Link>
 
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <CategoryPill slug={service.category} />
-            <span className={`text-xs font-normal ${service.available ? "text-olive-400" : "text-ink-400"}`}>{service.available ? "● Available" : "○ Unavailable"}</span>
-          </div>
-          <h1 className="break-words text-3xl font-medium sm:text-4xl">{service.name}</h1>
-          <p className="max-w-2xl break-words text-base text-ink-300">{service.description}</p>
-          <div className="flex items-center gap-3 pt-1">
-            <Avatar name={provider} seed={service.providerId} size={36} />
-            <div className="min-w-0">
-              <p className="break-words text-sm text-ink-100">by {provider}</p>
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:gap-x-12">
+        <header className="min-w-0">
+          <div className="min-w-0 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <CategoryPill slug={service.category} />
+              <span className={`text-xs font-normal ${service.available ? "text-success" : "text-subtle"}`}>{service.available ? "● Available" : "○ Unavailable"}</span>
+            </div>
+            <h1 className="break-words text-3xl font-medium sm:text-4xl">{service.name}</h1>
+            <p className="max-w-2xl break-words text-base text-muted">{service.description}</p>
+            <div className="flex items-center gap-3 pt-1">
+              <Avatar name={provider} seed={service.providerId} size={36} />
+              <div className="min-w-0">
+                <p className="break-words text-sm text-content">by {provider}</p>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
-
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12">
-        <div className="order-2 min-w-0 space-y-8 lg:order-1">
+        </header>
+        <aside aria-label="Service access" className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          {!isProviderView ? (
+            passesState.loading ? (
+              <Skeleton className="h-48" />
+            ) : passesState.error ? (
+              <ErrorNotice message={passesState.error.message} detail={passesState.error.detail} onRetry={passesState.reload} />
+            ) : (
+              <BuyAccess service={service} passes={passes} timing={passesState.timing} onIssued={() => passesState.reload()} />
+            )
+          ) : (
+            <div className="rounded-panel bg-surface p-6">
+              <p className="eyebrow">Access price</p>
+              <div className="mt-3 flex flex-wrap items-baseline gap-2">
+                <h2 className="text-3xl font-medium">{service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}</h2>
+                <span className="text-sm font-medium text-accent-heading">{service.accessSeconds ? `/ ${formatAccessDuration(service.accessSeconds)}` : "Open access"}</span>
+              </div>
+              <p className="mt-2 text-xs text-subtle">Avalanche Fuji</p>
+              <p className="mt-4 text-xs text-subtle">Switch to Client to buy access.</p>
+            </div>
+          )}
+        </aside>
+        <div className="min-w-0 space-y-8 lg:col-start-1 lg:row-start-2">
           <section className="min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-medium">Operations</h2>
               </div>
               {stats ? (
-                <p className="font-mono text-xs text-ink-400">
+                <p className="font-mono text-xs text-subtle">
                   {stats.operations} {stats.operations === 1 ? "operation" : "operations"}
                 </p>
               ) : null}
@@ -155,28 +177,10 @@ export default function ServiceDetailPage() {
           </section>
           {!isProviderView && activePass && manifestState.manifest ? <BotConsole serviceId={service.serviceId} manifest={manifestState.manifest} bearer={activeBearer} /> : null}
         </div>
-
-        <aside className="order-1 min-w-0 space-y-6 lg:order-2">
-          {!isProviderView ? (
-            passesState.loading ? (
-              <Skeleton className="h-48" />
-            ) : passesState.error ? (
-              <ErrorNotice message={passesState.error.message} detail={passesState.error.detail} onRetry={passesState.reload} />
-            ) : (
-              <BuyAccess service={service} passes={passes} timing={passesState.timing} onIssued={() => passesState.reload()} />
-            )
-          ) : (
-            <div className="rounded-panel bg-surface p-6">
-              <p className="eyebrow">Access price</p>
-              <h2 className="mt-3 text-3xl font-medium">{service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}</h2>
-              <p className="mt-2 text-sm text-muted">{service.accessSeconds ? `Per ${formatAccessDuration(service.accessSeconds)}` : "Open access"} · Avalanche Fuji</p>
-              <p className="mt-4 text-xs text-subtle">Switch to Client to buy access.</p>
-            </div>
-          )}
-          <PrivateFilesPanel service={service} activePass={activePass} />
-          <EnsPanel service={service} isProviderView={isProviderView} />
-        </aside>
       </div>
+
+      <PrivateFilesPanel service={service} activePass={activePass} />
+      <EnsPanel service={service} isProviderView={isProviderView} />
 
       <div>
         <ProofPanel

@@ -42,7 +42,7 @@ export function SwarmDriveChip() {
 
   const manageUrl = `${publicEnv.swarmIframeOrigin.replace(/\/+$/, "")}/`;
   const expiring = drive?.ttlSeconds !== undefined && drive.ttlSeconds < WARN_BELOW_SECONDS;
-  const tone = expiring ? "border-amber-300/30 bg-amber-300/10 text-amber-200" : "border-olive-400/30 bg-olive-400/10 text-olive-400";
+  const tone = expiring ? "border-warning/30 bg-warning/10 text-warning" : "border-success/30 bg-success/10 text-success";
 
   return (
     <a

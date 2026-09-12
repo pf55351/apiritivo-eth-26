@@ -138,7 +138,7 @@ function Dashboard() {
                         {service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}
                         {service.accessSeconds ? ` / ${formatAccessDuration(service.accessSeconds)}` : ""}
                       </p>
-                      <span className={service.available ? "text-olive-400" : "text-subtle"}>{service.available ? "Available" : "Unavailable"}</span>
+                      <span className={service.available ? "text-success" : "text-subtle"}>{service.available ? "Available" : "Unavailable"}</span>
                     </div>
                   </div>
                   <div className="text-right">
@@ -198,20 +198,20 @@ function SalesList({ list }: { list: Sale[] }) {
       <ul className="divide-y divide-line">
         {list.slice(0, 20).map((x) => (
           <li key={x.saleKey} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-            <Link href={`/services/${x.serviceId}`} className="font-mono text-xs text-ink-300 hover:text-spritz-300">
+            <Link href={`/services/${x.serviceId}`} className="font-mono text-xs text-muted hover:text-accent-text">
               {x.serviceId}
             </Link>
-            <span className="font-semibold text-olive-400">+{formatPriceUsdc(x.paidUsdc)}</span>
-            <span className="flex flex-wrap gap-2 font-mono text-[11px] text-ink-400">
-              <a href={arkivEntityUrl(x.saleKey)} target="_blank" rel="noreferrer" title="Sale receipt on Arkiv" className="hover:text-ink-100">
+            <span className="font-semibold text-success">+{formatPriceUsdc(x.paidUsdc)}</span>
+            <span className="flex flex-wrap gap-2 font-mono text-[11px] text-subtle">
+              <a href={arkivEntityUrl(x.saleKey)} target="_blank" rel="noreferrer" title="Sale receipt on Arkiv" className="hover:text-content">
                 receipt ↗
               </a>
               {x.passKey ? (
-                <a href={arkivEntityUrl(x.passKey)} target="_blank" rel="noreferrer" title="Access pass on Arkiv" className="hover:text-ink-100">
+                <a href={arkivEntityUrl(x.passKey)} target="_blank" rel="noreferrer" title="Access pass on Arkiv" className="hover:text-content">
                   pass ↗
                 </a>
               ) : null}
-              <a href={explorerTxUrl(x.txHash)} target="_blank" rel="noreferrer" title="Payment on SnowTrace" className="hover:text-ink-100">
+              <a href={explorerTxUrl(x.txHash)} target="_blank" rel="noreferrer" title="Payment on SnowTrace" className="hover:text-content">
                 {x.txHash.slice(0, 10)}… ↗
               </a>
             </span>

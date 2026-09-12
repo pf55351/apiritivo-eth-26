@@ -61,7 +61,7 @@ export function Disclosure({ title, children, meta }: { title: string; children:
 }
 
 export function ProofChip({ label, ok = true, title, href }: { label: "Arkiv" | "Swarm" | "Swarm ID"; ok?: boolean; title?: string; href?: string }) {
-  const tone = ok ? "border-olive-400/30 bg-olive-400/10 text-olive-400" : "border-white/15 bg-white/5 text-ink-400";
+  const tone = ok ? "border-success/30 bg-success/10 text-success" : "border-line bg-surface-raised text-subtle";
   const content = (
     <span className={`inline-flex items-center gap-1.5 rounded-control border px-2 py-0.5 text-[11px] ${tone}`} title={title}>
       {label} {ok ? "✓" : "· Unverified"}
@@ -79,9 +79,9 @@ export function ProofChip({ label, ok = true, title, href }: { label: "Arkiv" | 
 
 export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "accent" | "warn" }) {
   const tones = {
-    neutral: "border-white/15 bg-white/5 text-ink-300",
-    accent: "border-spritz-500/30 bg-spritz-500/10 text-spritz-300",
-    warn: "border-amber-300/30 bg-amber-300/10 text-amber-200",
+    neutral: "border-line bg-surface-raised text-muted",
+    accent: "border-accent/30 bg-accent/10 text-accent-text",
+    warn: "border-warning/30 bg-warning/10 text-warning",
   };
   return <span className={`inline-flex items-center rounded-control border px-2 py-0.5 text-xs font-normal ${tones[tone]}`}>{children}</span>;
 }
@@ -92,7 +92,7 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
 export function ProfileAvatar({ name, size = 36 }: { name: string; size?: number }) {
   return (
     <span
-      className="inline-flex shrink-0 items-center justify-center rounded-full bg-ink-800 font-medium text-ink-200"
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-surface-active font-medium text-content-secondary"
       style={{ width: size, height: size, fontSize: Math.max(10, size * 0.34) }}
       role="img"
       aria-label={`${name} profile`}
@@ -111,7 +111,7 @@ export function Avatar({ name, seed, src, size = 36 }: { name: string; seed?: st
     fontSize: Math.max(10, size * 0.36),
   };
   return (
-    <span className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg font-semibold text-ink-950" style={style} role="img" aria-label={name}>
+    <span className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg font-semibold text-on-accent" style={style} role="img" aria-label={name}>
       {src ? (
         // biome-ignore lint/performance/noImgElement: avatar URLs come from Swarm ID and are not allow-listed for next/image
         <img src={src} alt={name} className="h-full w-full object-cover" /> // eslint-disable-line @next/next/no-img-element
@@ -131,11 +131,11 @@ export function RefField({ label, value, href }: { label: string; value: string;
       <span className="text-xs text-subtle">{label}</span>
       <div className="flex items-center gap-2">
         {href ? (
-          <a href={href} target="_blank" rel="noreferrer" className="truncate font-mono text-xs text-ink-200 hover:text-spritz-300" title={value}>
+          <a href={href} target="_blank" rel="noreferrer" className="truncate font-mono text-xs text-content-secondary hover:text-accent-text" title={value}>
             {shortRef(value, 10, 8)}
           </a>
         ) : (
-          <span className="truncate font-mono text-xs text-ink-200" title={value}>
+          <span className="truncate font-mono text-xs text-content-secondary" title={value}>
             {shortRef(value, 10, 8)}
           </span>
         )}
@@ -166,10 +166,11 @@ export function Skeleton({ className = "" }: { className?: string }) {
 export function ServiceCardSkeleton() {
   return (
     <div className="flex min-w-0 flex-col gap-4 border-t border-line py-5">
-      <Skeleton className="h-4 w-24" />
       <Skeleton className="h-6 w-2/3" />
       <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-7 w-40" />
       <Skeleton className="h-5 w-28" />
+      <Skeleton className="h-4 w-16" />
     </div>
   );
 }
@@ -177,11 +178,11 @@ export function ServiceCardSkeleton() {
 export function EmptyState({ title, description, action, icon = "◌" }: { title: string; description?: string; action?: ReactNode; icon?: string }) {
   return (
     <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
-      <div aria-hidden="true" className="text-2xl text-spritz-300">
+      <div aria-hidden="true" className="text-2xl text-accent-text">
         {icon}
       </div>
       <h3 className="text-base font-medium">{title}</h3>
-      {description ? <p className="max-w-md text-sm text-ink-300">{description}</p> : null}
+      {description ? <p className="max-w-md text-sm text-muted">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );
@@ -201,7 +202,7 @@ export function ErrorNotice({
   /** Disable live announcements only for static examples in the UI library. */
   announce?: boolean;
 }) {
-  const tones = tone === "error" ? "border-rose-400 text-rose-400" : "border-amber-300 text-amber-200";
+  const tones = tone === "error" ? "border-danger text-danger" : "border-warning text-warning";
   return (
     <div role={announce ? (tone === "error" ? "alert" : "status") : undefined} className={`min-w-0 border-l-2 py-2 pl-4 text-sm ${tones}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -215,7 +216,7 @@ export function ErrorNotice({
       {publicEnv.isDev && detail ? (
         <details className="mt-3">
           <summary className="min-h-9 cursor-pointer py-2 text-xs text-subtle">Debug details</summary>
-          <pre className="mt-2 max-h-64 max-w-full overflow-auto whitespace-pre-wrap break-words rounded-lg bg-ink-900/80 p-3 font-mono text-[11px] leading-relaxed text-ink-200">
+          <pre className="mt-2 max-h-64 max-w-full overflow-auto whitespace-pre-wrap break-words rounded-lg bg-surface/80 p-3 font-mono text-[11px] leading-relaxed text-content-secondary">
             {detail}
           </pre>
         </details>
@@ -260,16 +261,19 @@ export function BrandMark({ className = "" }: { className?: string }) {
 
 export function BrandLogo({ className = "" }: { className?: string }) {
   return (
-    <span className={`relative inline-block h-10 w-48 shrink-0 overflow-hidden ${className}`}>
-      <Image
-        src="/brand/logos/apiritivo-logo-dark.png"
-        alt="APIritivo"
-        width={2172}
-        height={724}
-        sizes="208px"
-        priority
-        className="absolute left-1/2 top-1/2 h-auto w-[208px] max-w-none -translate-x-1/2 -translate-y-1/2"
-      />
+    <span role="img" aria-label="APIritivo" className={`relative inline-block h-10 w-48 shrink-0 overflow-hidden ${className}`}>
+      {(["dark", "light"] as const).map((theme) => (
+        <Image
+          key={theme}
+          src={`/brand/logos/apiritivo-logo-${theme}.png`}
+          alt=""
+          width={2172}
+          height={724}
+          sizes="208px"
+          priority
+          className={`theme-${theme}-only absolute left-1/2 top-1/2 h-auto w-[208px] max-w-none -translate-x-1/2 -translate-y-1/2`}
+        />
+      ))}
     </span>
   );
 }
