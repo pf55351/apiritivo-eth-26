@@ -43,16 +43,25 @@ describe("publishServiceInputSchema", () => {
 });
 
 describe("issueAccessPassInputSchema", () => {
+  const body = {
+    serviceId: "market-data-a81f",
+    buyerId: "swarm-identity-1",
+    buyerAddress: "0xCc65929305910A90bb54dd2d33a3dee63E156bE5",
+    txHash: `0x${"1".repeat(64)}`,
+    secretHash: `0x${"2".repeat(64)}`,
+    encryptedSecret: "0x0102",
+    buyerPublicKey: `03${"ab".repeat(32)}`,
+    buyerSignature: `0x${"ab".repeat(65)}`,
+  };
+  test("accepts a complete purchase", () => {
+    expect(issueAccessPassInputSchema.safeParse(body).success).toBe(true);
+  });
   test("requires the buyer's claim signature", () => {
-    const body = {
-      serviceId: "market-data-a81f",
-      buyerId: "0xcc65929305910a90bb54dd2d33a3dee63e156be5",
-      buyerAddress: "0xCc65929305910A90bb54dd2d33a3dee63E156bE5",
-      txHash: `0x${"1".repeat(64)}`,
-      secretHash: `0x${"2".repeat(64)}`,
-      encryptedSecret: "0x0102",
-    };
-    expect(issueAccessPassInputSchema.safeParse(body).success).toBe(false);
-    expect(issueAccessPassInputSchema.safeParse({ ...body, buyerSignature: `0x${"ab".repeat(65)}` }).success).toBe(true);
+    const { buyerSignature: _, ...rest } = body;
+    expect(issueAccessPassInputSchema.safeParse(rest).success).toBe(false);
+  });
+  test("requires the buying Swarm ID's sharing key", () => {
+    const { buyerPublicKey: _, ...rest } = body;
+    expect(issueAccessPassInputSchema.safeParse(rest).success).toBe(false);
   });
 });
