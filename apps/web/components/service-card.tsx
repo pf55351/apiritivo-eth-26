@@ -2,6 +2,7 @@
 
 import { type ArkivService, formatAccessDuration, formatPriceUsdc } from "@apiritivo/shared";
 import Link from "next/link";
+import { EnsBadge } from "./ens-panel";
 import { Avatar, CategoryPill } from "./ui";
 
 export function ServiceCard({ service, showAvailability = false }: { service: ArkivService; showAvailability?: boolean }) {
@@ -27,6 +28,11 @@ export function ServiceCard({ service, showAvailability = false }: { service: Ar
         <div className="min-w-0">
           <p className="truncate text-xs text-subtle">{provider}</p>
         </div>
+        {service.ensName ? (
+          <span className="relative z-10 ml-auto min-w-0">
+            <EnsBadge service={service} />
+          </span>
+        ) : null}
       </div>
       <div className="mt-auto flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pt-1">
         <span className="text-lg font-medium text-content">{service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}</span>

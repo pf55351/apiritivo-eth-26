@@ -86,6 +86,12 @@ export async function getService(serviceId: string): Promise<ArkivService | null
   return results[0] ?? null;
 }
 
+/** Service linked to an ENS name (the `ens_name` attribute written at publish). */
+export async function getServiceByEnsName(ensName: string): Promise<ArkivService | null> {
+  const results = await queryServices([eq(ATTR.ensName, ensName.trim().toLowerCase())]);
+  return results[0] ?? null;
+}
+
 /** Provider dashboard: every service owned by a Swarm identity (available or not). */
 export async function listServicesByProvider(providerId: string): Promise<ArkivService[]> {
   return queryServices([eq(ATTR.providerId, providerId)]);

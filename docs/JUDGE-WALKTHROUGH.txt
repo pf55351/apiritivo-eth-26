@@ -28,6 +28,7 @@ Networks and identities involved
   Swarm ID          login identity (no wallet, no seed phrase). https://swarm-id.snaha.net
   Swarm             stores the technical manifest (bytes). Public gateway: https://api.gateway.ethswarm.org
   Arkiv (Tiramisu)  registry: service listings, access passes, sale receipts. Explorer: https://data.arkiv.network/?chain=tiramisu
+  ENS (Sepolia)     optional: a .eth name that resolves to payout wallet, Arkiv service id and Swarm manifest
   Avalanche Fuji    payments in USDC through the APIritivoPayments contract
                     contract: https://testnet.snowtrace.io/address/0x4e98f464dc8c667e3b0fd3092e0f2d4585702fa3
                     USDC:     0x5425890298aed601595a70AB815c96711a31Bc65
@@ -185,6 +186,20 @@ STEP 8 — Verify everything without the app
     manifest bytes        https://api.gateway.ethswarm.org/bytes/<manifest_ref>
 
 
+STEP 9 — Optional: give the API an ENS name
+--------------------------------------------
+  Free on Sepolia, takes 5 minutes. Import the creator's Swarm wallet into MetaMask first
+  (Provider > wallet panel > Reveal private key) and fund it with a little Sepolia ETH.
+  1. https://sepolia.app.ens.domains : register a name (e.g. judgeapi.eth) or a subname of one you own.
+  2. Records > ETH address = the creator's Swarm wallet address.
+  3. Publish a new service (STEP 2) with that name in the "ENS name" field. The server refuses names
+     whose ETH address is not the payout wallet.
+  4. On the service page, the ENS panel shows: address verified, and the two records still missing.
+     Copy them and set them in the ENS app: text "com.apiritivo.service" = service id,
+     content hash = bzz://<manifest_ref>. Reload: three green checks, "fully resolvable".
+  5. From a terminal:  bun tools/call-service.ts judgeapi.eth "<passKey>.<secret>"
+     The script resolves the name through ENS and calls the gateway.
+
 What to look at in the code (5 minutes)
 ---------------------------------------
   packages/swarm/src/index.ts          Swarm ID login, manifest upload/download, wallet + key derivation
@@ -192,6 +207,7 @@ What to look at in the code (5 minutes)
   packages/arkiv/src/index.ts          typed Arkiv queries, verifyAccessPass, explorer links
   packages/arkiv/src/pass-secret.ts    pass secret: hash on-chain, secret encrypted for the buyer
   packages/payments/src/server.ts      verifyPayment: Purchased event / USDC Transfer check
+  packages/ens/src/index.ts            ENS resolution + verification (addr, text record, bzz contenthash)
   contracts/src/APIritivoPayments.sol  buy / claim ledger, 28 tests in contracts/test
   apps/web/app/api/*                   4 routes: services, access-passes, bot, gateway
 

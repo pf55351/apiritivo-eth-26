@@ -6,15 +6,16 @@ Read `README.md` first. This file holds the rules that are not obvious from the 
 
 Machine-readable service marketplace. Identity = Swarm ID, technical manifests = Swarm, registry = Arkiv, payments = USDC on Avalanche Fuji (direct transfer today, `contracts/APIritivoPayments.sol` when deployed).
 
-Monorepo (Bun + Turbo): `apps/web` (Next 15, Tailwind v4), `packages/shared` (Zod schemas), `packages/swarm`, `packages/arkiv`, `packages/payments`, `tools` (demo check), `contracts` (Foundry).
+Monorepo (Bun + Turbo): `apps/web` (Next 15, Tailwind v4), `packages/shared` (Zod schemas), `packages/swarm`, `packages/arkiv`, `packages/payments`, `packages/ens` (read-only ENS), `tools` (demo check), `contracts` (Foundry).
 
 ## Non-negotiable rules
 
 - **Never invent SDK methods.** Inspect `node_modules/.bun/@snaha+swarm-id*` and `@arkiv-network+sdk*` types before touching the adapters.
 - **Vendor SDKs stay inside `packages/*`.** React components only see `ArkivService`, `ServiceManifest`, `AccessPass`, `Sale`, `SwarmConnectionInfo`, `Signer`.
 - **Publish order:** build manifest → upload to Swarm → `manifestRef` → Arkiv entity. Never write Arkiv first.
-- **Arkiv attribute names are snake_case** (`entity_type`, `service_id`, `provider_id`, `manifest_ref`, `price_usdc`, `access_seconds`, `payout_address`, `buyer_id`, `buyer_address`, `tx_hash`, `paid_usdc`, `chain_id`, `pass_key`, `secret_hash`). The chain rejects uppercase letters even though the SDK's local validator accepts them. Always go through `ATTR` in `packages/arkiv/src/entity.ts`.
+- **Arkiv attribute names are snake_case** (`entity_type`, `service_id`, `provider_id`, `manifest_ref`, `price_usdc`, `access_seconds`, `payout_address`, `buyer_id`, `buyer_address`, `tx_hash`, `paid_usdc`, `chain_id`, `pass_key`, `secret_hash`, `ens_name`). The chain rejects uppercase letters even though the SDK's local validator accepts them. Always go through `ATTR` in `packages/arkiv/src/entity.ts`.
 - **Arkiv links:** entities → Data Explorer via `arkivEntityUrl` / `arkivOwnerUrl` (`https://data.arkiv.network/?q=…&chain=tiramisu`); tx hashes and GLM balances → Tiramisu block explorer via `arkivTxUrl` / `explorerUrl`. Never hand-build explorer URLs in components.
+- **ENS is read-only.** The app never writes ENS records. A linked name is accepted by `POST /api/services` only when `addr(name)` resolves to the payout wallet (`@apiritivo/ens` `resolveEnsAddress`); records `com.apiritivo.service` and `contenthash bzz://` are set by the provider in the ENS app and verified client-side. Chain from `NEXT_PUBLIC_ENS_CHAIN` (sepolia default). Sepolia is ENSv2 beta: do not attempt subname writes without documented registry ABIs.
 - **Service listings are permanent** (`ExpirationTime.permanent()`). Only `access_pass` entities expire; `sale` receipts are permanent so revenue survives.
 - **Swarm manifest = technical only** (`v`, optional `endpoint`, `operations`). Name, description, category, price, duration, payout wallet live on Arkiv.
 - **Swarm uploads:** pass `subsidisedGatewayUrl` (same value the official Swarm ID demo uses) and never `pin: true` (`Swarm-Pin` is not on the gateway's CORS allow-list → "Failed to fetch"). Direct `POST <gateway>/bytes` is the fallback.

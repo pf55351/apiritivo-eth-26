@@ -12,6 +12,8 @@
     "test": "echo 'no tests'"
   },
   "dependencies": {
+    "@apiritivo/arkiv": "workspace:*",
+    "@apiritivo/ens": "workspace:*",
     "@apiritivo/payments": "workspace:*",
     "@arkiv-network/sdk": "^0.8.1",
     "viem": "^2.21.0"

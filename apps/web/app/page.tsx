@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { ApiExample } from "@/components/api-example";
+import { ETHROME_SPONSORS_URL, SponsorLogos } from "@/components/sponsor-logos";
 import { Button, ErrorNotice, Eyebrow } from "@/components/ui";
 import { publicEnv } from "@/lib/env";
 import { useSession } from "@/lib/session";
@@ -66,9 +67,21 @@ export default function HomePage() {
   }
 
   return (
-    <div>
-      <section className="grid items-center gap-8 pb-10 pt-4 sm:pb-16 sm:pt-8 lg:grid-cols-[1.05fr_1fr] lg:gap-6 lg:pb-20 lg:pt-10">
-        <div className="min-w-0">
+    <div className="landing-page">
+      <div className="landing-art" aria-hidden="true">
+        <Image
+          src="/images/api-flow-hd.png"
+          alt=""
+          width={3072}
+          height={2048}
+          quality={100}
+          priority
+          sizes="(min-width: 1280px) 1536px, (min-width: 1024px) max(120vw, 78rem), max(180vw, 57rem)"
+          className="landing-art-image"
+        />
+      </div>
+      <section className="landing-hero flex items-center pb-12 pt-6 sm:pb-16 sm:pt-8 lg:pb-20 lg:pt-10">
+        <div className="min-w-0 max-w-lg">
           <Eyebrow>{isProvider ? "Publish on APIritivo" : "The API marketplace"}</Eyebrow>
           <h1 className="landing-title mt-5">
             {isProvider ? (
@@ -104,17 +117,6 @@ export default function HomePage() {
               <ErrorNotice message={session.error ?? "Swarm ID login failed."} detail={session.errorDetail} onRetry={session.retry} />
             </div>
           ) : null}
-        </div>
-        <div className="landing-art relative min-w-0 overflow-hidden" aria-hidden="true">
-          <Image
-            src="/images/api-connection.png"
-            alt=""
-            width={1536}
-            height={1024}
-            priority
-            sizes="(min-width: 1280px) 580px, (min-width: 1024px) 48vw, 100vw"
-            className="h-auto w-full"
-          />
         </div>
       </section>
 
@@ -159,6 +161,15 @@ export default function HomePage() {
           </Link>
         </div>
         <ApiExample key={view} initialFormat={isProvider ? "manifest" : "request"} />
+      </section>
+
+      <section aria-labelledby="sponsors-title" className="mt-14 border-t border-line pt-8 sm:mt-20 sm:pt-10">
+        <h2 id="sponsors-title" className="mb-5 text-sm font-normal text-subtle">
+          <a href={ETHROME_SPONSORS_URL} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 hover:text-content">
+            ETHRome 2026 sponsors <span aria-hidden="true">↗</span>
+          </a>
+        </h2>
+        <SponsorLogos />
       </section>
     </div>
   );

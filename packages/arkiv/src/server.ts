@@ -136,6 +136,8 @@ export async function publishService(input: PublishServiceInput): Promise<Publis
     [ATTR.accessSeconds]: u64(input.accessSeconds),
     // Where USDC payments go (Avalanche Fuji). Lives on Arkiv, not in the Swarm manifest.
     [ATTR.payoutAddress]: addr(input.payoutAddress),
+    // Optional ENS name (route verified addr(name) == payoutAddress). Queryable so `name.eth` → service works even before the text record exists.
+    ...(input.ensName ? { [ATTR.ensName]: str(input.ensName) } : {}),
     // Optional private file on Swarm (ACT). References are public, the content is not.
     ...(input.privateAttachment
       ? {

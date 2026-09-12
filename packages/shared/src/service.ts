@@ -70,6 +70,13 @@ export function formatPriceUsdc(price: string): string {
 
 export const evmAddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Invalid EVM address (0x + 40 hex)");
 
+/** Lowercase `.eth` name (a subname is fine). Resolution and ownership are checked by the server. */
+export const ensNameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^(?=.{3,253}$)([a-z0-9-]+\.)+eth$/, "Use a .eth name like myapi.eth");
+
 /** Swarm reference: 64 hex chars (plain) or 128 (encrypted). */
 export const swarmReferenceSchema = z.string().regex(/^[0-9a-fA-F]{64}(?:[0-9a-fA-F]{64})?$/, "Invalid Swarm reference");
 
@@ -122,6 +129,8 @@ export const arkivServiceSchema = z.object({
   createdAtBlock: z.string().optional(),
   /** Private file (Swarm ACT), if the provider attached one. */
   privateAttachment: privateAttachmentSchema.optional(),
+  /** ENS name linked by the provider; its addr record resolved to `payoutAddress` at publish time. */
+  ensName: z.string().optional(),
 });
 
 export type ArkivService = z.infer<typeof arkivServiceSchema>;
@@ -143,6 +152,8 @@ export const publishServiceInputSchema = z.object({
     .max(10 * 365 * 86400),
   payoutAddress: evmAddressSchema,
   privateAttachment: privateAttachmentSchema.optional(),
+  /** Optional ENS name owned by the provider (verified server-side: addr(name) == payoutAddress). */
+  ensName: ensNameSchema.optional(),
 });
 
 export type PublishServiceInput = z.infer<typeof publishServiceInputSchema>;

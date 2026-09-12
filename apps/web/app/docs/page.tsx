@@ -5,6 +5,7 @@ import { EXPLORER_URL, explorerAddressUrl, explorerTokenUrl, paymentsContractAdd
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import { CodePanel } from "@/components/code-panel";
+import { ETHROME_SPONSORS_URL, SponsorLogos } from "@/components/sponsor-logos";
 import { Badge, Button, Disclosure, SectionTitle } from "@/components/ui";
 import { publicEnv } from "@/lib/env";
 
@@ -18,6 +19,7 @@ const SECTIONS = [
   ["run", "Run it"],
   ["judge", "Judge walkthrough"],
   ["code", "Code map"],
+  ["sponsors", "ETHRome sponsors"],
 ] as const;
 
 const WRITER = "0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C";
@@ -561,6 +563,12 @@ bun run build                         # stop bun dev first: both write apps/web/
               </Button>
               <Button href="/">Open app</Button>
             </div>
+          </Section>
+          <Section id="sponsors" title="ETHRome sponsors" lead="Official sponsors of ETHRome 2026, where APIritivo was built.">
+            <SponsorLogos />
+            <p className="text-sm">
+              <Ext href={ETHROME_SPONSORS_URL}>ETHRome 2026 ↗</Ext>
+            </p>
           </Section>
         </div>
       </div>

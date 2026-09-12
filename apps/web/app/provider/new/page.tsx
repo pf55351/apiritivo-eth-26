@@ -1,6 +1,7 @@
 "use client";
 
 import { arkivEntityUrl, arkivTxUrl } from "@apiritivo/arkiv";
+import { ensChainLabel } from "@apiritivo/ens";
 import { explorerAddressUrl, PAYMENT_CHAIN_NAME } from "@apiritivo/payments";
 import {
   ACCESS_DURATIONS,
@@ -32,6 +33,8 @@ import { Button, CategoryPill, Disclosure, ErrorNotice, SectionTitle } from "@/c
 import { type FriendlyError, toFriendlyError } from "@/lib/errors";
 import { useSession } from "@/lib/session";
 import { useSwarmWallet } from "@/lib/swarm-wallet";
+
+const ENS_CHAIN_LABEL = ensChainLabel();
 
 type Step = "idle" | "uploading" | "uploading-private" | "publishing" | "done";
 
@@ -84,6 +87,7 @@ function PublishForm() {
   const [customCategory, setCustomCategory] = useState("");
   const [priceUsdc, setPriceUsdc] = useState("0.50");
   const [accessSeconds, setAccessSeconds] = useState<number>(7 * 86400);
+  const [ensName, setEnsName] = useState("");
   const swarmWallet = useSwarmWallet();
   // Payout wallet is always the wallet derived from the Swarm ID: same identity, same address, no typing.
   const payoutAddress = swarmWallet.address ?? "";
@@ -108,6 +112,7 @@ function PublishForm() {
       priceUsdc,
       accessSeconds,
       payoutAddress: payoutAddress.trim(),
+      ensName: ensName.trim() || undefined,
     });
     const issues: string[] = [];
     if (!probe.success) {
@@ -119,11 +124,12 @@ function PublishForm() {
         else if (key === "priceUsdc") issues.push(`Price: ${i.message}`);
         else if (key === "accessSeconds") issues.push(`Access duration: ${i.message}`);
         else if (key === "payoutAddress") issues.push(`Payout wallet: ${i.message}`);
+        else if (key === "ensName") issues.push(`ENS name: ${i.message}`);
       }
     }
     if (!manifestValidation.ok) issues.push(...manifestValidation.errors);
     return issues;
-  }, [name, description, effectiveCategory, identity.id, identity.name, manifestValidation, priceUsdc, accessSeconds, payoutAddress]);
+  }, [name, description, effectiveCategory, identity.id, identity.name, manifestValidation, priceUsdc, accessSeconds, payoutAddress, ensName]);
 
   const canPublish = formIssues.length === 0 && session.canUpload && progress.step === "idle";
   const busy = progress.step === "uploading" || progress.step === "uploading-private" || progress.step === "publishing";
@@ -182,6 +188,7 @@ function PublishForm() {
       priceUsdc: priceUsdc.trim(),
       accessSeconds,
       payoutAddress: payoutAddress.trim(),
+      ensName: ensName.trim() ? ensName.trim().toLowerCase() : undefined,
       privateAttachment,
     };
     try {
@@ -350,6 +357,22 @@ function PublishForm() {
             </div>
             <p className="mt-1.5 text-[11px] text-ink-400">Payments go to your Swarm wallet.</p>
           </div>
+          <Field label="ENS name" hint="optional">
+            <input
+              className={`${fieldCls} font-mono`}
+              placeholder="myapi.eth"
+              value={ensName}
+              onChange={(e) => setEnsName(e.target.value)}
+              spellCheck={false}
+              autoCapitalize="none"
+            />
+          </Field>
+          {ensName.trim() ? (
+            <p className="-mt-3 text-[11px] text-ink-400">
+              Its ETH address record must already point to your Swarm wallet ({swarmWallet.address ? `${swarmWallet.address.slice(0, 6)}…${swarmWallet.address.slice(-4)}` : "…"});
+              the server checks it on {ENS_CHAIN_LABEL}. After publishing, the service page lists the two records that make the name resolve to this API.
+            </p>
+          ) : null}
         </section>
 
         <section className="space-y-5 border-t border-line pt-6 first:border-0 first:pt-0">

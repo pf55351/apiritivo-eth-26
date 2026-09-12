@@ -1,4 +1,5 @@
 import { ArkivWriterNotConfiguredError, getWriterStatus, isWriterConfigured, publishService } from "@apiritivo/arkiv/server";
+import { ensChainLabel, resolveEnsAddress } from "@apiritivo/ens";
 import { publishServiceInputSchema } from "@apiritivo/shared";
 import { NextResponse } from "next/server";
 
@@ -40,6 +41,30 @@ export async function POST(request: Request) {
       },
       { status: 503 },
     );
+  }
+
+  // ENS: the name must resolve (addr record) to the payout wallet, otherwise anyone could claim any name.
+  if (parsed.data.ensName) {
+    let resolved: string | null = null;
+    try {
+      resolved = await resolveEnsAddress(parsed.data.ensName);
+    } catch (err) {
+      return NextResponse.json(
+        { error: "ENS name could not be verified.", reason: `ENS resolution failed on ${ensChainLabel()}: ${(err as Error).message.split("\n")[0]}` },
+        { status: 502 },
+      );
+    }
+    if (!resolved || resolved.toLowerCase() !== parsed.data.payoutAddress.toLowerCase()) {
+      return NextResponse.json(
+        {
+          error: "ENS name does not resolve to your payout wallet.",
+          reason: resolved
+            ? `${parsed.data.ensName} resolves to ${resolved} on ${ensChainLabel()}, expected ${parsed.data.payoutAddress}. Set its ETH address record to your Swarm wallet.`
+            : `${parsed.data.ensName} has no ETH address record on ${ensChainLabel()} (or is not registered). Set it to your Swarm wallet in the ENS app.`,
+        },
+        { status: 400 },
+      );
+    }
   }
 
   try {

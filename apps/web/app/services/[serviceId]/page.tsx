@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { BotConsole } from "@/components/bot-console";
 import { BuyAccess } from "@/components/buy-access";
 import { ContractPanel } from "@/components/contract-panel";
+import { EnsPanel } from "@/components/ens-panel";
 import { ManifestOperations } from "@/components/manifest-view";
 import { PrivateFilesPanel } from "@/components/private-files-panel";
 import { type ProofLink, ProofPanel } from "@/components/proofs";
@@ -173,6 +174,7 @@ export default function ServiceDetailPage() {
             </div>
           )}
           <PrivateFilesPanel service={service} activePass={activePass} />
+          <EnsPanel service={service} isProviderView={isProviderView} />
         </aside>
       </div>
 

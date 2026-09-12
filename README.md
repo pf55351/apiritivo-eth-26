@@ -58,7 +58,7 @@ The app is a standard Next.js build; only `apps/web` is deployed.
 | Build Command | `next build` (workspace packages are transpiled by Next, no separate build) |
 | Production Branch | the branch that contains this README |
 
-Environment variables to set in the project (see [.env.example](.env.example)): `ARKIV_WRITER_PRIVATE_KEY` (required, server only), `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS` (required for contract mode), and optionally `AVALANCHE_FUJI_RPC_URL` for a dedicated Fuji RPC. Every other `NEXT_PUBLIC_*` has a default in the code.
+Environment variables to set in the project (see [.env.example](.env.example)): `ARKIV_WRITER_PRIVATE_KEY` (required, server only), `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS` (required for contract mode), and optionally `AVALANCHE_FUJI_RPC_URL` for a dedicated Fuji RPC and `NEXT_PUBLIC_ENS_CHAIN` (`sepolia` default, or `mainnet`) for ENS resolution. Every other `NEXT_PUBLIC_*` has a default in the code.
 
 Swarm ID scopes the app secret to the page origin: the same identity gets a different derived wallet and pass key on every domain, including each preview URL. Fund and publish on one stable production domain and run the demo there.
 
@@ -72,6 +72,7 @@ Swarm ID scopes the app secret to the page origin: the same identity gets a diff
 | **Swarm** | Immutable API manifests and optional encrypted private files |
 | **Arkiv · Tiramisu** | Permanent listings and sale receipts; access passes with a TTL |
 | **Avalanche · Fuji** | USDC settlement through `APIritivoPayments`: `approve` → `buy` → provider `claim` |
+| **ENS · Sepolia** | Optional `.eth` name per API: `addr` → payout wallet, `text` → Arkiv service id, `contenthash` → `bzz://` manifest on Swarm. Read-only, verified by the server |
 | **Next.js API** | Publish listings, verify purchases, issue passes, record grants, and enforce API access |
 
 ### Two workflows
@@ -88,6 +89,24 @@ The gateway checks the pass, expiry, and secret hash before calling the manifest
 
 **Payment contract · Fuji `43113`:** [`0x4e98f464dc8c667e3b0fd3092e0f2d4585702fa3`](https://testnet.snowtrace.io/address/0x4e98f464dc8c667e3b0fd3092e0f2d4585702fa3). Clearing `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS` enables direct USDC transfers; restart `bun dev` after changing it.
 
+### ENS: a name for every API
+
+A `.eth` name is a pointer to everything a machine needs: the payout wallet, the Arkiv listing and the Swarm manifest. Swarm is a content type ENS understands natively (EIP-1577 `bzz://`), so no new contract is involved.
+
+```text
+prova-api.apiritivo.eth
+  addr                        0xE20a…21f8            payout wallet        ← checked by POST /api/services before publishing
+  text  com.apiritivo.service  prova-api-65ee         Arkiv service_id     ← checked on the service page
+  contenthash                 bzz://<manifest_ref>   manifest on Swarm    ← checked on the service page
+```
+
+1. The provider owns a name (free on [sepolia.app.ens.domains](https://sepolia.app.ens.domains)) and sets its ETH address to the Swarm wallet shown in the publish form.
+2. Publishing with the optional **ENS name** field: the server resolves the name and refuses it unless `addr(name)` equals the payout address. The name is stored on Arkiv as `ens_name`.
+3. The service page shows an ENS panel with ✓ / ○ per record; in provider view it lists the exact values to paste into the ENS app. Marketplace cards carry the badge (◐ address verified, ✓ fully resolvable).
+4. Machines resolve the name: `bun tools/call-service.ts prova-api.apiritivo.eth "<key>"` reads the text record (Arkiv `ens_name` as fallback) and calls the gateway.
+
+The app never writes ENS. Sepolia runs the ENSv2 beta with per-name subname registries; minting `<service-id>.apiritivo.eth` automatically at publish is the next step once that API is documented.
+
 **Demo trust model:** the server owns the Arkiv writer and currently trusts unsigned identity fields. Payments and pass secrets are verified; choosing a workspace is a UI preference. See the [trust boundaries](docs/backend-architecture.md).
 
 <details>
@@ -99,6 +118,7 @@ packages/shared   Schemas and domain types
 packages/swarm    Identity, manifests, private files
 packages/arkiv    Registry, passes, receipts, grants
 packages/payments USDC, contract calls, payment verification
+packages/ens      ENS resolution and verification (read-only)
 contracts         Solidity contract and Foundry tests
 tools             Readiness check and API caller
 ```

@@ -12,14 +12,15 @@
   },
   "dependencies": {
     "@apiritivo/arkiv": "workspace:*",
+    "@apiritivo/ens": "workspace:*",
+    "@apiritivo/payments": "workspace:*",
     "@apiritivo/shared": "workspace:*",
     "@apiritivo/swarm": "workspace:*",
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "zod": "^4.1.0",
-    "@apiritivo/payments": "workspace:*",
-    "viem": "^2.21.0"
+    "viem": "^2.21.0",
+    "zod": "^4.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

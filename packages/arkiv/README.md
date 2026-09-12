@@ -7,7 +7,7 @@ Arkiv (Tiramisu testnet, chain 7738577) adapter over `@arkiv-network/sdk` + viem
 | Function | Query |
 | --- | --- |
 | `listServices()` | `service` where `available = true`, newest first, one per `service_id` |
-| `getService(serviceId)`, `listServicesByProvider(providerId)` | `service` filtered |
+| `getService(serviceId)`, `listServicesByProvider(providerId)`, `getServiceByEnsName(name)` | `service` filtered |
 | `listAccessPassesByBuyer(buyerId)`, `listAccessPassesForService(serviceId, buyerId)` | live `access_pass` entities (Arkiv drops expired ones) |
 | `getAccessPass(passKey)` | `getEntity`; `null` = missing or expired |
 | `listSalesByProvider(providerId)`, `findSaleByTxHash(txHash)` | permanent `sale` receipts (revenue, replay protection) |
@@ -42,7 +42,7 @@ Attributes are snake_case (see `ATTR` in `src/entity.ts`). The Tiramisu engine r
 
 ```text
 service      app, entity_type, service_id, category, provider_id, provider_name, available, version,
-             manifest_ref, price_usdc (dec), access_seconds (u64), payout_address (addr)
+             manifest_ref, price_usdc (dec), access_seconds (u64), payout_address (addr), ens_name (optional)
              payload { name, description }                                                permanent
 access_pass  app, entity_type, service_id, provider_id, buyer_id, buyer_address (addr), tx_hash,
              paid_usdc (dec), chain_id (i32), secret_hash

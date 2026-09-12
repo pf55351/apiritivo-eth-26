@@ -93,22 +93,22 @@ function IdentityMenu() {
   const { identity, role } = session;
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="sm:relative" ref={ref}>
       <button
         type="button"
         aria-expanded={open}
         aria-label={`Account for ${identity.name}`}
         onClick={() => setOpen((v) => !v)}
-        className="profile-trigger flex min-h-11 w-11 items-center justify-center gap-2 rounded-full border border-transparent p-1 transition-colors hover:border-line hover:bg-surface sm:w-auto sm:justify-start sm:pr-3"
+        className="flex min-h-11 w-11 items-center justify-center gap-2 rounded-full border border-transparent p-1 transition-colors hover:border-line hover:bg-surface sm:w-auto sm:justify-start sm:pr-3"
       >
-        <ProfileAvatar name={identity.name} seed={identity.id} size={34} />
+        <ProfileAvatar name={identity.name} size={34} />
         <span className="hidden max-w-[120px] truncate text-sm xl:block">{identity.name}</span>
         <span className="hidden text-xs text-subtle sm:inline">▾</span>
       </button>
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-panel border border-line bg-surface-raised p-2 shadow-xl">
+        <div className="absolute right-3 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-panel border border-line bg-surface-raised p-2 shadow-xl sm:right-0 sm:top-auto">
           <div className="flex items-center gap-3 px-3 py-2">
-            <ProfileAvatar name={identity.name} seed={identity.id} size={48} />
+            <ProfileAvatar name={identity.name} size={48} />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{identity.name}</p>
               <p className="text-xs text-subtle">{role === "provider" ? "Provider view" : "Client view"}</p>
@@ -149,7 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="app-navbar sticky top-0 z-20 border-b border-line" data-workspace={view}>
-        <div className="mx-auto grid min-h-16 max-w-7xl grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-x-2 gap-y-2 px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:gap-x-4 sm:px-6 lg:grid-cols-[auto_1fr_auto_auto] lg:px-8">
+        <div className="mx-auto grid min-h-16 max-w-7xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:gap-x-4 sm:px-6 lg:grid-cols-[auto_1fr_auto_auto] lg:px-8">
           <Link href="/" aria-label="APIritivo home" className="order-1 flex min-h-11 items-center justify-center gap-2.5 sm:justify-start">
             <span className="sm:hidden">
               <BrandMark />
@@ -173,13 +173,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 Loading view…
               </span>
             )}
-            <NavLink href="/docs">Docs</NavLink>
           </nav>
-          <div className="order-2 justify-self-center lg:order-3">
-            <WorkspaceSwitch />
+          <div className="order-2 flex items-center justify-self-center gap-1 sm:gap-3 lg:order-3">
+            <nav aria-label="Documentation">
+              <NavLink href="/docs">Docs</NavLink>
+            </nav>
+            <IdentityMenu />
           </div>
           <div className="order-3 justify-self-end lg:order-4">
-            <IdentityMenu />
+            <WorkspaceSwitch />
           </div>
         </div>
       </header>

@@ -88,27 +88,16 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
 
 /* ---------- Avatar ---------- */
 
-/** An app-specific profile mark, stable for the connected identity. */
-export function ProfileAvatar({ name, seed, size = 36 }: { name: string; seed?: string; size?: number }) {
-  const angle = hueFor(seed ?? name);
-
+/** Simple initials placeholder shared by the header and account menu. */
+export function ProfileAvatar({ name, size = 36 }: { name: string; size?: number }) {
   return (
-    <span className="profile-avatar" style={{ width: size, height: size }} role="img" aria-label={`${name} profile`}>
-      <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
-        <circle cx="32" cy="32" r="30" fill="var(--color-ink-950)" />
-        <g transform={`rotate(${angle} 32 32)`}>
-          <circle cx="32" cy="32" r="24" fill="var(--color-spritz-500)" />
-          <path d="M32 8a24 24 0 0 1 24 24C42 21 22 42 8 32A24 24 0 0 1 32 8Z" fill="var(--color-spritz-300)" />
-        </g>
-        <circle cx="32" cy="32" r="17" fill="var(--color-ink-900)" />
-        <text x="32" y="33" textAnchor="middle" dominantBaseline="middle" fill="var(--color-ink-100)" fontSize="19" fontWeight="500" fontFamily="var(--font-heading)">
-          {initials(name)}
-        </text>
-        <g className="profile-avatar-orbit">
-          <circle cx="32" cy="32" r="30" stroke="var(--color-spritz-400)" strokeWidth="1" strokeDasharray="132 57" transform="rotate(-70 32 32)" />
-          <circle cx="60.2" cy="21.7" r="2.5" fill="var(--color-spritz-300)" />
-        </g>
-      </svg>
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-ink-800 font-medium text-ink-200"
+      style={{ width: size, height: size, fontSize: Math.max(10, size * 0.34) }}
+      role="img"
+      aria-label={`${name} profile`}
+    >
+      {initials(name)}
     </span>
   );
 }

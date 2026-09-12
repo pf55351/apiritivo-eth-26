@@ -10,11 +10,36 @@
  * /passes ("Copy"). The app verifies on Arkiv that the pass exists, is for this
  * service, is not expired, and that keccak256(secret) matches its secret_hash.
  */
-const [serviceId, apiKey, operation = "getQuote", inputJson = '{"symbol":"BTC"}', appUrl = process.env.APP_URL ?? "http://localhost:3000"] = process.argv.slice(2);
+import { getServiceByEnsName } from "@apiritivo/arkiv";
+import { ENS_SERVICE_TEXT_KEY, normalizeEnsName, resolveServiceRecords } from "@apiritivo/ens";
+
+let [serviceId, apiKey, operation = "getQuote", inputJson = '{"symbol":"BTC"}', appUrl = process.env.APP_URL ?? "http://localhost:3000"] = process.argv.slice(2);
 
 if (!serviceId || !apiKey) {
-  console.error('usage: bun tools/call-service.ts <serviceId> "<passKey>.<secret>" [operation] [inputJson] [appUrl]');
+  console.error('usage: bun tools/call-service.ts <serviceId | name.eth> "<passKey>.<secret>" [operation] [inputJson] [appUrl]');
   process.exit(2);
+}
+
+// A `.eth` name works like a service id: ENS text record first, Arkiv `ens_name` attribute as fallback.
+const ensName = serviceId.endsWith(".eth") ? normalizeEnsName(serviceId) : null;
+if (serviceId.endsWith(".eth") && !ensName) {
+  console.error(`${serviceId} is not a valid ENS name.`);
+  process.exit(2);
+}
+if (ensName) {
+  const records = await resolveServiceRecords(ensName);
+  if (records.serviceId) {
+    console.log(`ENS ${ensName} → ${ENS_SERVICE_TEXT_KEY} = ${records.serviceId}${records.manifestRef ? ` · contenthash bzz://${records.manifestRef.slice(0, 12)}…` : ""}`);
+    serviceId = records.serviceId;
+  } else {
+    const svc = await getServiceByEnsName(ensName);
+    if (!svc) {
+      console.error(`${ensName} has no ${ENS_SERVICE_TEXT_KEY} record and no Arkiv service links it.`);
+      process.exit(2);
+    }
+    console.log(`ENS ${ensName} → Arkiv ens_name → ${svc.serviceId} (text record not set yet)`);
+    serviceId = svc.serviceId;
+  }
 }
 if (!/^0x[0-9a-fA-F]{64}\.0x[0-9a-fA-F]{64}$/.test(apiKey)) {
   console.error("API key must look like <passKey>.<secret> (two 0x + 64 hex values joined by a dot).");
@@ -52,5 +77,3 @@ if (json.verification)
 if (json.error) console.log(`error: ${json.error}`);
 console.log(JSON.stringify(json.result ?? json, null, 2));
 process.exit(res.ok ? 0 : 1);
-
-export {};

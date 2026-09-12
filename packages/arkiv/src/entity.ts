@@ -31,6 +31,8 @@ export const ATTR = {
   priceUsdc: "price_usdc",
   accessSeconds: "access_seconds",
   payoutAddress: "payout_address",
+  /** ENS name linked to the service (verified against payout_address at publish). */
+  ensName: "ens_name",
   // access passes + sales
   buyerId: "buyer_id",
   buyerAddress: "buyer_address",
@@ -113,6 +115,7 @@ export function parseServiceEntity(entity: RawServiceEntity): ArkivService | nul
     priceUsdc: attrString(entity, ATTR.priceUsdc),
     accessSeconds: attrNumber(entity, ATTR.accessSeconds),
     payoutAddress: attrString(entity, ATTR.payoutAddress),
+    ensName: attrString(entity, ATTR.ensName) || undefined,
     name: typeof p.name === "string" ? p.name : undefined,
     description: typeof p.description === "string" ? p.description : "",
     entityKey: entity.key,

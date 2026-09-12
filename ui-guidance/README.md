@@ -46,10 +46,9 @@ These writing rules apply to product UI, including page titles. Technical docume
 | Layout | Flat · spacious · no panel inside panel |
 | Interaction | Visible focus · reduced motion · mobile targets |
 
-The account control uses a circular, identity-specific monogram with a spritz
-accent and an orbital ring. Reuse `ProfileAvatar` in the header and account menu;
-the connected Swarm identity is unchanged. Keep ring motion brief and respect
-reduced motion.
+The account control uses a plain neutral circle with the user's initials.
+Reuse `ProfileAvatar` in the header and account menu. Keep it free of decorative
+rings and animation.
 
 Form fields and code editors may have functional boundaries. Remove extra decorative containers around them.
 
@@ -58,6 +57,7 @@ Form fields and code editors may have functional boundaries. Remove extra decora
 * Client: Marketplace, My passes.
 * Provider: My APIs, Publish.
 * Docs and service details: shared. Service actions follow the active view; switching keeps the current API open.
+* Order the right-side controls: Docs, account profile, workspace switch.
 * Header switch: compact toggle with an orange thumb and an animated role label beside it. Keep keyboard focus and reduced motion support.
 * Navbar: transparent with backdrop blur. Active and hovered links use a thin white underline, never a filled rectangle. Respect reduced transparency preferences.
 * Hide the other view's navigation and actions. Direct links require an explicit switch.
@@ -84,6 +84,8 @@ All UI guidance lives here. Other repo files link here. Keep runtime and data ru
 
 Taste settings: `DESIGN_VARIANCE=6`, `MOTION_INTENSITY=3`, `VISUAL_DENSITY=3`.
 Preserve the existing brand and dark theme. Keep interactions quiet. Use one purposeful hero image and the real API example component; avoid decorative filler.
+Hero artwork uses fine orange data strands as an oversized background beneath the content. Keep the strongest orange on the right; a soft canvas veil protects copy and actions, and the edges dissolve under the next section. Clip only the decorative layer to prevent horizontal overflow. A short entrance and a scroll exit affect only the artwork. Respect reduced motion and leave a static fallback for browsers without scroll timelines.
+Preserve the artwork's intrinsic aspect ratio with auto height. Match image sizing hints to its full rendered width, including the minimum needed to fill the backdrop. Use the cleaned `api-flow-hd.png` asset at quality 100; do not add grain or sharpen filters. The 3072 × 2048 delivery asset is resized from a 1536 × 1024 ImageGen cleanup, not a native 3K render.
 Taste covers marketing surfaces. Use the project skills for dashboards, forms, and reference tables.
 For each route: context → essential information → consolidate → source review → next route. Follow the user's testing permissions.
 

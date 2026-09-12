@@ -8,7 +8,7 @@ Next.js 15 App Router + Tailwind v4. All vendor calls go through the packages; c
 /services/[serviceId]     Arkiv entity + Swarm manifest, buy access, bot console, proofs, on-chain panel
 /passes                   client's live access passes with countdown and Data Explorer links
 /provider                 dashboard: services, live sales feed (Fuji), earnings, Swarm wallet, on-chain panel
-/provider/new             publish flow: form → manifest → Swarm → Arkiv (payout = Swarm wallet, fixed; no endpoint field yet)
+/provider/new             publish flow: form → manifest → Swarm → Arkiv (payout = Swarm wallet, fixed; optional ENS name, verified server-side)
 /design-system            reusable UI reference: tokens, controls, API panels and states
 /api/services             POST publish (server Arkiv writer), GET writer status (balance, explorer links)
 /api/access-passes        POST verify payment on Fuji → mint access_pass (+ secret hash) and sale on Arkiv
@@ -21,6 +21,7 @@ Next.js 15 App Router + Tailwind v4. All vendor calls go through the packages; c
 - `lib/session.tsx` — Swarm ID connection + workspace preference (localStorage per identity, separate guest preference, never access control).
 - `lib/swarm-wallet.tsx` — EVM wallet derived from the identity (`deriveWalletSecret` → `swarmSigner`); the secret stays in memory for the session.
 - `lib/use-services.ts`, `lib/use-access.ts` — small query hooks over the Arkiv adapter (services, passes, sales, block timing).
+- `lib/use-ens.ts` — resolves and verifies a service's linked ENS name (badge in `service-card`, panel `components/ens-panel.tsx` on the service page).
 - `lib/use-live-sales.ts` — subscribes to Fuji (`watchSales`) for a provider address; fires `onSale` so Arkiv lists refresh.
 - `lib/server/access.ts` — `requireAccessPass` shared by the bot and the gateway, plus the demo bot brain (CoinGecko prices for `getQuote`).
 - `lib/env.ts` — public runtime config. Copy `../../.env.example` to `.env.local`; a `NEXT_PUBLIC_*` change needs a `bun dev` restart.

@@ -128,9 +128,9 @@ export default function DesignSystemPage() {
               API and identity
             </h2>
             <section className="mt-6 flex flex-wrap items-center gap-5" aria-label="Profile avatar examples">
-              <ProfileAvatar name="APIritivo-swarm" seed="profile-preview-one" size={34} />
-              <ProfileAvatar name="Example provider" seed="profile-preview-two" size={48} />
-              <ProfileAvatar name="Example client" seed="profile-preview-three" size={64} />
+              <ProfileAvatar name="APIritivo-swarm" size={34} />
+              <ProfileAvatar name="Example provider" size={48} />
+              <ProfileAvatar name="Example client" size={64} />
             </section>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Avatar name="Example provider" seed="ui-library" />

@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   // Monorepo: trace files from the repo root so Vercel bundles the workspace packages.
   outputFileTracingRoot: path.join(__dirname, "../../"),
   // Workspace packages export raw TypeScript; let Next compile them.
-  transpilePackages: ["@apiritivo/shared", "@apiritivo/swarm", "@apiritivo/arkiv", "@apiritivo/payments"],
+  transpilePackages: ["@apiritivo/shared", "@apiritivo/swarm", "@apiritivo/arkiv", "@apiritivo/payments", "@apiritivo/ens"],
 };
 
 export default nextConfig;
