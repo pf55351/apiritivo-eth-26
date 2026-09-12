@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/session";
 import { useProviderServices } from "@/lib/use-services";
+import { useProviderSales } from "@/lib/use-access";
+import { formatPriceUsdc, sumUsdc } from "@apiperitivo/shared";
+import { explorerTxUrl } from "@apiperitivo/payments";
+import { SwarmWalletPanel } from "@/components/swarm-wallet-panel";
+import { ContractPanel } from "@/components/contract-panel";
+import { useSwarmWallet } from "@/lib/swarm-wallet";
 import { AuthGate } from "@/components/auth-gate";
 import { ServiceCard } from "@/components/service-card";
 import { Avatar, Badge, Button, EmptyState, ErrorNotice, SectionTitle, ServiceCardSkeleton } from "@/components/ui";
@@ -44,10 +50,16 @@ function Dashboard() {
   const session = useSession();
   const identity = session.identity!;
   const { data, loading, error, reload } = useProviderServices(identity.id);
+  const sales = useProviderSales(identity.id);
   const writer = useWriterStatus();
 
   const services = data ?? [];
   const available = services.filter((s) => s.available).length;
+  const salesList = sales.data ?? [];
+  const revenue = sumUsdc(salesList.map((x) => x.paidUsdc));
+  const earnedByService = new Map<string, string>();
+  for (const svc of services) earnedByService.set(svc.serviceId, sumUsdc(salesList.filter((x) => x.serviceId === svc.serviceId).map((x) => x.paidUsdc)));
+  const swarmWallet = useSwarmWallet();
 
   return (
     <div className="space-y-8">
@@ -124,10 +136,19 @@ function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Published" value={loading ? "…" : String(services.length)} hint="Service entities on Arkiv" />
         <StatCard label="Available" value={loading ? "…" : String(available)} hint="Visible in the marketplace" />
-        <StatCard label="Earnings" value="0 USDC" hint="Payments arrive with access passes" badge="Phase 2" />
+        <StatCard
+          label="Earnings"
+          value={sales.loading ? "…" : formatPriceUsdc(revenue)}
+          hint={`${salesList.length} ${salesList.length === 1 ? "sale" : "sales"} · USDC on Avalanche Fuji, paid to your payout wallet`}
+        />
       </div>
 
       {error ? <ErrorNotice message={error.message} detail={error.detail} onRetry={reload} /> : null}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SwarmWalletPanel />
+        <ContractPanel provider={swarmWallet.address ?? undefined} title="Your on-chain revenue" />
+      </div>
 
       {loading ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -147,12 +168,37 @@ function Dashboard() {
           {services.map((s) => (
             <div key={s.serviceId} className="relative">
               <ServiceCard service={s} showAvailability />
-              <div className="pointer-events-none absolute right-5 top-14 font-mono text-[10px] text-ink-400">earned · —</div>
+              <div className="pointer-events-none absolute right-5 top-14 font-mono text-[10px] text-olive-400">
+                earned · {formatPriceUsdc(earnedByService.get(s.serviceId) ?? "0")}
+              </div>
             </div>
           ))}
         </div>
       )}
+      <SalesList providerId={identity.id} />
     </div>
+  );
+}
+
+function SalesList({ providerId }: { providerId: string }) {
+  const sales = useProviderSales(providerId);
+  const list = sales.data ?? [];
+  if (sales.loading || list.length === 0) return null;
+  return (
+    <section className="space-y-3">
+      <h2 className="text-lg font-semibold">Recent sales</h2>
+      <ul className="divide-y divide-white/10 rounded-2xl border border-white/15 bg-ink-900/40">
+        {list.slice(0, 20).map((x) => (
+          <li key={x.saleKey} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+            <span className="font-mono text-xs text-ink-300">{x.serviceId}</span>
+            <span className="font-semibold text-olive-400">+{formatPriceUsdc(x.paidUsdc)}</span>
+            <a href={explorerTxUrl(x.txHash)} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-ink-400 hover:text-ink-100">
+              {x.txHash.slice(0, 10)}… ↗
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

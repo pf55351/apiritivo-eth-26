@@ -3,10 +3,14 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { BuyAccess } from "@/components/buy-access";
+import { BotConsole } from "@/components/bot-console";
+import { usePassesForService, remainingSeconds } from "@/lib/use-access";
 import type { ServiceManifest } from "@apiperitivo/shared";
-import { formatAccessDuration, formatPriceUsdc, manifestStats } from "@apiperitivo/shared";
+import { manifestStats } from "@apiperitivo/shared";
 import { arkivEntityUrl } from "@apiperitivo/arkiv";
 import { ProofPanel, type ProofLink } from "@/components/proofs";
+import { ContractPanel } from "@/components/contract-panel";
 import { downloadServiceManifest, swarmReferenceUrl } from "@apiperitivo/swarm";
 import { useService } from "@/lib/use-services";
 import { useSession } from "@/lib/session";
@@ -50,6 +54,12 @@ export default function ServiceDetailPage() {
   const { data: service, loading, error, reload } = useService(serviceId);
   const sessionReady = session.status !== "initializing";
   const manifestState = useManifest(service?.manifestRef ?? null, sessionReady);
+  const passesState = usePassesForService(service?.serviceId ?? null, session.identity?.id ?? null);
+  const passes = passesState.data ?? [];
+  const activePass = passes.find((p) => {
+    const left = remainingSeconds(p, passesState.timing);
+    return left === null || left > 0;
+  });
 
   if (loading) {
     return (
@@ -147,22 +157,7 @@ export default function ServiceDetailPage() {
         </section>
 
         <aside className="min-w-0 space-y-6">
-          <section className="card rounded-3xl p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spritz-300">Access</p>
-            <div className="mt-3 flex items-baseline justify-between gap-3">
-              <span className="text-3xl font-semibold tracking-tight text-ink-100">{service.priceUsdc ? formatPriceUsdc(service.priceUsdc) : "Free"}</span>
-              <span className="text-sm text-ink-300">{service.accessSeconds ? `per ${formatAccessDuration(service.accessSeconds)}` : "open access"}</span>
-            </div>
-            <button
-              type="button"
-              disabled
-              title="Payments and access passes arrive in Phase 2"
-              className="mt-4 inline-flex h-11 w-full cursor-not-allowed items-center justify-center rounded-full border border-spritz-500/40 bg-spritz-500/15 text-sm font-semibold text-spritz-300 opacity-80"
-            >
-              Buy access · Phase 2
-            </button>
-            <p className="mt-2 text-[11px] text-ink-400">USDC payment creates an Arkiv access pass with this duration. Not yet available.</p>
-          </section>
+          <BuyAccess service={service} passes={passes} timing={passesState.timing} onIssued={() => passesState.reload()} />
           <ProofPanel
             proofs={[
               ...(service.entityKey
@@ -194,9 +189,14 @@ export default function ServiceDetailPage() {
               </div>
             </div>
           </section>
+          <ContractPanel serviceId={service.serviceId} />
           <JsonInspector value={service} title="Raw service (Arkiv)" />
         </aside>
       </div>
+
+      {activePass && manifestState.manifest ? (
+        <BotConsole serviceId={service.serviceId} manifest={manifestState.manifest} passKey={activePass.passKey} />
+      ) : null}
     </div>
   );
 }

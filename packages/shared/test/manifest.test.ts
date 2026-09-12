@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildManifest, formatAccessDuration, formatPriceUsdc, generateServiceId, manifestFromBytes, manifestToBytes, priceUsdcSchema, slugify, validateManifest } from "../src";
+import { buildManifest, formatRemaining, sumUsdc, formatAccessDuration, formatPriceUsdc, generateServiceId, manifestFromBytes, manifestToBytes, priceUsdcSchema, slugify, validateManifest } from "../src";
 
 describe("manifest", () => {
   test("builds the reduced manifest from form drafts", () => {
@@ -53,5 +53,23 @@ describe("commercial terms", () => {
     expect(priceUsdcSchema.safeParse("0.50").success).toBe(true);
     expect(priceUsdcSchema.safeParse("1.1234567").success).toBe(false);
     expect(priceUsdcSchema.safeParse("-1").success).toBe(false);
+  });
+});
+
+describe("access helpers", () => {
+  test("sums USDC exactly", () => {
+    expect(sumUsdc(["0.50", "0.25", "1"])).toBe("1.75");
+    expect(sumUsdc([])).toBe("0");
+    expect(sumUsdc(["0.000001", "0.000001"])).toBe("0.000002");
+  });
+  test("formats remaining time", () => {
+    expect(formatRemaining(0)).toBe("expired");
+    expect(formatRemaining(90000)).toBe("1d 1h");
+    expect(formatRemaining(3660)).toBe("1h 1m");
+  });
+  test("manifest carries an optional endpoint", () => {
+    const m = buildManifest([{ id: "1", name: "ping", inputs: [] }], "https://bot.example/api");
+    expect(m.endpoint).toBe("https://bot.example/api");
+    expect(buildManifest([{ id: "1", name: "ping", inputs: [] }]).endpoint).toBeUndefined();
   });
 });

@@ -8,8 +8,17 @@
  *    this route must never be exposed as a trustless publishing endpoint.
  */
 import { createPublicClient, createWalletClient, ExpirationTime, jsonToPayload } from "@arkiv-network/sdk";
-import { bool, dec, i32, str, u64 } from "@arkiv-network/sdk/attr";
-import { APP_ID, SERVICE_ENTITY_TYPE, type PublishServiceInput, type PublishServiceResult } from "@apiperitivo/shared";
+import { addr, bool, dec, i32, str, u64 } from "@arkiv-network/sdk/attr";
+import {
+  ACCESS_PASS_ENTITY_TYPE,
+  APP_ID,
+  SALE_ENTITY_TYPE,
+  SERVICE_ENTITY_TYPE,
+  type ArkivService,
+  type IssueAccessPassResult,
+  type PublishServiceInput,
+  type PublishServiceResult,
+} from "@apiperitivo/shared";
 import { formatEther, http, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { resolveChain } from "./config";
@@ -114,6 +123,8 @@ export async function publishService(input: PublishServiceInput): Promise<Publis
     // not in the Swarm manifest, because they are discovery metadata and may change.
     [ATTR.priceUsdc]: dec(input.priceUsdc),
     [ATTR.accessSeconds]: u64(input.accessSeconds),
+    // Where USDC payments go (Avalanche Fuji). Lives on Arkiv, not in the Swarm manifest.
+    [ATTR.payoutAddress]: addr(input.payoutAddress),
   };
 
   const { entityKey, txHash } = await client.createEntity({
@@ -125,4 +136,72 @@ export async function publishService(input: PublishServiceInput): Promise<Publis
   });
 
   return { entityKey, txHash, serviceId: input.serviceId };
+}
+
+function walletClient() {
+  const pk = writerPrivateKey();
+  if (!pk) throw new ArkivWriterNotConfiguredError();
+  return createWalletClient({ chain: resolveChain(), transport: http(writeRpcUrl()), account: privateKeyToAccount(pk) });
+}
+
+/**
+ * Issue an access pass after the USDC payment has been verified on-chain.
+ *
+ * Two entities are written:
+ *  1. `access_pass` — expires after `service.accessSeconds`. Its entity key is
+ *     the API key the buyer presents to the bot. Arkiv deletes it on expiry.
+ *  2. `sale` — permanent receipt (tx hash, amount) so provider revenue survives
+ *     the pass expiring.
+ */
+export async function issueAccessPass(params: {
+  service: ArkivService;
+  buyerId: string;
+  buyerAddress: string;
+  txHash: string;
+  paidUsdc: string;
+  chainId: number;
+}): Promise<IssueAccessPassResult> {
+  const { service } = params;
+  if (!service.accessSeconds) throw new Error("Service has no access duration.");
+  const client = walletClient();
+  const txHash = params.txHash.toLowerCase();
+
+  const common = {
+    [ATTR.app]: str(APP_ID),
+    [ATTR.serviceId]: str(service.serviceId),
+    [ATTR.providerId]: str(service.providerId),
+    [ATTR.buyerId]: str(params.buyerId),
+    [ATTR.buyerAddress]: addr(params.buyerAddress),
+    [ATTR.txHash]: str(txHash),
+    [ATTR.paidUsdc]: dec(params.paidUsdc),
+    [ATTR.chainId]: i32(params.chainId),
+  };
+
+  const pass = await client.createEntity({
+    payload: jsonToPayload({ serviceName: service.name, purchasedAt: new Date().toISOString() }),
+    contentType: "application/json",
+    attributes: { ...common, [ATTR.entityType]: str(ACCESS_PASS_ENTITY_TYPE) },
+    expires: ExpirationTime.fromSeconds(service.accessSeconds),
+  });
+
+  const sale = await client.createEntity({
+    payload: jsonToPayload({ serviceName: service.name, purchasedAt: new Date().toISOString() }),
+    contentType: "application/json",
+    attributes: { ...common, [ATTR.entityType]: str(SALE_ENTITY_TYPE), [ATTR.passKey]: str(pass.entityKey) },
+    expires: ExpirationTime.permanent(),
+  });
+
+  const timing = await createPublicClient({ chain: resolveChain(), transport: http(writeRpcUrl()) }).getBlockTiming();
+  const secondsLeft = Number(pass.expiresAt - BigInt(timing.currentBlock)) * Number(timing.blockDuration);
+  const expiresAt = new Date((Number(timing.currentBlockTime) + secondsLeft) * 1000).toISOString();
+
+  return {
+    passKey: pass.entityKey,
+    saleKey: sale.entityKey,
+    txHash,
+    paidUsdc: params.paidUsdc,
+    expiresAtBlock: pass.expiresAt.toString(),
+    expiresAt,
+    arkivTxHashes: [pass.txHash, sale.txHash],
+  };
 }

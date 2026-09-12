@@ -68,6 +68,8 @@ export function formatPriceUsdc(price: string): string {
   return `${shown} USDC`;
 }
 
+export const evmAddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Invalid EVM address (0x + 40 hex)");
+
 /** Swarm reference: 64 hex chars (plain) or 128 (encrypted). */
 export const swarmReferenceSchema = z
   .string()
@@ -91,6 +93,8 @@ export const arkivServiceSchema = z.object({
   priceUsdc: z.string().optional(),
   /** How long one purchased access lasts, in seconds. */
   accessSeconds: z.number().int().positive().optional(),
+  /** EVM address that receives USDC payments (Avalanche Fuji). */
+  payoutAddress: z.string().optional(),
   /** Arkiv entity key (proof link). */
   entityKey: z.string().optional(),
   /** Arkiv entity owner (the app writer address). */
@@ -112,6 +116,7 @@ export const publishServiceInputSchema = z.object({
   description: z.string().trim().min(8, "Min 8 characters").max(400, "Max 400 characters"),
   priceUsdc: priceUsdcSchema,
   accessSeconds: z.number().int().positive("Pick an access duration").max(10 * 365 * 86400),
+  payoutAddress: evmAddressSchema,
 });
 
 export type PublishServiceInput = z.infer<typeof publishServiceInputSchema>;

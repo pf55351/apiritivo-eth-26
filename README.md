@@ -2,7 +2,28 @@
 
 APIperitivo is a machine-readable service marketplace.
 
-> **Status:** Phase 1 implemented. Swarm ID login, role selection, Arkiv-backed marketplace, Swarm manifest upload/download and server-side Arkiv publishing are wired to the real SDKs. No payments, no wallet, no contracts.
+> **Status:** Phase 1 done, Phase 2 (paid access) implemented: clients pay USDC on Avalanche Fuji straight to the provider's wallet, the server verifies the transfer on-chain and mints an expiring **access pass** entity on Arkiv. A demo bot answers only to a valid, non-expired pass. No smart contract yet.
+
+## Phase 2 — paid access (implemented)
+
+```text
+Client (Swarm ID) → picks service → Connect wallet (MetaMask/Core) → USDC transfer to provider payout_address on Fuji
+   → POST /api/access-passes { serviceId, buyerId, buyerAddress, txHash }
+   → server verifies receipt + USDC Transfer log (to = payout, amount ≥ price, tx unused)
+   → Arkiv: create `access_pass` (expires after access_seconds) + permanent `sale` receipt
+   → pass entity key = the client's API key
+Bot: POST /api/bot/<serviceId>  Authorization: Bearer <passKey>
+   → getEntity(passKey) on Arkiv: must exist (Arkiv deletes expired entities), entity_type=access_pass,
+     service_id matches, expiry block in the future → answers (getQuote via CoinGecko, or echo)
+```
+
+- **Payout wallet** is an Arkiv attribute of the service (`payout_address`), set at publish time. Default is the Swarm ID identity address (it can receive USDC, but only Swarm ID holds its key), providers can enter any EVM address.
+- **Revenue** = sum of `sale` receipts for the provider (permanent entities), so it survives passes expiring. Shown on the provider dashboard with links to Snowtrace.
+- **Client pages:** service detail has "Buy access" + a "Try the bot" console once unlocked; `/passes` lists live passes with time left.
+- Payment rail: Circle testnet USDC `0x5425890298aed601595a70AB815c96711a31Bc65` on Fuji (chain id 43113), 6 decimals. Test funds: [USDC faucet](https://faucet.circle.com/), [AVAX faucet](https://core.app/tools/testnet-faucet/).
+- **Swarm wallet.** Every identity gets an EVM account derived with Swarm ID `deriveAppSecret` (`packages/swarm` → `deriveWalletSecret`). Same identity, same address, no extension. Clients pay from it by default (MetaMask is a fallback), providers receive on it, and the provider dashboard lets them **reveal/export the private key**, withdraw USDC anywhere and claim contract earnings. Test funds: AVAX for gas + USDC from the faucets linked in the UI.
+- **Contract (Foundry, not deployed yet):** `contracts/src/APIperitivoPayments.sol`, a pull-payment ledger. `buy(provider, serviceKey, amount, accessSeconds)` pulls USDC and credits the provider (optional platform fee ≤ 10%), `claim(to, amount)` withdraws, `totalEarned` / `serviceRevenue` / `getPurchases` expose revenue on-chain. 28 Foundry tests (`cd contracts && forge test`) cover accounting, fees, pagination, false-returning and no-return tokens and reentrancy. Deploy with `contracts/script/Deploy.s.sol`, then set `NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS`: the app switches to contract mode (approve + buy, server verifies the `Purchased` event) and the "On-chain payments" panels on the service page and provider dashboard show the contract address, counters and latest purchases with Snowtrace links.
+- **Access layer for providers.** `verifyAccessPass(bearer, serviceId)` in `packages/arkiv` is the whole check. Two ways to use it: run your own bot and call it, or declare an `endpoint` in your manifest and let `POST /api/gateway/<serviceId>` verify the pass and forward the call with `x-apiperitivo-*` headers. The demo bot at `/api/bot/<serviceId>` uses the same check.
 
 ## Quick start
 
@@ -56,11 +77,13 @@ Swarm ID identities upload to the Swarm network through `api.gateway.ethswarm.or
 ## Architecture
 
 ```text
-apps/web            Next.js 15 App Router + Tailwind v4 (client UI, /api/services route)
+apps/web            Next.js 15 App Router + Tailwind v4 (client UI, /api/services, /api/access-passes, /api/bot/[serviceId])
 packages/shared     Zod schemas: ServiceManifest, ArkivService, PublishServiceInput; manifest builder; role helpers; serviceId generator
 packages/swarm      Swarm ID adapter (browser): initSwarm, getConnectionInfo, connect, disconnect, uploadServiceManifest, downloadServiceManifest
-packages/arkiv      Arkiv read adapter (browser/server): listServices, getService, listServicesByProvider
-                    Arkiv server writer (`@apiperitivo/arkiv/server`): publishService, isWriterConfigured
+packages/arkiv      Arkiv read adapter (browser/server): listServices, getService, listServicesByProvider,
+                    listAccessPassesByBuyer, getAccessPass, listSalesByProvider, getBlockTiming
+                    Arkiv server writer (`@apiperitivo/arkiv/server`): publishService, issueAccessPass, getWriterStatus
+packages/payments   USDC on Avalanche Fuji: browser (connect wallet, payUsdc, waitForPayment), server (verifyUsdcPayment)
 ```
 
 Vendor SDK calls never appear in React components; components only see `ArkivService`, `ServiceManifest` and `SwarmConnectionInfo`.

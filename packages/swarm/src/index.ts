@@ -267,6 +267,22 @@ export async function downloadServiceManifest(reference: string): Promise<Servic
   return validation.manifest;
 }
 
+/**
+ * Derive a 32-byte secret bound to this identity + app origin, via the SDK's
+ * `deriveAppSecret`. Used as the private key of the provider/client "Swarm
+ * wallet": same identity → same secret → same EVM address on every device.
+ * The secret never leaves the browser.
+ */
+export async function deriveWalletSecret(label = "apiperitivo:wallet:v1"): Promise<Uint8Array> {
+  const c = requireClient();
+  if (!getConnectionInfo().identity) throw new SwarmError("login-failed", "Sign in with Swarm ID first.");
+  const secret = await c.deriveAppSecret(label);
+  if (!(secret instanceof Uint8Array) || secret.byteLength !== 32) {
+    throw new SwarmError("login-failed", "Swarm ID returned an unexpected secret length.");
+  }
+  return secret;
+}
+
 /** Tear down the iframe (used on hot reload / unmount). */
 export function destroySwarm(): void {
   try {

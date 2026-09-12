@@ -1,4 +1,15 @@
-import { APP_ID, SERVICE_ENTITY_TYPE, arkivServiceSchema, type ArkivService } from "@apiperitivo/shared";
+import {
+  ACCESS_PASS_ENTITY_TYPE,
+  APP_ID,
+  SALE_ENTITY_TYPE,
+  SERVICE_ENTITY_TYPE,
+  accessPassSchema,
+  arkivServiceSchema,
+  saleSchema,
+  type AccessPass,
+  type ArkivService,
+  type Sale,
+} from "@apiperitivo/shared";
 
 /**
  * On-chain attribute names. snake_case because the Arkiv engine only accepts
@@ -16,6 +27,14 @@ export const ATTR = {
   manifestRef: "manifest_ref",
   priceUsdc: "price_usdc",
   accessSeconds: "access_seconds",
+  payoutAddress: "payout_address",
+  // access passes + sales
+  buyerId: "buyer_id",
+  buyerAddress: "buyer_address",
+  txHash: "tx_hash",
+  paidUsdc: "paid_usdc",
+  chainId: "chain_id",
+  passKey: "pass_key",
 } as const;
 
 /**
@@ -26,6 +45,7 @@ export type RawServiceEntity = {
   key?: `0x${string}` | undefined;
   owner?: `0x${string}` | undefined;
   createdAt?: bigint | undefined;
+  expiresAt?: bigint | undefined;
   attributes?: Readonly<Record<string, { readonly type: string; readonly value: unknown }>> | undefined;
   toJson?: () => unknown;
 };
@@ -74,6 +94,7 @@ export function parseServiceEntity(entity: RawServiceEntity): ArkivService | nul
     manifestRef: attrString(entity, ATTR.manifestRef),
     priceUsdc: attrString(entity, ATTR.priceUsdc),
     accessSeconds: attrNumber(entity, ATTR.accessSeconds),
+    payoutAddress: attrString(entity, ATTR.payoutAddress),
     name: typeof p.name === "string" ? p.name : undefined,
     description: typeof p.description === "string" ? p.description : "",
     entityKey: entity.key,
@@ -82,5 +103,47 @@ export function parseServiceEntity(entity: RawServiceEntity): ArkivService | nul
   };
 
   const parsed = arkivServiceSchema.safeParse(candidate);
+  return parsed.success ? parsed.data : null;
+}
+
+export function parseAccessPassEntity(entity: RawServiceEntity): AccessPass | null {
+  if (attrString(entity, ATTR.app) !== APP_ID) return null;
+  if (attrString(entity, ATTR.entityType) !== ACCESS_PASS_ENTITY_TYPE) return null;
+  let payload: Record<string, unknown> = {};
+  try {
+    const p = entity.toJson ? entity.toJson() : {};
+    if (p && typeof p === "object") payload = p as Record<string, unknown>;
+  } catch {
+    /* empty payload */
+  }
+  const parsed = accessPassSchema.safeParse({
+    passKey: entity.key,
+    serviceId: attrString(entity, ATTR.serviceId),
+    buyerId: attrString(entity, ATTR.buyerId),
+    providerId: attrString(entity, ATTR.providerId),
+    txHash: attrString(entity, ATTR.txHash),
+    paidUsdc: attrString(entity, ATTR.paidUsdc),
+    chainId: attrNumber(entity, ATTR.chainId),
+    expiresAtBlock: entity.expiresAt !== undefined ? entity.expiresAt.toString() : undefined,
+    createdAtBlock: entity.createdAt !== undefined ? entity.createdAt.toString() : undefined,
+    serviceName: typeof payload.serviceName === "string" ? payload.serviceName : undefined,
+  });
+  return parsed.success ? parsed.data : null;
+}
+
+export function parseSaleEntity(entity: RawServiceEntity): Sale | null {
+  if (attrString(entity, ATTR.app) !== APP_ID) return null;
+  if (attrString(entity, ATTR.entityType) !== SALE_ENTITY_TYPE) return null;
+  const parsed = saleSchema.safeParse({
+    saleKey: entity.key,
+    serviceId: attrString(entity, ATTR.serviceId),
+    providerId: attrString(entity, ATTR.providerId),
+    buyerId: attrString(entity, ATTR.buyerId),
+    txHash: attrString(entity, ATTR.txHash),
+    paidUsdc: attrString(entity, ATTR.paidUsdc),
+    chainId: attrNumber(entity, ATTR.chainId),
+    passKey: attrString(entity, ATTR.passKey),
+    createdAtBlock: entity.createdAt !== undefined ? entity.createdAt.toString() : undefined,
+  });
   return parsed.success ? parsed.data : null;
 }

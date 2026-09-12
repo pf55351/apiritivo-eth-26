@@ -62,8 +62,8 @@ function IdentityMenu() {
         <span className="text-xs text-ink-400">▾</span>
       </button>
       {open ? (
-        <div className="glass absolute right-0 z-30 mt-2 w-72 rounded-2xl p-2 shadow-2xl">
-          <div className="flex items-center gap-3 rounded-xl px-3 py-2">
+        <div className="absolute right-0 z-50 mt-2 w-72 rounded-2xl border border-white/15 bg-ink-850 p-2 shadow-[0_24px_60px_-12px_rgb(0_0_0_/0.85)] ring-1 ring-black/60">
+          <div className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2">
             <Avatar name={identity.name} seed={identity.id} src={identity.avatarUrl} size={40} />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{identity.name}</p>
@@ -123,12 +123,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
             <nav className="hidden items-center gap-1 sm:flex">
               <NavLink href="/marketplace">Marketplace</NavLink>
+              <NavLink href="/passes">My passes</NavLink>
               <NavLink href="/provider">Provider</NavLink>
             </nav>
           </div>
           <div className="flex items-center gap-2">
             <nav className="hidden items-center gap-1 max-sm:flex">
               <NavLink href="/marketplace">Market</NavLink>
+              <NavLink href="/passes">Passes</NavLink>
               <NavLink href="/provider">Provider</NavLink>
             </nav>
             <IdentityMenu />

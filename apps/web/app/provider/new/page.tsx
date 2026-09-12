@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ACCESS_DURATIONS,
   SERVICE_CATEGORIES,
@@ -21,6 +21,8 @@ import {
 } from "@apiperitivo/shared";
 import { swarmReferenceUrl, uploadServiceManifest } from "@apiperitivo/swarm";
 import { arkivEntityUrl, arkivTxUrl } from "@apiperitivo/arkiv";
+import { PAYMENT_CHAIN_NAME, explorerAddressUrl } from "@apiperitivo/payments";
+import { useSwarmWallet } from "@/lib/swarm-wallet";
 import { ProofPanel } from "@/components/proofs";
 import { useSession } from "@/lib/session";
 import { toFriendlyError, type FriendlyError } from "@/lib/errors";
@@ -79,11 +81,18 @@ function PublishForm() {
   const [customCategory, setCustomCategory] = useState("");
   const [priceUsdc, setPriceUsdc] = useState("0.50");
   const [accessSeconds, setAccessSeconds] = useState<number>(7 * 86400);
+  const swarmWallet = useSwarmWallet();
+  const [payoutAddress, setPayoutAddress] = useState<string>("");
+  const [payoutTouched, setPayoutTouched] = useState(false);
+  useEffect(() => {
+    if (!payoutTouched && swarmWallet.address) setPayoutAddress(swarmWallet.address);
+  }, [swarmWallet.address, payoutTouched]);
+  const [endpoint, setEndpoint] = useState("");
   const [operations, setOperations] = useState<OperationDraft[]>([emptyOperation("getQuote")]);
   const [progress, setProgress] = useState<Progress>({ step: "idle" });
 
   const effectiveCategory = category === "custom" ? slugify(customCategory) : category;
-  const manifest = useMemo(() => buildManifest(operations), [operations]);
+  const manifest = useMemo(() => buildManifest(operations, endpoint), [operations, endpoint]);
   const manifestValidation = useMemo(() => validateManifest(manifest), [manifest]);
   const stats = manifestStats(manifest);
 
@@ -98,6 +107,7 @@ function PublishForm() {
       description,
       priceUsdc,
       accessSeconds,
+      payoutAddress: payoutAddress.trim(),
     });
     const issues: string[] = [];
     if (!probe.success) {
@@ -108,11 +118,12 @@ function PublishForm() {
         else if (key === "category") issues.push(`Category: ${i.message}`);
         else if (key === "priceUsdc") issues.push(`Price: ${i.message}`);
         else if (key === "accessSeconds") issues.push(`Access duration: ${i.message}`);
+        else if (key === "payoutAddress") issues.push(`Payout wallet: ${i.message}`);
       }
     }
     if (!manifestValidation.ok) issues.push(...manifestValidation.errors);
     return issues;
-  }, [name, description, effectiveCategory, identity.id, identity.name, manifestValidation, priceUsdc, accessSeconds]);
+  }, [name, description, effectiveCategory, identity.id, identity.name, manifestValidation, priceUsdc, accessSeconds, payoutAddress]);
 
   const canPublish = formIssues.length === 0 && session.canUpload && progress.step === "idle";
   const busy = progress.step === "uploading" || progress.step === "publishing";
@@ -149,6 +160,7 @@ function PublishForm() {
       description: description.trim(),
       priceUsdc: priceUsdc.trim(),
       accessSeconds,
+      payoutAddress: payoutAddress.trim(),
     };
     try {
       const res = await fetch("/api/services", {
@@ -315,6 +327,27 @@ function PublishForm() {
               </select>
             </Field>
           </div>
+          <Field label="Payout wallet" hint={`USDC on ${PAYMENT_CHAIN_NAME}`}>
+            <input
+              className={`${fieldCls} font-mono`}
+              placeholder="0x…"
+              value={payoutAddress}
+              onChange={(e) => {
+                setPayoutTouched(true);
+                setPayoutAddress(e.target.value);
+              }}
+              spellCheck={false}
+            />
+            <p className="mt-1.5 text-[11px] text-ink-400">
+              Default is your Swarm wallet, derived from your Swarm ID
+              {swarmWallet.address ? (
+                <>
+                  {" "}(<a href={explorerAddressUrl(swarmWallet.address)} target="_blank" rel="noreferrer" className="hover:text-ink-200">Snowtrace ↗</a>)
+                </>
+              ) : null}
+              . You can withdraw from it or export its key in the provider dashboard. Or paste any other EVM address.
+            </p>
+          </Field>
         </section>
 
         <section className="card space-y-5 rounded-3xl p-6">
@@ -323,6 +356,15 @@ function PublishForm() {
             <h2 className="mt-1 text-xl font-semibold">How does a machine call it?</h2>
             <p className="mt-1 text-sm text-ink-300">Each operation has a name and typed input fields. This becomes the Swarm manifest.</p>
           </div>
+          <Field label="Endpoint URL" hint="optional · stored in the manifest">
+            <input
+              className={`${fieldCls} font-mono`}
+              placeholder="https://your-bot.example/api  (leave empty to use the APIperitivo demo bot)"
+              value={endpoint}
+              onChange={(e) => setEndpoint(e.target.value)}
+              spellCheck={false}
+            />
+          </Field>
           <OperationsBuilder operations={operations} onChange={setOperations} />
         </section>
 

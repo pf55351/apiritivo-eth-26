@@ -22,6 +22,8 @@ export const operationSchema = z.object({
 
 export const serviceManifestSchema = z.object({
   v: z.literal(1),
+  /** Optional HTTP endpoint a machine calls with `Authorization: Bearer <accessPassKey>`. */
+  endpoint: z.string().url("Endpoint must be a valid URL").optional(),
   operations: z.record(identifier, operationSchema).refine((ops) => Object.keys(ops).length > 0, {
     message: "At least one operation is required",
   }),
@@ -38,7 +40,7 @@ export type OperationDraft = { id: string; name: string; inputs: OperationInputD
  * Build a manifest from the friendly form drafts. Does not validate; call
  * `validateManifest` afterwards to get user-facing errors.
  */
-export function buildManifest(operations: OperationDraft[]): ServiceManifest {
+export function buildManifest(operations: OperationDraft[], endpoint?: string): ServiceManifest {
   const ops: ServiceManifest["operations"] = {};
   for (const op of operations) {
     const name = op.name.trim();
@@ -51,7 +53,8 @@ export function buildManifest(operations: OperationDraft[]): ServiceManifest {
     }
     ops[name] = { input };
   }
-  return { v: 1, operations: ops };
+  const trimmed = endpoint?.trim();
+  return trimmed ? { v: 1, endpoint: trimmed, operations: ops } : { v: 1, operations: ops };
 }
 
 export type ManifestValidation =
