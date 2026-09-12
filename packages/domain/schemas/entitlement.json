@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "app": {
+      "type": "string",
+      "const": "apiperitivo"
+    },
+    "type": {
+      "type": "string",
+      "const": "entitlement"
+    },
+    "purchaseId": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "purchaseIntentId": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "subject": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "planId": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "serviceId": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "manifestRef": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "payer": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$"
+    },
+    "paymentTx": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "paymentBlock": {
+      "type": "string",
+      "pattern": "^\\d+$"
+    },
+    "market": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$"
+    },
+    "chainId": {
+      "type": "number",
+      "const": 43113
+    },
+    "durationSeconds": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 2592000,
+      "multipleOf": 2
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "app",
+    "type",
+    "purchaseId",
+    "purchaseIntentId",
+    "subject",
+    "planId",
+    "serviceId",
+    "manifestRef",
+    "payer",
+    "paymentTx",
+    "paymentBlock",
+    "market",
+    "chainId",
+    "durationSeconds"
+  ],
+  "additionalProperties": false
+}

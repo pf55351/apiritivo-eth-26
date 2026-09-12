@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "app": "apiperitivo",
+  "serviceId": "0x439c02d40824f1cd26d60733ad137b894cebfe2f23c21f41e54ef8d77d31e70b",
+  "planId": "0x0108abc1467177eb5ef0244eeceebd2bdc005e71d188f488cf67ccd082228708",
+  "name": "Text Spritz",
+  "version": "1.0.0",
+  "description": "Word counts, reading time and word frequencies for your text.",
+  "category": "text",
+  "provider": "0x1111111111111111111111111111111111111111",
+  "treasury": "0x2222222222222222222222222222222222222222",
+  "chainId": 43113,
+  "token": "0x5425890298aed601595a70AB815c96711a31Bc65",
+  "priceAtomic": "100000",
+  "durationSeconds": 60,
+  "feeBps": 1000,
+  "operations": [
+    "text.analyze"
+  ],
+  "limits": {
+    "requestsPerMinute": 60,
+    "concurrency": 2,
+    "bodyBytes": 65536,
+    "timeoutMs": 5000
+  },
+  "terms": "Fuji demo. Access starts when the Arkiv entitlement is created and lasts 30 Arkiv blocks (approximately 60 seconds). Price is per time window. Rate and concurrency limits apply. Payments are test USDC. Activation is asynchronous; no automatic refund."
+}

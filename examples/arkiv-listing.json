@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "app": "apiperitivo",
+  "type": "service",
+  "planId": "0x0108abc1467177eb5ef0244eeceebd2bdc005e71d188f488cf67ccd082228708",
+  "serviceId": "0x439c02d40824f1cd26d60733ad137b894cebfe2f23c21f41e54ef8d77d31e70b",
+  "manifestRef": "0x2abd6602c3f202790619c65da247627ecdb978ca9d86072b2b49aefd8908522c",
+  "name": "Text Spritz",
+  "category": "text",
+  "provider": "0x1111111111111111111111111111111111111111",
+  "priceAtomic": "100000",
+  "durationSeconds": 60,
+  "chainId": 43113,
+  "token": "0x5425890298aed601595a70AB815c96711a31Bc65"
+}

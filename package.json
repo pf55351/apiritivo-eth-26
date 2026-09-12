@@ -1,0 +1,50 @@
+{
+  "name": "apiperitivo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.8.1",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "node --import tsx --watch --env-file-if-exists=.env apps/gateway/src/server.ts",
+    "start": "node --import tsx --env-file-if-exists=.env apps/gateway/src/server.ts",
+    "build": "pnpm typecheck && pnpm contracts:build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:contracts": "forge test --root contracts",
+    "contracts:build": "forge build --root contracts && node --import tsx scripts/export-abi.ts",
+    "schemas:export": "node --import tsx scripts/export-schemas.ts",
+    "deploy:fuji": "node --import tsx --env-file-if-exists=.env scripts/deploy-fuji.ts",
+    "check:networks": "node --import tsx --env-file-if-exists=.env scripts/check-networks.ts",
+    "demo:agent": "node --import tsx --env-file-if-exists=.env scripts/demo-agent.ts",
+    "test:evm": "node --import tsx scripts/test-evm.ts",
+    "env:init": "node --import tsx scripts/setup-env.ts",
+    "services:publish": "node --import tsx --env-file-if-exists=.env scripts/publish-services.ts"
+  },
+  "dependencies": {
+    "@arkiv-network/sdk": "0.8.1",
+    "@ethersphere/bee-js": "11.2.0",
+    "@fastify/cookie": "11.1.2",
+    "@fastify/rate-limit": "11.2.0",
+    "@noble/curves": "2.4.0",
+    "@openzeppelin/contracts": "5.6.1",
+    "@snaha/swarm-id": "0.4.1",
+    "fastify": "5.12.4",
+    "viem": "2.56.3",
+    "zod": "4.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.2",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@ethersphere/bee-js>axios": "0.33.0"
+    }
+  }
+}

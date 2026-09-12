@@ -1,6 +1,6 @@
 # API applicativa e contratto
 
-Interfacce proposte, non endpoint implementati. Validare input e output con gli schemi condivisi in `packages/domain`.
+Le rotte e il contratto qui descritti sono ora implementati nella prima versione backend, con dettagli e limiti in [docs/backend.md](../docs/backend.md). I payload sono validati con gli schemi condivisi in `packages/domain` e gli schemi HTTP del gateway. Ricevute intermedie e UI completa rimangono nella roadmap.
 
 ## HTTP del gateway
 

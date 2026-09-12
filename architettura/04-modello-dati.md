@@ -1,5 +1,7 @@
 # Modello dati
 
+> Questo documento conserva la proposta iniziale. Lo schema ora implementato è descritto in [arkiv/schema.md](../arkiv/schema.md) e validato da `packages/domain`; la guida di esecuzione è in [docs/backend.md](../docs/backend.md).
+
 ## Convenzioni
 
 `serviceId` identifica una capability; `planId` una sua offerta immutabile; `purchaseId` un acquisto. `subject` identifica la chiave applicativa autenticata del beneficiario. Il nome mostrato da Swarm ID non è la chiave di autorizzazione.
