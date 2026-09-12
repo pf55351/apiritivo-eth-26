@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ARKIV_DATA_EXPLORER_URL, ARKIV_EXPLORER_URL } from "@apiritivo/arkiv";
 import { EXPLORER_URL, USDC_ADDRESS, explorerAddressUrl, explorerTokenUrl, paymentsContractAddress } from "@apiritivo/payments";
@@ -23,13 +23,61 @@ const SECTIONS = [
 const WRITER = "0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C";
 const DATA_EXPLORER = `${ARKIV_DATA_EXPLORER_URL}/?chain=tiramisu`;
 
+/**
+ * Scroll behaviour for a long reference page: smooth anchor jumps, the
+ * current section highlighted in the side index, and a reading progress bar.
+ * All of it steps aside when the user prefers reduced motion.
+ */
+function useDocsScroll(ids: readonly string[]) {
+  const [active, setActive] = useState<string>(ids[0] ?? "");
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const previous = root.style.scrollBehavior;
+    if (!reduced) root.style.scrollBehavior = "smooth";
+
+    const onScroll = () => {
+      const max = root.scrollHeight - root.clientHeight;
+      setProgress(max > 0 ? Math.min(1, Math.max(0, root.scrollTop / max)) : 0);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // Scroll spy: the section whose top is closest below the sticky header wins.
+    const sections = ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => el !== null);
+    const spy = () => {
+      const line = 140;
+      let current = sections[0]?.id ?? "";
+      for (const el of sections) {
+        if (el.getBoundingClientRect().top - line <= 0) current = el.id;
+      }
+      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 2 && sections.length) current = sections[sections.length - 1]!.id;
+      setActive(current);
+    };
+    spy();
+    window.addEventListener("scroll", spy, { passive: true });
+    window.addEventListener("resize", spy);
+    return () => {
+      root.style.scrollBehavior = previous;
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", spy);
+      window.removeEventListener("resize", spy);
+    };
+  }, [ids]);
+
+  return { active, progress };
+}
+
 function Section({ id, index, title, lead, children }: { id: string; index: string; title: string; lead?: string; children: ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-28">
+    <section id={id} aria-labelledby={`${id}-title`}>
       <Eyebrow>{index} / {title}</Eyebrow>
       <h2 id={`${id}-title`} className="mt-3 text-2xl font-medium tracking-tight">{title}</h2>
       {lead ? <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">{lead}</p> : null}
       <div className="mt-7 space-y-6">{children}</div>
+      <a href="#top" className="mt-8 inline-block text-xs text-subtle hover:text-content">↑ back to top</a>
     </section>
   );
 }
@@ -76,8 +124,11 @@ function Steps({ items }: { items: { title: string; body: ReactNode; expect?: Re
   );
 }
 
+const SECTION_IDS = SECTIONS.map(([id]) => id);
+
 export default function DocsPage() {
   const contract = paymentsContractAddress();
+  const { active, progress } = useDocsScroll(SECTION_IDS);
   const gateway = publicEnv.swarmGatewayUrl.replace(/\/+$/, "");
 
   const layers: { name: string; role: string; link: string; href: string }[] = [
@@ -88,7 +139,10 @@ export default function DocsPage() {
   ];
 
   return (
-    <div>
+    <div id="top">
+      <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-16 z-30 h-0.5 bg-line">
+        <div className="h-full bg-accent transition-[width] duration-150 ease-out motion-reduce:transition-none" style={{ width: `${progress * 100}%` }} />
+      </div>
       <SectionTitle
         eyebrow="APIritivo / Docs"
         title="Documentation"
@@ -99,11 +153,22 @@ export default function DocsPage() {
       <div className="mt-10 grid gap-10 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-16">
         <aside>
           <nav aria-label="Documentation sections" className="flex flex-wrap gap-1 lg:sticky lg:top-28 lg:flex-col">
-            {SECTIONS.map(([id, index, name]) => (
-              <a key={id} href={`#${id}`} className="flex min-h-10 items-center gap-3 rounded-control px-3 text-xs text-muted hover:bg-surface hover:text-content">
-                <span className="font-mono text-[10px] text-subtle">{index}</span>{name}
-              </a>
-            ))}
+            {SECTIONS.map(([id, index, name]) => {
+              const current = active === id;
+              return (
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  aria-current={current ? "true" : undefined}
+                  className={`flex min-h-10 items-center gap-3 rounded-control border-l-2 px-3 text-xs transition-colors duration-200 motion-reduce:transition-none ${
+                    current ? "border-accent bg-surface text-content" : "border-transparent text-muted hover:bg-surface hover:text-content"
+                  }`}
+                >
+                  <span className={`font-mono text-[10px] ${current ? "text-accent-text" : "text-subtle"}`}>{index}</span>
+                  {name}
+                </a>
+              );
+            })}
           </nav>
         </aside>
 
