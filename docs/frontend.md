@@ -9,8 +9,8 @@ pnpm demo
 
 Apri `http://localhost:3002`. Il server resta in ascolto solo sul loopback. La demo ignora `.env`, usa `var/demo.sqlite` e non contatta Fuji, Arkiv, Bee o Swarm ID. Non è abilitabile con `NODE_ENV=production`. Le chiavi dimostrative servono esclusivamente a firmare dati locali e non devono essere finanziate.
 
-1. **Explore APIs**: catalogo effettivo del backend, ricerca per nome, filtro per categoria, prezzo, durata e limiti prima dell’acquisto. All’avvio vengono inseriti due esempi firmati, senza duplicarli ai riavvii.
-2. **Sign in**: inserisci un nome facoltativo e scegli **Enter the demo**. Il browser genera una chiave Ed25519 locale e risponde alla challenge del gateway. Il cookie di sessione è HttpOnly e SameSite Strict.
+1. **Sign in**: è l’unica schermata accessibile senza una sessione. Inserisci un nome facoltativo e scegli **Enter the demo**. Il browser genera una chiave Ed25519 locale e risponde alla challenge del gateway. Il cookie di sessione è HttpOnly e SameSite Strict.
+2. **Explore APIs**: dopo il login, catalogo effettivo del backend, ricerca per nome, filtro per categoria, prezzo, durata e limiti prima dell’acquisto. All’avvio vengono inseriti due esempi firmati, senza duplicarli ai riavvii. Anche le richieste HTTP dirette a catalogo, dettagli e schemi richiedono autenticazione.
 3. **Try this API**: prepara un intento, registra il pagamento simulato, conferma e attiva il pass attraverso lo stesso servizio acquisti e worker usati in testnet.
 4. **My passes**: esegui `text.analyze` oppure `json.transform`, visualizza/esporta la risposta, genera o revoca una credenziale temporanea per chiamare l’API dal codice. Il contatore è indicativo: il controllo del gateway decide ogni ammissione.
 5. Alla scadenza le nuove chiamate vengono respinte. Le richieste ammesse prima della scadenza possono terminare. Quando non rimangono richieste in corso, **Download receipt** esporta la ricevuta finale firmata.
@@ -38,6 +38,18 @@ I pass locali persistono al riavvio. L’identità di demo resta nella scheda de
 
 ## Passaggio alle reti degli sponsor
 
+Occorrente da configurare in `.env` (non inviare chiavi in chat):
+
+| Risorsa | Configurazione |
+| --- | --- |
+| Wallet dedicato ai test, con test AVAX e test USDC su Fuji | `FUJI_PRIVATE_KEY` per il deploy; wallet del browser per gli acquisti. `MARKET_ADDRESS` viene prodotto dal deploy. [Istruzioni ufficiali Fuji](https://build.avax.network/academy/blockchain/x402-payment-infrastructure/04-x402-on-avalanche/02-network-setup). |
+| Wallet issuer con test GLM su Arkiv Tiramisu | `ARKIV_PRIVATE_KEY`, `ARKIV_ISSUER_ADDRESS`. Può essere lo stesso wallet dedicato ai test, finanziato su entrambe le reti. [Rete e faucet Arkiv](https://docs.arkiv.network/networks/tiramisu/). |
+| Nodo Bee raggiungibile e batch di storage attivo | `SWARM_BEE_URL`, `SWARM_POSTAGE_BATCH_ID`. Un gateway di sola lettura non basta. [Upload Swarm](https://docs.ethswarm.org/docs/develop/upload-and-download/). |
+| Account Swarm ID, con upload abilitato per l’archivio | Collegamento dal browser; `SWARM_ID_URL` è già configurato. |
+| Indirizzo che riceve la quota della piattaforma | `TREASURY_ADDRESS`; il provider riceve la propria quota sull’indirizzo firmatario. |
+
+`PROVIDER_PRIVATE_KEY` serve per pubblicare gli esempi tramite CLI; nello studio firma il wallet del browser. `RECEIPT_PRIVATE_KEY` è una chiave separata generabile localmente, senza fondi, per le ricevute. Le URL RPC sono già presenti nel template. Per provare le integrazioni si può restare su localhost; per esporre l’app online servono hosting Node.js con disco persistente e `APP_ORIGIN` HTTPS.
+
 Segui [backend.md](backend.md) per wallet, deploy e variabili `.env`. `pnpm start` espone la UI su `http://localhost:3001`, nella modalità **Testnet edition**.
 
 - Il login usa il popup di Swarm ID. Le firme dell’identità non vengono sostituite da un semplice indirizzo wallet.
@@ -59,7 +71,7 @@ Le offerte vengono registrate nel journal SQLite prima dell’upload. In caso di
 
 ## Nuove API HTTP
 
-Tutte le mutazioni con cookie richiedono l’header Origin configurato; tutte le route dello studio richiedono una sessione.
+Tutte le mutazioni con cookie richiedono l’header Origin configurato. Catalogo, schemi, dettagli e workspace richiedono una sessione. La sola invocazione può usare una credenziale bearer valida al posto del cookie. Senza sessione `/api/config` restituisce soltanto il bootstrap del login, senza indirizzi di contratto, provider o issuer.
 
 | Route | Uso |
 | --- | --- |

@@ -95,7 +95,9 @@ export function App() {
     [subject, setSubject] = useState<Hex>(),
     [loading, setLoading] = useState(true);
   const [page, setPage] = useState<Page>(readPage),
-    [next, setNext] = useState<Page>("explore");
+    [next, setNext] = useState<Page>(() =>
+      readPage() === "sign-in" ? "explore" : readPage(),
+    );
   const [name, setName] = useState(
       () => sessionStorage.getItem("apiperitivo.name") ?? "Guest",
     ),
@@ -115,7 +117,10 @@ export function App() {
     return () => removeEventListener("hashchange", listener);
   }, []);
   useEffect(() => {
-    const listener = () => setSubject(undefined);
+    const listener = () => {
+      setSubject(undefined);
+      setNotice("");
+    };
     addEventListener("session-expired", listener);
     return () => removeEventListener("session-expired", listener);
   }, []);
@@ -161,7 +166,20 @@ export function App() {
       cancelled = true;
       instance?.destroy();
     };
-  }, [config]);
+  }, [config?.mode, config?.swarmIdUrl]);
+  useEffect(() => {
+    if (!subject) return;
+    const check = () => {
+      if (document.visibilityState === "visible")
+        void api("/auth/session").catch(() => {});
+    };
+    const timer = setInterval(check, 30000);
+    addEventListener("focus", check);
+    return () => {
+      clearInterval(timer);
+      removeEventListener("focus", check);
+    };
+  }, [subject]);
   useEffect(() => {
     updatePending(
       subject
@@ -249,6 +267,7 @@ export function App() {
           : (client!.connectionInfo.identity?.name ?? "Swarm member");
       setName(displayName);
       sessionStorage.setItem("apiperitivo.name", displayName);
+      setConfig(await api<Config>("/config"));
       setSubject(session.subject);
       go(next);
       setNotice(`Welcome, ${displayName}. Your table is ready.`);
@@ -325,17 +344,19 @@ export function App() {
             <span className="brand-dot">.</span>
           </span>
         </a>
-        <nav aria-label="Main navigation">
-          {(["explore", "passes", "studio"] as const).map((p, i) => (
-            <a
-              key={p}
-              href={`#/${p}`}
-              aria-current={page === p ? "page" : undefined}
-            >
-              {["Explore APIs", "My passes", "Create an offer"][i]}
-            </a>
-          ))}
-        </nav>
+        {subject && (
+          <nav aria-label="Main navigation">
+            {(["explore", "passes", "studio"] as const).map((p, i) => (
+              <a
+                key={p}
+                href={`#/${p}`}
+                aria-current={page === p ? "page" : undefined}
+              >
+                {["Explore APIs", "My passes", "Create an offer"][i]}
+              </a>
+            ))}
+          </nav>
+        )}
         {subject ? (
           <div className="account">
             <span title={subject}>
@@ -400,7 +421,7 @@ export function App() {
             {busy}
           </div>
         )}
-        {page === "explore" && <Catalog />}
+        {subject && page === "explore" && <Catalog />}
         <Suspense
           fallback={
             <p className="workspace" role="status">
@@ -408,10 +429,10 @@ export function App() {
             </p>
           }
         >
-          {page === "passes" && <Passes />}
-          {page === "studio" && <Studio />}
+          {subject && page === "passes" && <Passes />}
+          {subject && page === "studio" && <Studio />}
         </Suspense>
-        {page === "sign-in" && (
+        {(!subject || page === "sign-in") && (
           <section className="login-layout">
             <div>
               <p className="eyebrow">YOUR TABLE IS WAITING</p>
@@ -441,8 +462,8 @@ export function App() {
               <h2>Make yourself at home.</h2>
               <p>
                 {config!.mode === "demo"
-                  ? "Create a local demo identity. No wallet, tokens, or account setup needed."
-                  : "Connect Swarm ID to securely prove your identity. You’ll connect an Ethereum wallet separately when you buy a pass."}
+                  ? "Sign in with a local demo identity to unlock the catalog, passes and studio. No wallet or tokens needed."
+                  : "Connect Swarm ID to unlock the catalog, passes and studio. You’ll connect an Ethereum wallet separately when you buy a pass."}
               </p>
               {config!.mode === "demo" && (
                 <label>
@@ -473,9 +494,6 @@ export function App() {
                   ? "Your demo identity stays in this browser tab. Local records persist on this machine. Use testnet mode for a portable Swarm identity."
                   : "A signed login proof is verified by the gateway. Your identity secret stays in your browser."}
               </p>
-              <a href="#/explore" className="inline-link">
-                Just browsing? Explore the menu →
-              </a>
             </div>
           </section>
         )}

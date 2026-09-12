@@ -7,7 +7,7 @@ Frontend React/Vite collegato al gateway: catalogo, login, checkout, ripresa del
 ## Controlli eseguiti
 
 - `pnpm typecheck`: superato.
-- `pnpm test`: 30 test superati in 6 file. Gli 8 nuovi test coprono percorso locale, firme e binding della pubblicazione alla sessione, proprietà degli intenti, ripetizione idempotente, upload interrotto, recupero delle transazioni Arkiv, esclusione degli endpoint demo in testnet/produzione e scadenze indipendenti di catalogo e pass.
+- `pnpm test`: 31 test superati in 6 file. I nuovi test coprono percorso locale, firme e binding della pubblicazione alla sessione, proprietà degli intenti, ripetizione idempotente, upload interrotto, recupero delle transazioni Arkiv, esclusione degli endpoint demo in testnet/produzione, scadenze indipendenti di catalogo e pass e accesso obbligatorio anche al catalogo e agli schemi API.
 - `pnpm build`: superato, inclusi ABI e frontend; dopo gli ultimi ritocchi sono stati ripetuti typecheck, test e `pnpm web:build`.
 - `forge test --root contracts --offline`: 6 test superati, incluso fuzz con 256 esecuzioni. Il sandbox segnala soltanto l’impossibilità di aggiornare la cache globale delle firme Foundry.
 - `pnpm audit --prod --json`: nessuna vulnerabilità segnalata nelle 156 dipendenze di produzione.
@@ -26,6 +26,7 @@ Frontend React/Vite collegato al gateway: catalogo, login, checkout, ripresa del
 6. Scadenza osservata nel browser: stato expired e invocazione disabilitata. Il test gateway verifica anche il rifiuto HTTP esattamente al blocco di scadenza.
 7. Download della ricevuta finale firmata dalla UI. Verifica crittografica e conteggi verificati nei test.
 8. Layout mobile a 390 × 844, homepage e playground; nessun overflow orizzontale (`scrollWidth === clientWidth === 390`). Viewport ripristinato al termine.
+9. Logout: spariscono catalogo, pass, studio e navigazione privata; rimane solo il login. Anche l’accesso diretto a un URL privato richiede la sessione. Bootstrap anonimo privo di indirizzi di contratto e issuer.
 
 ## Design e caricamento
 

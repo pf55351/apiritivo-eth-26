@@ -19,7 +19,8 @@ export async function registerWeb(api: FastifyInstance, development: boolean) {
         return next();
       vite.middlewares(req, res, next);
     });
-    api.addHook("onClose", async () => {
+    // Close upgraded sockets before Fastify waits for the HTTP server to drain.
+    api.addHook("preClose", async () => {
       await vite.close();
     });
   } else {

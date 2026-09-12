@@ -46,11 +46,15 @@ export async function createApp(deps: Dependencies) {
     catch { throw new AppError('ACCESS_CHECK_UNAVAILABLE', 503); }
   };
   api.addHook('onRequest', async request => {
+    const path = request.url.split('?')[0];
+    const bearerInvoke = /^\/api\/passes\/0x[0-9a-fA-F]{64}\/invoke\//.test(path) && request.headers.authorization?.startsWith('Bearer ');
     // Bearer-only invocation is safe without cookies. All cookie mutations require the exact origin.
     if (['POST', 'DELETE', 'PUT', 'PATCH'].includes(request.method)) {
-      const bearerInvoke = /^\/api\/passes\/0x[0-9a-fA-F]{64}\/invoke\//.test(request.url) && request.headers.authorization?.startsWith('Bearer ');
       if (!bearerInvoke && request.headers.origin !== config.APP_ORIGIN) throw new AppError('ORIGIN_REJECTED', 403);
     }
+    // Only login bootstrap is public. Direct catalog/schema requests must authenticate too.
+    const loginRoutes = ['/api/config', '/api/auth/challenge', '/api/auth/verify', '/api/auth/session'];
+    if (path.startsWith('/api/') && !loginRoutes.includes(path) && !bearerInvoke) session(request);
   });
   api.addHook('onSend', async (request, reply) => {
     if (request.url.startsWith('/api/')) reply.header('Cache-Control', 'no-store');
@@ -65,11 +69,16 @@ export async function createApp(deps: Dependencies) {
     reply.code(appError.status).send({ error: { code: appError.code, message: appError.message }, requestId: request.id });
   });
   api.get('/health', async () => ({ app: 'apiperitivo', status: 'running', configured: { arkiv: !!arkiv, payments: !!market, swarmUpload: !!config.SWARM_POSTAGE_BATCH_ID, activationSigner: !!config.ARKIV_PRIVATE_KEY } }));
-  api.get('/api/config', async () => ({ appOrigin: config.APP_ORIGIN, swarmIdUrl: config.SWARM_ID_URL, chainId: 43113, market: market?.address, arkivIssuer: arkiv?.issuer,
+  api.get('/api/config', async request => {
+    if (!request.cookies.apiperitivo_session || !store.session(request.cookies.apiperitivo_session)) return {
+      appOrigin: config.APP_ORIGIN, swarmIdUrl: config.SWARM_ID_URL, mode: deps.demo ? 'demo' : 'testnet', feeBps: 0,
+      ready: { catalog: false, checkout: false, publishing: false, receipts: false },
+    };
+    return { appOrigin: config.APP_ORIGIN, swarmIdUrl: config.SWARM_ID_URL, chainId: 43113, market: market?.address, arkivIssuer: arkiv?.issuer,
     mode: deps.demo ? 'demo' : 'testnet', treasury: config.TREASURY_ADDRESS ?? deps.demo?.issuer, feeBps: 1000,
     publisher: await deps.marketOwner?.().catch(() => undefined),
     ready: { catalog: !!arkiv, checkout: !!market && !!arkiv && (!!deps.demo || !!config.ARKIV_PRIVATE_KEY), publishing: !!offers && (!!deps.demo || !!config.SWARM_POSTAGE_BATCH_ID) && (!!deps.demo || !!config.ARKIV_PRIVATE_KEY), receipts: !!config.RECEIPT_PRIVATE_KEY },
-  }));
+  }; });
   api.get('/api/auth/session', async request => ({ subject: session(request) }));
   api.get('/api/offers', async request => { const subject = session(request); return { offers: offers?.list(subject) ?? [] }; });
   api.post('/api/offers', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async request => {

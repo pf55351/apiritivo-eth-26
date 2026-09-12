@@ -4,6 +4,26 @@ import { identityFromSeed } from '../packages/auth/src/proof.ts';
 import { namedId } from '../packages/domain/src/index.ts';
 
 describe('gateway authentication and timed access', () => {
+  it('requires a session for every catalog view and hides private bootstrap configuration', async () => {
+    const f = await fixture();
+    try {
+      for (const url of ['/api/services', '/api/operations', `/api/plans/${ref}`, '/api/offers', '/api/passes']) {
+        const anonymous = await f.api.inject(url);
+        expect(anonymous.statusCode).toBe(401);
+        expect(anonymous.json().error.code).toBe('AUTH_REQUIRED');
+      }
+      expect(f.arkiv.listServices).not.toHaveBeenCalled();
+      expect(f.arkiv.getListing).not.toHaveBeenCalled();
+      const bootstrap = (await f.api.inject('/api/config')).json();
+      expect(bootstrap.market).toBeUndefined(); expect(bootstrap.arkivIssuer).toBeUndefined(); expect(bootstrap.publisher).toBeUndefined();
+      expect(bootstrap.ready.catalog).toBe(false);
+      expect((await f.api.inject({ url: '/api/services', headers: f.headers })).statusCode).toBe(200);
+      expect((await f.api.inject({ url: '/api/operations', headers: f.headers })).statusCode).toBe(200);
+      expect((await f.api.inject({ url: '/api/config', headers: f.headers })).json().market).toBe(f.market.address);
+      await f.api.inject({ method: 'DELETE', url: '/api/auth/session', headers: f.headers });
+      expect((await f.api.inject({ url: '/api/services', headers: f.headers })).statusCode).toBe(401);
+    } finally { await f.close(); }
+  });
   it('rejects replayed signatures, wrong origin and unauthenticated purchase', async () => {
     const f = await fixture();
     try {
