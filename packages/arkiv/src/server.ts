@@ -1,0 +1,128 @@
+/**
+ * Arkiv server writer adapter. SERVER ONLY.
+ *
+ * Trust model (Phase 1 / hackathon boundary):
+ *  - Writes are signed by an app-owned key from `ARKIV_WRITER_PRIVATE_KEY`.
+ *  - The `providerId` / `providerName` come from the caller's Swarm ID session
+ *    and are trusted as-is. There is no signature from the Swarm identity, so
+ *    this route must never be exposed as a trustless publishing endpoint.
+ */
+import { createPublicClient, createWalletClient, ExpirationTime, jsonToPayload } from "@arkiv-network/sdk";
+import { bool, dec, i32, str, u64 } from "@arkiv-network/sdk/attr";
+import { APP_ID, SERVICE_ENTITY_TYPE, type PublishServiceInput, type PublishServiceResult } from "@apiperitivo/shared";
+import { formatEther, http, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { resolveChain } from "./config";
+import { ATTR } from "./entity";
+
+export class ArkivWriterNotConfiguredError extends Error {
+  constructor() {
+    super("Arkiv writer is not configured. Set ARKIV_WRITER_PRIVATE_KEY on the server.");
+    this.name = "ArkivWriterNotConfiguredError";
+  }
+}
+
+function writerPrivateKey(): Hex | undefined {
+  const raw = process.env.ARKIV_WRITER_PRIVATE_KEY?.trim();
+  if (!raw) return undefined;
+  const hex = raw.startsWith("0x") ? raw : `0x${raw}`;
+  return /^0x[0-9a-fA-F]{64}$/.test(hex) ? (hex as Hex) : undefined;
+}
+
+export function isWriterConfigured(): boolean {
+  return writerPrivateKey() !== undefined;
+}
+
+function writeRpcUrl(): string | undefined {
+  const fromEnv = process.env.ARKIV_RPC_URL?.trim() || process.env.NEXT_PUBLIC_ARKIV_RPC_URL?.trim();
+  return fromEnv && fromEnv.length > 0 ? fromEnv : undefined;
+}
+
+export function writerAddress(): Hex | undefined {
+  const pk = writerPrivateKey();
+  return pk ? privateKeyToAccount(pk).address : undefined;
+}
+
+export type WriterStatus = {
+  configured: boolean;
+  address?: Hex;
+  /** Native GLM balance, formatted; undefined when the RPC is unreachable. */
+  balance?: string;
+  funded?: boolean;
+  chainId: number;
+  explorerUrl?: string;
+  faucetUrl: string;
+};
+
+export const ARKIV_FAUCET_URL = "https://hub.arkiv.network/faucet";
+export const ARKIV_EXPLORER_URL = "https://tiramisu.explorer.arkiv.network";
+
+/** Health of the app-owned writer (no secrets). Used by the provider dashboard. */
+export async function getWriterStatus(): Promise<WriterStatus> {
+  const chain = resolveChain();
+  const address = writerAddress();
+  if (!address) return { configured: false, chainId: chain.id, faucetUrl: ARKIV_FAUCET_URL };
+  let balance: string | undefined;
+  let funded: boolean | undefined;
+  try {
+    const client = createPublicClient({ chain, transport: http(writeRpcUrl()) });
+    const wei = await client.getBalance({ address });
+    balance = formatEther(wei);
+    funded = wei > 0n;
+  } catch {
+    /* RPC unreachable: report unknown */
+  }
+  return {
+    configured: true,
+    address,
+    balance,
+    funded,
+    chainId: chain.id,
+    explorerUrl: `${ARKIV_EXPLORER_URL}/address/${address}`,
+    faucetUrl: ARKIV_FAUCET_URL,
+  };
+}
+
+/**
+ * Create the long-lived service entity on Arkiv. Must only be called after
+ * the manifest is already on Swarm (input.manifestRef).
+ */
+export async function publishService(input: PublishServiceInput): Promise<PublishServiceResult> {
+  const pk = writerPrivateKey();
+  if (!pk) throw new ArkivWriterNotConfiguredError();
+
+  const client = createWalletClient({
+    chain: resolveChain(),
+    transport: http(writeRpcUrl()),
+    account: privateKeyToAccount(pk),
+  });
+
+  // Attribute names are snake_case on the wire: the Tiramisu engine rejects uppercase
+  // letters in attribute names (verified 2026-09-12), even though the SDK's local
+  // validator accepts them. Our TypeScript shape stays camelCase (see ATTR in entity.ts).
+  const attributes = {
+    [ATTR.app]: str(APP_ID),
+    [ATTR.entityType]: str(SERVICE_ENTITY_TYPE),
+    [ATTR.serviceId]: str(input.serviceId),
+    [ATTR.category]: str(input.category),
+    [ATTR.providerId]: str(input.providerId),
+    [ATTR.providerName]: str(input.providerName ?? ""),
+    [ATTR.available]: bool(true),
+    [ATTR.version]: i32(1),
+    [ATTR.manifestRef]: str(input.manifestRef),
+    // Commercial terms of one access pass (Phase 2 will sell exactly this). Kept on Arkiv,
+    // not in the Swarm manifest, because they are discovery metadata and may change.
+    [ATTR.priceUsdc]: dec(input.priceUsdc),
+    [ATTR.accessSeconds]: u64(input.accessSeconds),
+  };
+
+  const { entityKey, txHash } = await client.createEntity({
+    payload: jsonToPayload({ name: input.name, description: input.description }),
+    contentType: "application/json",
+    attributes,
+    // Service listings never expire. Only the Phase 2 access passes (what a client buys) will carry a TTL.
+    expires: ExpirationTime.permanent(),
+  });
+
+  return { entityKey, txHash, serviceId: input.serviceId };
+}

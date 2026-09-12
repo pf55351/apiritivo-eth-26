@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@theme {
+  /* Warm charcoal, lifted a few steps so cards and text read clearly */
+  --color-ink-950: #151210;
+  --color-ink-900: #1c1815;
+  --color-ink-850: #221d19;
+  --color-ink-800: #2a2420;
+  --color-ink-700: #382f2a;
+  --color-ink-600: #4b403a;
+  --color-ink-400: #9c8c82;
+  --color-ink-300: #c2b3a8;
+  --color-ink-200: #e2d6cc;
+  --color-ink-100: #f8f2ec;
+
+  --color-spritz-300: #ffc07a;
+  --color-spritz-400: #ffa24a;
+  --color-spritz-500: #ff8426;
+  --color-spritz-600: #ea6c12;
+
+  --color-olive-400: #c6d97a;
+  --color-olive-500: #a9bf55;
+
+  --color-rose-400: #ff8f9c;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 20px 40px -24px rgb(0 0 0 / 0.7);
+  --shadow-glow: 0 0 0 1px rgb(255 122 26 / 0.35), 0 12px 40px -12px rgb(255 122 26 / 0.45);
+
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-float: float 8s ease-in-out infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(0, -18px, 0); }
+  }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Long hashes / references must wrap, never widen the page */
+code, kbd {
+  overflow-wrap: anywhere;
+}
+pre {
+  max-width: 100%;
+}
+/* Grid and flex children shrink below their content width by default */
+.card, .glass, .min-w-0-all > * {
+  min-width: 0;
+}
+
+body {
+  background-color: var(--color-ink-950);
+  color: var(--color-ink-100);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgb(255 122 26 / 0.35);
+}
+
+/* Subtle warm grain + vignette behind everything */
+.bg-scene {
+  overflow-x: clip;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgb(255 132 38 / 0.22), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, rgb(255 143 156 / 0.14), transparent 60%),
+    radial-gradient(800px 400px at 50% 110%, rgb(198 217 122 / 0.12), transparent 60%),
+    var(--color-ink-950);
+}
+
+.glass {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.04));
+  border: 1px solid rgb(255 255 255 / 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.card {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.035));
+  border: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s, box-shadow 0.25s;
+}
+.card:hover {
+  transform: translateY(-3px);
+  border-color: rgb(255 132 38 / 0.5);
+  box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.08) inset, 0 28px 60px -28px rgb(255 132 38 / 0.45);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.07) 25%, rgb(255 255 255 / 0.14) 50%, rgb(255 255 255 / 0.07) 75%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+.wordmark {
+  background: linear-gradient(100deg, #fff4e8 0%, #ffb36b 35%, #ff7a1a 60%, #f27c8a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.grid-lines {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+}
+
+input, select, textarea {
+  color-scheme: dark;
+}
