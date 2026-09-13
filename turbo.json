@@ -5,7 +5,7 @@
     "dev": { "cache": false, "persistent": true },
     "build": {
       "inputs": ["$TURBO_DEFAULT$", ".env.local", ".env.production"],
-      "env": ["ARKIV_WRITER_PRIVATE_KEY", "ARKIV_RPC_URL", "AVALANCHE_FUJI_RPC_URL", "ENS_RPC_URL", "NODE_ENV"],
+      "env": ["ARKIV_WRITER_PRIVATE_KEY", "ARKIV_RPC_URL", "AVALANCHE_FUJI_RPC_URL", "ENS_RPC_URL", "NODE_ENV", "VERCEL_PROJECT_PRODUCTION_URL"],
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "lint": {},

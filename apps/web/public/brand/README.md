@@ -37,4 +37,10 @@ about 96% of the icon width. Transparency, colors, and proportions are preserved
 Next.js App Router discovers this file and adds the browser icon metadata
 automatically. Rebuild this tightly framed variant when replacing the primary symbol.
 
+`../../app/opengraph-image.png` (1200 × 630, with `opengraph-image.alt.txt`) is the
+link-preview card: `logos/apiritivo-logo-dark.png` trimmed to 720 px wide on the dark
+canvas (`#121311`, orange glow), tagline and stack line in Inter, 8 px brand-orange
+bottom rule. Rendered once with `next/og` (`ImageResponse`); regenerate it when the
+wordmark or tagline changes. Next.js adds the `og:image` / `twitter:image` tags from it.
+
 The supplied exports are PNG files. SVG and ICO exports were not supplied.
