@@ -8,6 +8,7 @@
  *   bun tools/ens-register.ts register <label> [--dry-run]            # mint + approve MockUSDC, commit, wait, register 1 year
  *   bun tools/ens-register.ts resolver <label> [--dry-run]            # deploy APIritivoResolver (owner = writer) and set it on the name
  *   bun tools/ens-register.ts records  <name.eth> --addr 0x… [--service <id>] [--manifest <ref>] [--dry-run]
+ *   bun tools/ens-register.ts primary  <name.eth> [--dry-run]            # set the writer's primary (reverse) name; addr(name) must be the writer
  *
  * The shared PublicResolverV2 refuses record writes on the Sepolia beta (canModifyName is false even
  * for owners), so the platform name uses its own resolver: contracts/src/APIritivoResolver.sol.
@@ -30,6 +31,9 @@ const ONE_YEAR = 31_536_000n;
 const TEXT_KEY = "com.apiritivo.service";
 
 const ETH_REGISTRY: Address = "0xBDC85dD5b15D7ecb354cd7cb6f2c50b4f2c4F0E2"; // ETHRegistry (v2)
+const REVERSE_REGISTRAR: Address = "0x7a84e241f862d73960d73c26d68c3c8f89f0b18f"; // DefaultReverseRegistrarAdapter (v2): setName(addr, name), only addr itself may call it
+const UNIVERSAL_RESOLVER: Address = "0x4a1817d13e9cf196f471725176355c1234b63c70"; // UniversalResolverV2, same as @apiritivo/ens
+const reverseAbi = parseAbi(["function setName(address addr, string name)"]);
 const registryAbi = parseAbi([
   "function findTokenId(string label) view returns (uint256)",
   "function getResolver(string label) view returns (address)",
@@ -210,6 +214,16 @@ if (cmd === "records") {
     ]);
     console.log(`  now: addr=${a} · text=${t || "(empty)"} · contenthash=${c === "0x" ? "(empty)" : `${c.slice(0, 24)}…`}`);
   }
+  process.exit(0);
+}
+if (cmd === "primary") {
+  // The universal resolver only returns a primary name whose forward addr matches, so check that first.
+  const forward = await pub.getEnsAddress({ name, universalResolverAddress: UNIVERSAL_RESOLVER });
+  if (!forward || forward.toLowerCase() !== account.address.toLowerCase())
+    throw new Error(`addr(${name}) is ${forward ?? "unset"}, not the writer ${account.address}: run \`records ${name} --addr ${account.address}\` first`);
+  console.log(`${name} · primary name for ${account.address} (reverse registrar ${REVERSE_REGISTRAR})`);
+  await send("setName", { to: REVERSE_REGISTRAR, data: encodeFunctionData({ abi: reverseAbi, functionName: "setName", args: [account.address, name] }) });
+  if (!dryRun) console.log(`  now: reverse=${(await pub.getEnsName({ address: account.address, universalResolverAddress: UNIVERSAL_RESOLVER })) ?? "(none)"}`);
   process.exit(0);
 }
 console.error(`unknown command ${cmd}`);
