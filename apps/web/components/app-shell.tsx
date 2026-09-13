@@ -4,7 +4,7 @@ import { explorerAddressUrl, paymentsContractAddress } from "@apiritivo/payments
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { isActiveLink, routeWorkspace, VIEW_LINKS } from "@/lib/routes";
+import { isActiveLink, REPO_URL, routeWorkspace, VIEW_LINKS } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import { useView } from "@/lib/view";
 import { PendingMenu } from "./guest-menu";
@@ -121,6 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5 px-4 py-7 sm:px-6 lg:px-8">
           <div>
             <p className="text-sm font-medium">APIritivo</p>
+            <p className="mt-1 text-xs text-subtle">Developed by Protocol Bar</p>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-subtle">
             <span>Testnet edition</span>
@@ -131,6 +132,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               UI library ↗
             </Link>
             <ContractLink />
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              title="Source code on GitHub"
+              className="inline-flex min-h-11 items-center gap-1 text-xs text-subtle underline decoration-transparent underline-offset-4 transition-colors hover:text-content hover:decoration-content"
+            >
+              GitHub ↗
+            </a>
           </div>
         </div>
       </footer>

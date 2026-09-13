@@ -24,3 +24,6 @@ export function routeWorkspace(pathname: string): Role | null {
 export function isActiveLink(pathname: string, href: string): boolean {
   return pathname === href || (href !== "/provider" && pathname.startsWith(`${href}/`));
 }
+
+/** Public source repository (footer and Docs). */
+export const REPO_URL = "https://github.com/pf55351/apiritivo-eth-26";

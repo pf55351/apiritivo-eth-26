@@ -8,6 +8,7 @@ import { CodePanel } from "@/components/code-panel";
 import { ETHROME_SPONSORS_URL, SponsorLogos } from "@/components/sponsor-logos";
 import { Badge, Button, Disclosure, SectionTitle } from "@/components/ui";
 import { publicEnv } from "@/lib/env";
+import { REPO_URL } from "@/lib/routes";
 
 const SECTIONS = [
   ["overview", "Overview"],
@@ -581,7 +582,7 @@ bun run build                         # stop bun dev first: both write apps/web/
               ]}
             />
             <div className="flex flex-wrap gap-2">
-              <Button href="https://github.com/pf55351/apiritivo-eth-26" variant="ghost">
+              <Button href={REPO_URL} variant="ghost">
                 Repository ↗
               </Button>
               <Button href="/design-system" variant="ghost">
