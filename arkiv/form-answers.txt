@@ -1,0 +1,52 @@
+1) WALLET ADDRESSES USED TO CREATE ARKIV ENTITIES
+
+0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C — backend writer (server-only key). Creator and current owner of every entity: service, access_pass, sale, grant. No ownership transfer. Also the USDC payer on Avalanche Fuji in our demo purchases.
+
+Other addresses appear only inside attributes (payout wallets, demo client 0xB8F4d25f3e18F336506A39a40e5C3500922e9bAd); they never write to Arkiv.
+
+All entities: https://data.arkiv.network/?q=%24owner%20%3D%20addr(0x401629d4c1A4C1A0Ffd14A089f798Dd29A94c09C)&chain=tiramisu
+
+
+2) ON-CHAIN CREATION EVIDENCE (Tiramisu, all by the writer above)
+
+At block 387492: 8 services, 21 sales, 19 live access passes, 3 grants. 21 sales vs 19 passes = 2 passes already expired on their own.
+
+Service data-api-x-2e80
+  entity 0x248c5d29f15e0d93c4e8611a9f45831080336ef26b8fd0737f20675b1f3cf439 (block 384818)
+  tx https://tiramisu.explorer.arkiv.network/tx/0x0477ab9cd13f87388857fca8d045a7a729ed14074ec1f8c503970319adfc5cbe
+
+Purchase = pass + sale in one executeBatch (block 385052)
+  tx https://tiramisu.explorer.arkiv.network/tx/0xcedb0ede6798433f2440dc6b5e32a3f9d8c05bb879bfb83c559c6031e4c53a26
+  access_pass 0x2743bd9a8e2db32b09e1a63f76f43387088159bba06e967c2359c61439fe86d5 (expires block 687452)
+  sale 0x2d8fbb5227c2fceb105c84305913379148a9395f4ec4a6d95efc1cd161e1702d
+  Fuji payment 0xcba4599231a3ed07ebcfb48108bc568ac3d5d77032013ca2c35efd61ffe04c49
+
+Expired on their own (no delete call exists in the repo)
+  sale 0xc7f90640118bd06e7dffa957778956e815074503e894024d455b3ba0bb205a89 (block 369656)
+    created in tx https://tiramisu.explorer.arkiv.network/tx/0x04e6b9a88ed0af9ab2f51ff44c33c5780f6e44d5a23cfdd42b8a78407d6f67b7
+    its pass_key 0x4521270c3fc8c3a1c5c7369e1637b03703fa76d020768f4fd1d06ac42e32b853 is no longer returned by any query
+  sale 0xac4274f6ae2d230b4d2152f99a74d0b4c6ce8fcfaef91471e35ad50bc78a6e3b (block 357649)
+    pass created in tx 0xd6afa143ab07f1d45a71bc5da16830980b104060f2f96ba2979995bd52f9d421, key 0x18381aaa87f343b25abb78083d4f8b358d4e56d85fcefb9140c9eee183af8087, now gone
+
+Checked at block 387531 with the app's own read function: both expired keys -> null, the live one -> found.
+Full table: https://github.com/pf55351/apiritivo-eth-26/blob/feat/ui/arkiv/submission.md
+No recorded video yet.
+
+
+3) HOW TO REPRODUCE MISSION 02 — BUILT TO EXPIRE
+
+The purchased duration is the entity's lifetime. When it lapses the API key stops working, the pass leaves "My passes", the sale receipt stays.
+
+Code
+  write: packages/arkiv/src/server.ts L228-249 — pass with ExpirationTime.fromSeconds(accessSeconds), sale permanent, one executeBatch
+  read (same query before/after): packages/arkiv/src/index.ts L165 getAccessPass, L245 verifyAccessPass; used by every gated call via apps/web/lib/server/access.ts. "Not found" = no access. No delete, cron or revoke anywhere.
+  durations: packages/shared/src/service.ts L43 (30 s … 1 year, even seconds because Arkiv counts 2-second blocks)
+  UI: apps/web/components/passes-view.tsx L28 (countdown -> "Expired"); tests in apps/web/lib/pass-timing.test.ts
+
+Steps (~3 min)
+  1. bun install && bun dev (README "Quick start"); follow docs/JUDGE-WALKTHROUGH.txt steps 1-4, pick "30 seconds" as access duration when publishing.
+  2. Buy the pass, copy the key <passKey>.<secret>, open https://data.arkiv.network/?q=$key = key(<passKey>)&chain=tiramisu
+  3. bun tools/call-service.ts <serviceId> "<passKey>.<secret>"  -> 200
+  4. Wait 40 s, run the identical command -> 403 "Access pass not found on Arkiv or expired." Reload the explorer query -> empty. "Sales" still shows the receipt with the vanished pass_key.
+
+Known limitations: no video timestamps yet; shipped demo services sell 7-day passes, so use a fresh 30-second listing; expiry block estimated ±1 block; access checks are on-demand reads, no WebSocket subscription in this build.
