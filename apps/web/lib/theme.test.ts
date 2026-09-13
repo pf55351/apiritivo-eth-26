@@ -82,12 +82,16 @@ describe("appearance before first paint", () => {
           },
         },
       });
-      const explicit = value === "light" || value === "dark";
-      expect(document.documentElement.dataset.theme).toBe(explicit ? value : prefersDark ? "dark" : "light");
-      expect(document.documentElement.dataset.themePreference).toBe(explicit ? value : "system");
+      // Only "system" follows the computer; anything unknown or missing starts dark.
+      const expected =
+        value === "system"
+          ? { theme: prefersDark ? "dark" : "light", preference: "system" }
+          : { theme: value === "light" ? "light" : "dark", preference: value === "light" ? "light" : "dark" };
+      expect(document.documentElement.dataset.theme).toBe(expected.theme);
+      expect(document.documentElement.dataset.themePreference).toBe(expected.preference);
     });
 
-    test(`blocked storage follows the computer when system dark is ${prefersDark}`, () => {
+    test(`blocked storage starts dark when system dark is ${prefersDark}`, () => {
       const document = { documentElement: { dataset: {} as Record<string, string> } };
       runInNewContext(THEME_INIT_SCRIPT, {
         document,
@@ -96,8 +100,8 @@ describe("appearance before first paint", () => {
           throw new Error("Storage blocked");
         },
       });
-      expect(document.documentElement.dataset.theme).toBe(prefersDark ? "dark" : "light");
-      expect(document.documentElement.dataset.themePreference).toBe("system");
+      expect(document.documentElement.dataset.theme).toBe("dark");
+      expect(document.documentElement.dataset.themePreference).toBe("dark");
     });
   }
 });
@@ -165,7 +169,7 @@ describe("live appearance preference", () => {
     expect(dataset.theme).toBe("light");
   });
 
-  test("other tabs synchronize overrides and removing a preference returns to Auto", () => {
+  test("other tabs synchronize overrides and removing a preference returns to the dark default", () => {
     stop = subscribeTheme(() => {});
     storageChange(THEME_STORAGE_KEY, "light");
     expect(currentThemePreference()).toBe("light");
@@ -173,12 +177,15 @@ describe("live appearance preference", () => {
     storageChange(THEME_STORAGE_KEY, "dark", {});
     storageChange("other-setting", "dark");
     expect(dataset.theme).toBe("light");
+    storageChange(THEME_STORAGE_KEY, "system");
+    expect(currentThemePreference()).toBe("system");
+    expect(dataset.theme).toBe("dark");
     storageChange(THEME_STORAGE_KEY, null);
     expect(dataset.theme).toBe("dark");
-    expect(currentThemePreference()).toBe("system");
+    expect(currentThemePreference()).toBe("dark");
     storageChange(THEME_STORAGE_KEY, "light");
     storageChange(null, null);
-    expect(currentThemePreference()).toBe("system");
+    expect(currentThemePreference()).toBe("dark");
   });
 
   test("blocked storage keeps the in-memory override and permits Auto", () => {

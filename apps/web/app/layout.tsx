@@ -13,15 +13,15 @@ const heading = Manrope({ subsets: ["latin"], variable: "--font-manrope", displa
 const mono = Source_Code_Pro({ subsets: ["latin"], variable: "--font-code", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "APIritivo | APIs for agents",
-  description: "Discover and publish APIs that machines can understand. Swarm ID · Swarm · Arkiv.",
+  title: "APIritivo | Timed access for the AI era",
+  description: "Buy timed API access with USDC, or publish your API and earn. Swarm ID · Swarm · Arkiv.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning className={`${sans.variable} ${heading.variable} ${mono.variable}`}>
       <head>
-        {/* Apply the saved choice or computer theme before first paint. */}
+        {/* Apply the saved choice (dark by default) before first paint. */}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: no user data is interpolated */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>

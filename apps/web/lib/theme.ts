@@ -2,11 +2,13 @@ export type Theme = "dark" | "light";
 export type ThemePreference = Theme | "system";
 
 export const THEME_STORAGE_KEY = "apiritivo:theme";
+/** Applied until the visitor picks a theme; "system" is available but opt-in. */
+export const DEFAULT_THEME_PREFERENCE: ThemePreference = "dark";
 const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
 const CHANGE_EVENT = "apiritivo:theme-change";
 
 export function parseThemePreference(value: unknown): ThemePreference {
-  return value === "light" || value === "dark" ? value : "system";
+  return value === "light" || value === "dark" || value === "system" ? value : DEFAULT_THEME_PREFERENCE;
 }
 
 export function resolveTheme(preference: ThemePreference, prefersDark: boolean): Theme {
@@ -59,4 +61,4 @@ export function subscribeTheme(onChange: () => void) {
 
 // Runs before the body paints. Storage can be unavailable in private contexts.
 // Only known preference and resolved theme values may become DOM attributes.
-export const THEME_INIT_SCRIPT = `(()=>{let p="system";try{const v=localStorage.getItem("${THEME_STORAGE_KEY}");if(v==="light"||v==="dark")p=v}catch{}const r=document.documentElement;r.dataset.themePreference=p;r.dataset.theme=p==="system"?(matchMedia("${SYSTEM_THEME_QUERY}").matches?"dark":"light"):p})()`;
+export const THEME_INIT_SCRIPT = `(()=>{let p="${DEFAULT_THEME_PREFERENCE}";try{const v=localStorage.getItem("${THEME_STORAGE_KEY}");if(v==="light"||v==="dark"||v==="system")p=v}catch{}const r=document.documentElement;r.dataset.themePreference=p;r.dataset.theme=p==="system"?(matchMedia("${SYSTEM_THEME_QUERY}").matches?"dark":"light"):p})()`;

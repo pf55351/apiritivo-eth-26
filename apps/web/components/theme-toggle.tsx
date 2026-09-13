@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useSyncExternalStore } from "react";
-import { currentThemePreference, setThemePreference, subscribeTheme, type ThemePreference } from "@/lib/theme";
+import { currentThemePreference, DEFAULT_THEME_PREFERENCE, setThemePreference, subscribeTheme, type ThemePreference } from "@/lib/theme";
 
 const OPTIONS = [
   { value: "system", label: "Auto" },
@@ -36,7 +36,7 @@ export function ThemeSync() {
 }
 
 export function ThemeToggle() {
-  const preference = useSyncExternalStore(subscribeTheme, currentThemePreference, () => "system" as ThemePreference);
+  const preference = useSyncExternalStore(subscribeTheme, currentThemePreference, () => DEFAULT_THEME_PREFERENCE);
   const id = useId();
   return (
     <div className="flex min-h-11 items-center justify-between gap-3">

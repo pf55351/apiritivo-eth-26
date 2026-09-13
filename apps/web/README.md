@@ -28,7 +28,7 @@ Next.js 15 App Router + Tailwind v4. All vendor calls go through the packages; c
 - `lib/use-pass-bearer.ts` — reveals `<passKey>.<secret>` with the owner's key (wallet signature or Swarm ID).
 - `lib/readiness.ts` — pure rules behind the bottom-right readiness pill (`components/readiness-beacon.tsx`, `readiness-panel.tsx`): USDC, AVAX, GLM writer, Swarm drive.
 - `lib/use-services.ts`, `lib/use-access.ts`, `lib/access-query-state.ts`, `lib/pass-timing.ts` — query hooks over the Arkiv adapter (services, passes, sales, block timing) and refresh-in-place state.
-- `lib/publish-validation.ts` — publish form step validation; `lib/theme.ts` — Auto / Light / Dark appearance.
+- `lib/publish-validation.ts` — publish form step validation; `lib/theme.ts` — Auto / Light / Dark appearance (dark until the visitor chooses).
 - `lib/use-ens.ts` — resolves and verifies a service's linked ENS name (badge in `service-card`, panel `components/ens-panel.tsx` on the service page).
 - `lib/use-live-sales.ts` — subscribes to Fuji (`watchSales`) for a provider address; fires `onSale` so Arkiv lists refresh.
 - `lib/server/access.ts` — `requireAccessPass` shared by the bot and the gateway, plus the demo bot brain (CoinGecko prices for `getQuote`).
